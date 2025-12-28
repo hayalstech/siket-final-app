@@ -13,14 +13,12 @@
             --blue-black: #0f172a;
         }
 
-        /* Layout Fix for Footer */
         html, body { height: 100%; margin: 0; padding: 0; }
         body { 
             font-family: sans-serif; color: white; background: var(--bg-dark);
             display: flex; flex-direction: column; overflow-x: hidden;
         }
 
-        /* HEADER */
         header { 
             background: #000; padding: 12px 15px; border-bottom: 2px solid var(--orange); 
             display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; 
@@ -33,16 +31,13 @@
         .lang-btn { background: none; border: 1px solid var(--orange); color: white; padding: 4px 8px; border-radius: 5px; font-size: 10px; cursor: pointer; }
         .contact-btn { color: white; text-decoration: none; font-size: 10px; font-weight: bold; border-left: 1px solid #334155; padding-left: 8px; }
 
-        /* HERO - FULLY VISIBLE BANNER */
         .hero { width: 100%; background: #000; line-height: 0; }
         .hero-banner { width: 100%; height: auto; object-fit: contain; }
 
-        /* COMPETITION SECTION (Blue-Black) */
         .comp-section { background: var(--blue-black); padding: 30px 15px; text-align: center; }
         .comp-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; color: var(--gold); }
         .comp-grid { display: flex; flex-direction: column; gap: 20px; align-items: center; }
         
-        /* 1.5 RATIO CARDS */
         .ticket-card { 
             width: 90%; max-width: 320px; aspect-ratio: 1.5 / 1; 
             background: #000; border-radius: 12px; overflow: hidden; 
@@ -52,13 +47,17 @@
         .buy-overlay { position: absolute; bottom: 10px; right: 10px; }
         .buy-btn { background: var(--orange); color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
 
-        /* GRID VIEW & COLORS */
-        main { flex: 1; }
+        /* COMING SOON SECTION */
+        .coming-soon { 
+            background: rgba(255, 255, 255, 0.03); 
+            padding: 40px 20px; text-align: center; border-top: 1px solid #1e293b;
+        }
+        .cs-title { color: var(--orange); font-size: 18px; font-weight: bold; margin-bottom: 10px; }
+        .cs-text { color: #94a3b8; font-size: 13px; line-height: 1.6; max-width: 80%; margin: 0 auto; }
+
         #grid-view { display: none; padding: 20px; text-align: center; }
         .grid-back { color: var(--orange); background: none; border: none; font-weight: bold; margin-bottom: 15px; cursor: pointer; }
-        
-        /* Prize Display (Cleaned Line 166, 167) */
-        .prize-container { background: rgba(0,0,0,0.6); margin: 0 15px 15px 15px; padding: 15px; border-radius: 12px; border: 1px solid var(--gold); }
+        .prize-container { background: rgba(0,0,0,0.6); margin: 0 15px 15px 15px; padding: 15px; border-radius: 12px; border: 1px solid var(--gold); text-align: center; }
         .prize-title { margin: 0; color: var(--gold); font-size: 22px; font-weight: bold; }
         .prize-sub { font-size: 13px; margin-top: 8px; color: #cbd5e1; }
 
@@ -68,27 +67,20 @@
         .pending { background: var(--yellow); color: #000; animation: pulse 1s infinite; }
         .sold { background: var(--green); opacity: 0.8; pointer-events: none; }
 
-        /* FOOTER - ALWAYS BOTTOM */
         footer { padding: 30px 20px; background: #000; border-top: 1px solid #334155; text-align: left; margin-top: auto; }
         .footer-head { font-size: 14px; font-weight: bold; color: white; margin-bottom: 8px; }
         .footer-body { font-size: 11px; color: #64748b; line-height: 1.6; }
 
-        /* MODAL */
         #pay-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:200; align-items: center; justify-content: center; }
         .modal-box { background: #1e293b; padding: 25px; border-radius: 20px; width: 85%; border: 1px solid var(--orange); text-align: center; }
-        .modal-timer { color: red; font-size: 28px; font-weight: 900; margin-bottom: 10px; }
         .phone-input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #050a14; color: white; box-sizing: border-box; }
         .copy-tag { background: var(--orange); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; color: white; font-weight: bold; display: inline-block; }
 
-        /* DRAW OVERLAY (Cleaned Line 173) */
         #draw-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:300; flex-direction:column; align-items:center; justify-content:center; }
-        .draw-timer-big { font-size: 60px; margin: 10px 0; font-weight: bold; }
-        .shuffle-box { font-size: 80px; color: var(--gold); font-weight: bold; }
-
         @keyframes pulse { 50% { opacity: 0.5; } }
     </style>
 </head>
-<body id="app">
+<body>
 
     <header>
         <div class="header-left">
@@ -124,6 +116,12 @@
                     </div>
                 </div>
             </section>
+
+            <!-- NEW COMING SOON SECTION -->
+            <section class="coming-soon">
+                <div class="cs-title" id="cs-t">በቅርቡ ይጠብቁ!</div>
+                <div class="cs-text" id="cs-b">አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!</div>
+            </section>
         </div>
 
         <div id="grid-view">
@@ -138,13 +136,13 @@
 
     <footer>
         <div class="footer-head" id="f-t">መግለጫ (Disclaimer)</div>
-        <div class="footer-body" id="f-b">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አንዴ ከተፈጸመ አይመለስም። ዕጣው በዘፈቀደ (Randomly) የሚወጣ ይሆናል።</div>
+        <div class="footer-body" id="f-b">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አንዴ ከተፈጸመ አይመለስም። ዕጣው በዘፈቀደ የሚወጣ ይሆናል።</div>
     </footer>
 
-    <!-- Payment Modal -->
+    <!-- Modal and Overlay code remains same -->
     <div id="pay-modal">
         <div class="modal-box">
-            <div id="timer" class="modal-timer">07:00</div>
+            <div id="timer" style="color:red; font-size:24px; font-weight:bold; margin-bottom:10px;">07:00</div>
             <p>Pay to CBE / Telebirr: <br> <b>0998815949</b> <span class="copy-tag" onclick="copyN()">Copy</span></p>
             <input type="text" id="phone" class="phone-input" placeholder="የከፈሉበት ስልክ ቁጥር">
             <input type="file" id="photo" accept="image/*">
@@ -153,17 +151,37 @@
         </div>
     </div>
 
-    <!-- Draw Animation -->
-    <div id="draw-overlay">
-        <h1 style="color:var(--orange)">Draw Starting Soon!</h1>
-        <h2 id="d-timer" class="draw-timer-big">05:00</h2>
-        <div id="shuffle" class="shuffle-box">00</div>
-    </div>
-
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
         let cTier = 3, lang = 'am', selN = null, curRound = "0001";
+
+        const langData = {
+            am: {
+                navT: "ስኬት ሎቶ | Siket Lotto", navC: "ያግኙን", 
+                secT: "አሸናፊ የሚያደረጉዋችሁ እጣዎች", fT: "መግለጫ (Disclaimer)", 
+                fB: "የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት።",
+                csT: "በቅርቡ ይጠብቁ!", csB: "አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!"
+            },
+            en: {
+                navT: "Siket Lotto", navC: "Contact", 
+                secT: "Hottest Competitions", fT: "Disclaimer", 
+                fB: "Siket Lottery members must be 18+ years old.",
+                csT: "Coming Soon!", csB: "We are preparing exciting new lotteries and even bigger prizes. Stay tuned!"
+            }
+        };
+
+        function toggleLang() {
+            lang = lang === 'am' ? 'en' : 'am';
+            const d = langData[lang];
+            document.getElementById('nav-title').innerHTML = `ስኬት ሎቶ<span id="round-tag" class="round-tag">Round #${curRound}</span>`;
+            document.getElementById('l-btn').innerText = lang === 'am' ? 'English' : 'አማርኛ';
+            document.getElementById('sec-t').innerText = d.secT;
+            document.getElementById('f-t').innerText = d.fT;
+            document.getElementById('f-b').innerText = d.fB;
+            document.getElementById('cs-t').innerText = d.csT;
+            document.getElementById('cs-b').innerText = d.csB;
+        }
 
         async function openTier(id) {
             cTier = id;
@@ -180,28 +198,23 @@
         async function load() {
             const res = await fetch(`/api/status/${cTier}`);
             const data = await res.json();
-            curRound = data.round;
-            document.getElementById('round-tag').innerText = `Round #${String(data.round).padStart(4, '0')}`;
+            curRound = String(data.round).padStart(4, '0');
+            document.getElementById('round-tag').innerText = `Round #${curRound}`;
             document.getElementById('grid-header').innerText = lang === 'am' ? data.prizes.name_am : data.prizes.name_en;
             document.getElementById('prizes-list').innerText = `1st: ${data.prizes.p1_prize} ETB | 2nd: ${data.prizes.p2_prize} ETB | 3rd: ${data.prizes.p3_prize}`;
-            
             const g = document.getElementById('main-grid');
             g.innerHTML = '';
-            let sCount = 0;
             data.tickets.forEach(t => {
-                if(t.status === 'sold') sCount++;
                 const d = document.createElement('div');
                 d.className = `cell ${t.status}`;
                 d.innerText = t.number_val;
                 d.onclick = () => { if(t.status==='available') { selN=t.number_val; document.getElementById('pay-modal').style.display='flex'; } };
                 g.appendChild(d);
             });
-            if(sCount === 100) startDrawOverlay();
         }
-
-        function copyN() { navigator.clipboard.writeText("0998815949"); tg.showAlert("Number Copied!"); }
+        
+        function copyN() { navigator.clipboard.writeText("0998815949"); tg.showAlert("Copied!"); }
         function closeModal() { document.getElementById('pay-modal').style.display = 'none'; }
-
         async function sendPayment() {
             const ph = document.getElementById('phone').value;
             const file = document.getElementById('photo').files[0];
@@ -211,24 +224,6 @@
             fd.append('tierId', cTier); fd.append('number', selN); fd.append('phone', ph); fd.append('round', curRound);
             const res = await fetch('/api/upload-payment', { method: 'POST', body: fd });
             if(res.ok) { tg.showAlert("Sent!"); closeModal(); load(); }
-        }
-
-        function startDrawOverlay() {
-            document.getElementById('draw-overlay').style.display = 'flex';
-            let s = 300;
-            setInterval(() => {
-                s--;
-                let m = Math.floor(s/60), sec = s%60;
-                document.getElementById('d-timer').innerText = `${m}:${sec<10?'0':''}${sec}`;
-                document.getElementById('shuffle').innerText = Math.floor(Math.random()*100)+1;
-                if(s<=0) location.reload();
-            }, 1000);
-        }
-
-        function toggleLang() {
-            lang = lang === 'am' ? 'en' : 'am';
-            document.getElementById('l-btn').innerText = lang === 'am' ? 'English' : 'አማርኛ';
-            load();
         }
     </script>
 </body>

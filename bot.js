@@ -62,8 +62,17 @@ bot.callbackQuery(/approve_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
 
 bot.command("start", async (ctx) => {
     await getUser(ctx.from.id, ctx.from.username);
-    const kb = new InlineKeyboard().webApp("Buy Ticket | ትኬት ይቁረጡ", process.env.WEBAPP_URL);
-    ctx.reply(`ሰላም ${ctx.from.first_name}! 👋\nSiket Success Round #0001 is Active!`, { reply_markup: kb });
+    
+    const welcome = `ሰላም ${ctx.from.first_name}! 👋\nእንኳን ወደ **ስኬት ሎተሪ (Siket Lottery)** በደህና መጡ! 🏆\n\nእድልዎን ለመሞከር አሁኑኑ ቲኬት ይቁረጡ።`;
+    
+    const keyboard = new InlineKeyboard()
+        .webApp("ትኬት ይቁረጡ | Buy Ticket", process.env.WEBAPP_URL) // Opens the App
+        .row()
+        .url("በመረጃ ማዕከል ይግዙ | Buy via Contact", "https://t.me/Contact_Siketlottery") // New Option
+        .row()
+        .text("ስለ እኛ (About Us)", "about_us");
+
+    await ctx.reply(welcome, { reply_markup: keyboard, parse_mode: "Markdown" });
 });
 
 app.listen(process.env.PORT || 3000);
