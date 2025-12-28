@@ -1,3 +1,4 @@
+const axios = require('axios');
 require('dotenv').config();
 const { Bot, InlineKeyboard, InputFile } = require('grammy');
 const { pool, getUser } = require('./database');
@@ -67,3 +68,10 @@ bot.command("start", async (ctx) => {
 
 app.listen(process.env.PORT || 3000);
 bot.start();
+// KEEP-ALIVE: Pings the server every 5 minutes to prevent sleeping
+const RENDER_URL = "https://siket-final-app.onrender.com"; // Your Render link
+setInterval(() => {
+    axios.get(RENDER_URL)
+        .then(() => console.log("Heartbeat: Siket is Awake! 🏆"))
+        .catch((err) => console.log("Heartbeat failed, but server is likely active."));
+}, 300000); // 300,000ms = 5 minutes
