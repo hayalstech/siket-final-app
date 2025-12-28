@@ -4,292 +4,232 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Siket Lotto | ስኬት ሎቶ</title>
-    
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-
     <style>
         :root { 
-            --orange: #ff6b35; 
-            --gold: #fbbf24;
-            --bg-dark: #050a14; 
+            --orange: #ff6b35; --gold: #fbbf24; --blue: #1d4ed8; 
+            --green: #15803d; --yellow: #eab308; --bg-dark: #050a14;
             --blue-black: #0f172a;
-            --card-bg: #111827;
         }
 
+        /* Layout Fix for Footer */
+        html, body { height: 100%; margin: 0; padding: 0; }
         body { 
-            font-family: 'Segoe UI', Arial, sans-serif;
-            margin: 0; padding: 0; color: white; background: var(--bg-dark);
-            display: flex; flex-direction: column; min-height: 100vh;
+            font-family: sans-serif; color: white; background: var(--bg-dark);
+            display: flex; flex-direction: column; overflow-x: hidden;
         }
 
-        header {
-            background: rgba(5, 10, 20, 0.95);
-            padding: 12px 15px;
-            display: flex; align-items: center; justify-content: space-between;
-            position: sticky; top: 0; z-index: 1000;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+        /* HEADER */
+        header { 
+            background: #000; padding: 12px 15px; border-bottom: 2px solid var(--orange); 
+            display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; 
         }
         .header-left { display: flex; align-items: center; gap: 8px; }
-        .logo-img { height: 30px; width: auto; border-radius: 4px; }
-        .nav-title { font-size: 13px; margin: 0; color: white; text-transform: uppercase; font-weight: 700; }
-        
-        .nav-right { display: flex; gap: 10px; align-items: center; }
-        .lang-btn { background: none; border: 1px solid var(--orange); color: white; padding: 4px 8px; border-radius: 5px; font-size: 11px; cursor: pointer; }
-        .contact-btn { color: white; text-decoration: none; font-size: 11px; font-weight: bold; border-left: 1px solid #334155; padding-left: 10px; }
+        .logo-img { height: 28px; width: auto; }
+        .nav-title { font-size: 13px; margin: 0; font-weight: bold; }
+        .round-tag { font-size: 10px; color: var(--gold); margin-left: 5px; }
+        .nav-right { display: flex; gap: 8px; align-items: center; }
+        .lang-btn { background: none; border: 1px solid var(--orange); color: white; padding: 4px 8px; border-radius: 5px; font-size: 10px; cursor: pointer; }
+        .contact-btn { color: white; text-decoration: none; font-size: 10px; font-weight: bold; border-left: 1px solid #334155; padding-left: 8px; }
 
-        /* HERO SECTION WITH SPECIFIC BACKGROUND */
-        .hero {
-            height: 70vh;
-            /* Background image restricted ONLY to this section */
-            background-image: linear-gradient(rgba(5, 10, 20, 0.5), var(--bg-dark)), url('images/background.png');
-            background-size: cover; 
-            background-position: center;
-            background-repeat: no-repeat;
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center; 
-            align-items: flex-start;
-            padding: 0 25px; 
-            text-align: left;
+        /* HERO - FULLY VISIBLE BANNER */
+        .hero { width: 100%; background: #000; line-height: 0; }
+        .hero-banner { width: 100%; height: auto; object-fit: contain; }
+
+        /* COMPETITION SECTION (Blue-Black) */
+        .comp-section { background: var(--blue-black); padding: 30px 15px; text-align: center; }
+        .comp-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; color: var(--gold); }
+        .comp-grid { display: flex; flex-direction: column; gap: 20px; align-items: center; }
+        
+        /* 1.5 RATIO CARDS */
+        .ticket-card { 
+            width: 90%; max-width: 320px; aspect-ratio: 1.5 / 1; 
+            background: #000; border-radius: 12px; overflow: hidden; 
+            border: 1px solid rgba(255,255,255,0.1); position: relative;
         }
-        .hero-h2 { font-size: 32px; font-weight: 800; margin: 0; line-height: 1.1; }
-        .hero-span { color: var(--orange); }
-        .hero-p { font-size: 14px; color: #cbd5e1; margin: 15px 0; max-width: 90%; }
-        .btn-start { background: var(--orange); color: white; padding: 12px 35px; border-radius: 50px; font-weight: 800; text-decoration: none; font-size: 14px; box-shadow: 0 4px 15px rgba(255,107,53,0.3); }
+        .card-img { width: 100%; height: 100%; object-fit: fill; }
+        .buy-overlay { position: absolute; bottom: 10px; right: 10px; }
+        .buy-btn { background: var(--orange); color: white; border: none; padding: 8px 15px; border-radius: 5px; font-weight: bold; cursor: pointer; }
 
-        .competitions { background: var(--blue-black); padding: 40px 15px; }
-        .section-title { font-size: 20px; font-weight: 800; margin-bottom: 25px; color: var(--gold); text-align: center; }
+        /* GRID VIEW & COLORS */
+        main { flex: 1; }
+        #grid-view { display: none; padding: 20px; text-align: center; }
+        .grid-back { color: var(--orange); background: none; border: none; font-weight: bold; margin-bottom: 15px; cursor: pointer; }
         
-        .comp-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
-        .comp-card { background: var(--card-bg); border-radius: 18px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05); }
-        .comp-img { height: 130px; background-size: cover; background-position: center; filter: brightness(0.7); background-image: url('images/background.png'); }
-        .comp-info { padding: 20px; }
-        .comp-rank { font-size: 11px; color: #64748b; font-weight: bold; }
-        .comp-prize { font-size: 26px; font-weight: 900; margin: 5px 0; color: white; }
-        .comp-ticket { font-size: 12px; color: var(--orange); font-weight: 700; margin-bottom: 15px; }
-        .btn-play { background: var(--orange); color: white; width: 100%; border: none; padding: 12px; border-radius: 10px; font-weight: bold; font-size: 15px; cursor: pointer; }
+        /* Prize Display (Cleaned Line 166, 167) */
+        .prize-container { background: rgba(0,0,0,0.6); margin: 0 15px 15px 15px; padding: 15px; border-radius: 12px; border: 1px solid var(--gold); }
+        .prize-title { margin: 0; color: var(--gold); font-size: 22px; font-weight: bold; }
+        .prize-sub { font-size: 13px; margin-top: 8px; color: #cbd5e1; }
 
-        #lottery-section { display: none; padding: 20px; }
-        .grid-header { color: var(--gold); text-align: center; font-size: 24px; margin-bottom: 10px; }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-        .cell { background: #1e293b; padding: 16px 0; border-radius: 8px; border: 1px solid #334155; font-weight: 700; font-size: 18px; cursor: pointer; text-align: center;}
-        .reserved { background: #eab308; color: black; border-color: white; }
-        .sold { filter: blur(3px); background: #ef4444; opacity: 0.5; pointer-events: none; }
-        .pending { background: #3b82f6; animation: pulse 2s infinite; }
+        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 10px; }
+        .cell { padding: 15px 0; border-radius: 8px; font-weight: bold; text-align: center; border: 1px solid rgba(255,255,255,0.1); font-size: 16px; cursor: pointer; }
+        .available { background: var(--blue); }
+        .pending { background: var(--yellow); color: #000; animation: pulse 1s infinite; }
+        .sold { background: var(--green); opacity: 0.8; pointer-events: none; }
 
-        footer { padding: 40px 20px; background: var(--bg-dark); border-top: 1px solid #1e293b; text-align: left; }
-        .disc-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; }
-        .disc-text { font-size: 12px; color: #64748b; line-height: 1.6; }
-        .copy { margin-top: 30px; font-size: 11px; color: #475569; text-align: center; }
+        /* FOOTER - ALWAYS BOTTOM */
+        footer { padding: 30px 20px; background: #000; border-top: 1px solid #334155; text-align: left; margin-top: auto; }
+        .footer-head { font-size: 14px; font-weight: bold; color: white; margin-bottom: 8px; }
+        .footer-body { font-size: 11px; color: #64748b; line-height: 1.6; }
 
-        #pay-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.96); z-index:2000; align-items: center; justify-content: center; }
-        .modal-box { background: #1e293b; padding: 30px; border-radius: 20px; width: 85%; border: 1px solid var(--orange); text-align: center; }
-        .timer { font-size: 34px; color: var(--orange); font-weight: 900; margin-bottom: 10px; }
-        .modal-input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #050a14; color: white; box-sizing: border-box; }
-        
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .modal-back-btn {
-            background: none;
-            color: grey;
-            border: none;
-            margin-top: 15px;
-            cursor: pointer;
-        }
+        /* MODAL */
+        #pay-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:200; align-items: center; justify-content: center; }
+        .modal-box { background: #1e293b; padding: 25px; border-radius: 20px; width: 85%; border: 1px solid var(--orange); text-align: center; }
+        .modal-timer { color: red; font-size: 28px; font-weight: 900; margin-bottom: 10px; }
+        .phone-input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; border: 1px solid #334155; background: #050a14; color: white; box-sizing: border-box; }
+        .copy-tag { background: var(--orange); padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; color: white; font-weight: bold; display: inline-block; }
+
+        /* DRAW OVERLAY (Cleaned Line 173) */
+        #draw-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:300; flex-direction:column; align-items:center; justify-content:center; }
+        .draw-timer-big { font-size: 60px; margin: 10px 0; font-weight: bold; }
+        .shuffle-box { font-size: 80px; color: var(--gold); font-weight: bold; }
+
+        @keyframes pulse { 50% { opacity: 0.5; } }
     </style>
 </head>
-<body>
+<body id="app">
 
     <header>
         <div class="header-left">
-            <img src="images/logo.png" alt="S" class="logo-img" onerror="this.style.display='none'">
-            <h1 class="nav-title" id="nav-title">ስኬት ሎቶ | Siket Lotto</h1>
+            <img src="images/logo.png" alt="Siket Logo" class="logo-img">
+            <h1 class="nav-title">ስኬት ሎቶ<span id="round-tag" class="round-tag">Round #0001</span></h1>
         </div>
         <div class="nav-right">
-            <button class="lang-btn" onclick="toggleLang()" id="lang-toggle">English</button>
-            <a href="https://t.me/Contact_Siketlottery" class="contact-btn" id="nav-contact">ያግኙን</a>
+            <button class="lang-btn" onclick="toggleLang()" id="l-btn">English</button>
+            <a href="https://t.me/Contact_Siketlottery" class="contact-btn">ያግኙን</a>
         </div>
     </header>
 
-    <div id="main-ui">
-        <!-- Hero section with background.png only -->
-        <section class="hero">
-            <h2 class="hero-h2" id="hero-title">የእርስዎ መግቢያ ወደ<br><span class="hero-span">ታላላቅ ሽልማቶች!</span></h2>
-            <p class="hero-p" id="hero-desc">ይግቡ። ያሸንፉ። ከስኬት ሎተሪ ጋር ትልቅ ያልሙ።</p>
-            <a href="#comp-section" class="btn-start" id="hero-btn">ይጀምሩ</a>
-        </section>
+    <main>
+        <div id="home-view">
+            <section class="hero">
+                <img src="images/background.png" alt="Siket Banner" class="hero-banner">
+            </section>
 
-        <!-- Second section with blue-black background -->
-        <section class="competitions" id="comp-section">
-            <div class="section-title" id="comp-title">አሸናፊ የሚያደረጉዋችሁ እጣዎች</div>
-            <div class="comp-grid">
-                <div class="comp-card" onclick="openLottery(3)">
-                    <div class="comp-img"></div>
-                    <div class="comp-info">
-                        <div class="comp-rank">Rank #1 | Gold Ticket</div>
-                        <div class="comp-prize">30,000 ETB</div>
-                        <div class="comp-ticket">Price: 500 ETB</div>
-                        <button class="btn-play" id="p1">አሁኑኑ ይጫወቱ</button>
+            <section class="comp-section">
+                <h2 class="comp-title" id="sec-t">አሸናፊ የሚያደረጉዋችሁ እጣዎች</h2>
+                <div class="comp-grid">
+                    <div class="ticket-card" onclick="openTier(3)">
+                        <img src="images/golden.png" alt="Gold" class="card-img">
+                        <div class="buy-overlay"><button class="buy-btn">Buy Gold</button></div>
+                    </div>
+                    <div class="ticket-card" onclick="openTier(2)">
+                        <img src="images/silver.png" alt="Silver" class="card-img">
+                        <div class="buy-overlay"><button class="buy-btn">Buy Silver</button></div>
+                    </div>
+                    <div class="ticket-card" onclick="openTier(1)">
+                        <img src="images/bronze.png" alt="Bronze" class="card-img">
+                        <div class="buy-overlay"><button class="buy-btn">Buy Bronze</button></div>
                     </div>
                 </div>
-                <div class="comp-card" onclick="openLottery(2)">
-                    <div class="comp-img"></div>
-                    <div class="comp-info">
-                        <div class="comp-rank">Rank #2 | Silver Ticket</div>
-                        <div class="comp-prize">15,000 ETB</div>
-                        <div class="comp-ticket">Price: 300 ETB</div>
-                        <button class="btn-play" id="p2">አሁኑኑ ይጫወቱ</button>
-                    </div>
-                </div>
-                <div class="comp-card" onclick="openLottery(1)">
-                    <div class="comp-img"></div>
-                    <div class="comp-info">
-                        <div class="comp-rank">Rank #3 | Bronze Ticket</div>
-                        <div class="comp-prize">5,000 ETB</div>
-                        <div class="comp-ticket">Price: 100 ETB</div>
-                        <button class="btn-play" id="p3">አሁኑኑ ይጫወቱ</button>
-                    </div>
-                </div>
+            </section>
+        </div>
+
+        <div id="grid-view">
+            <button class="grid-back" onclick="showHome()">← ተመለስ (Back)</button>
+            <div class="prize-container">
+                <h2 id="grid-header" class="prize-title"></h2>
+                <div id="prizes-list" class="prize-sub"></div>
             </div>
-        </section>
-    </div>
-
-    <section id="lottery-section">
-        <button class="back-btn" onclick="backToMain()">← ተመለስ (Back)</button>
-        <h2 id="grid-header" class="grid-header"></h2>
-        <div class="grid" id="grid"></div>
-    </section>
+            <div class="grid" id="main-grid"></div>
+        </div>
+    </main>
 
     <footer>
-        <div class="disc-title" id="ft-t">መግለጫ (Disclaimer)</div>
-        <div class="disc-text" id="ft-b">
-            የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ዕጣው ከ3ኛ ደረጃ ጀምሮ ወደ 1ኛ ደረጃ በዘፈቀደ የሚወጣ ይሆናል።
-        </div>
-        <div class="copy">Copyright © 2025 Siket Success. All Rights Reserved.</div>
+        <div class="footer-head" id="f-t">መግለጫ (Disclaimer)</div>
+        <div class="footer-body" id="f-b">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አንዴ ከተፈጸመ አይመለስም። ዕጣው በዘፈቀደ (Randomly) የሚወጣ ይሆናል።</div>
     </footer>
 
+    <!-- Payment Modal -->
     <div id="pay-modal">
         <div class="modal-box">
-            <div class="timer" id="timer">07:00</div>
-            <p id="pay-instr">ለ Telebirr: <b>09xxxxxxxx</b> ይላኩ</p>
-            <input type="text" id="phone" class="modal-input" placeholder="የከፈሉበት ስልክ ቁጥር">
+            <div id="timer" class="modal-timer">07:00</div>
+            <p>Pay to CBE / Telebirr: <br> <b>0998815949</b> <span class="copy-tag" onclick="copyN()">Copy</span></p>
+            <input type="text" id="phone" class="phone-input" placeholder="የከፈሉበት ስልክ ቁጥር">
             <input type="file" id="photo" accept="image/*">
-            <button class="btn-play" onclick="sendPayment()">Submit</button>
-            <button type="button" onclick="closeModal()" class="modal-back-btn">ተመለስ</button>
+            <button onclick="sendPayment()" class="buy-btn" style="width:100%; margin-top:20px; padding:15px;">Submit Verification</button>
+            <button onclick="closeModal()" style="background:none; color:grey; border:none; margin-top:15px; cursor:pointer;">Cancel</button>
         </div>
+    </div>
+
+    <!-- Draw Animation -->
+    <div id="draw-overlay">
+        <h1 style="color:var(--orange)">Draw Starting Soon!</h1>
+        <h2 id="d-timer" class="draw-timer-big">05:00</h2>
+        <div id="shuffle" class="shuffle-box">00</div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        let currentLang = 'am', currentTier = 1, selectedNum = null, timerInt = null;
+        let cTier = 3, lang = 'am', selN = null, curRound = "0001";
 
-        const langData = {
-            am: {
-                navT: "ስኬት ሎቶ | Siket Lotto", navC: "ያግኙን", 
-                heroT: "የእርስዎ መግቢያ ወደ<br><span class='hero-span'>ታላላቅ ሽልማቶች!</span>", heroD: "ይግቡ። ያሸንፉ። ከስኬት ሎተሪ ጋር ትልቅ ያልሙ።",
-                heroB: "ይጀምሩ", compT: "አሸናፊ የሚያደረጉዋችሁ እጣዎች", play: "አሁኑኑ ይጫወቱ",
-                ftT: "መግለጫ (Disclaimer)", ftB: "የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ክፍያ አይመለስም።"
-            },
-            en: {
-                navT: "Siket Lotto", navC: "Contact", 
-                heroT: "YOUR GATEWAY TO<br><span class='hero-span'>EXTRAORDINARY PRIZES!</span>", heroD: "Enter. Win. Success Big With Siket Lottery.",
-                heroB: "Get Started", compT: "Hottest Competitions", play: "Play Now",
-                ftT: "Disclaimer", ftB: "Siket Lottery members must be 18+. Payments are non-refundable."
-            }
-        };
-
-        function toggleLang() {
-            currentLang = currentLang === 'am' ? 'en' : 'am';
-            updateUI();
+        async function openTier(id) {
+            cTier = id;
+            document.getElementById('home-view').style.display = 'none';
+            document.getElementById('grid-view').style.display = 'block';
+            load();
         }
 
-        function updateUI() {
-            const d = langData[currentLang];
-            document.getElementById('nav-title').innerText = d.navT;
-            document.getElementById('nav-contact').innerText = d.navC;
-            document.getElementById('hero-title').innerHTML = d.heroT;
-            document.getElementById('hero-desc').innerText = d.heroD;
-            document.getElementById('hero-btn').innerText = d.heroB;
-            document.getElementById('comp-title').innerText = d.compT;
-            document.getElementById('ft-t').innerText = d.ftT;
-            document.getElementById('ft-b').innerText = d.ftB;
-            document.getElementById('lang-toggle').innerText = currentLang === 'am' ? 'English' : 'አማርኛ';
-            ['p1','p2','p3'].forEach(id => document.getElementById(id).innerText = d.play);
+        function showHome() { 
+            document.getElementById('home-view').style.display = 'block'; 
+            document.getElementById('grid-view').style.display = 'none'; 
         }
 
-        async function openLottery(tierId) {
-            currentTier = tierId;
-            document.getElementById('main-ui').style.display = 'none';
-            document.getElementById('lottery-section').style.display = 'block';
-            const names = { 1: "Bronze (ነሐስ)", 2: "Silver (ብር)", 3: "Gold (ወርቅ)" };
-            document.getElementById('grid-header').innerText = names[tierId];
-            window.scrollTo(0,0);
-            loadGrid();
-        }
-
-        function backToMain() {
-            document.getElementById('main-ui').style.display = 'block';
-            document.getElementById('lottery-section').style.display = 'none';
-        }
-
-        async function loadGrid() {
-            const res = await fetch(`/api/tickets/${currentTier}`);
-            const tickets = await res.json();
-            const container = document.getElementById('grid');
-            container.innerHTML = '';
-            tickets.forEach(t => {
-                const el = document.createElement('div');
-                el.className = `cell ${t.status}`;
-                el.innerText = t.number_val;
-                el.onclick = () => selectNumber(t.number_val, t.status);
-                container.appendChild(el);
+        async function load() {
+            const res = await fetch(`/api/status/${cTier}`);
+            const data = await res.json();
+            curRound = data.round;
+            document.getElementById('round-tag').innerText = `Round #${String(data.round).padStart(4, '0')}`;
+            document.getElementById('grid-header').innerText = lang === 'am' ? data.prizes.name_am : data.prizes.name_en;
+            document.getElementById('prizes-list').innerText = `1st: ${data.prizes.p1_prize} ETB | 2nd: ${data.prizes.p2_prize} ETB | 3rd: ${data.prizes.p3_prize}`;
+            
+            const g = document.getElementById('main-grid');
+            g.innerHTML = '';
+            let sCount = 0;
+            data.tickets.forEach(t => {
+                if(t.status === 'sold') sCount++;
+                const d = document.createElement('div');
+                d.className = `cell ${t.status}`;
+                d.innerText = t.number_val;
+                d.onclick = () => { if(t.status==='available') { selN=t.number_val; document.getElementById('pay-modal').style.display='flex'; } };
+                g.appendChild(d);
             });
+            if(sCount === 100) startDrawOverlay();
         }
 
-        async function selectNumber(num, status) {
-            if(status !== 'available') return;
-            tg.showConfirm(`Confirm purchase of #${num}?`, async (ok) => {
-                if(!ok) return;
-                const res = await fetch('/api/reserve', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ tierId: currentTier, number: num, userId: tg.initDataUnsafe.user.id })
-                });
-                const r = await res.json();
-                if(r.success) { selectedNum = num; openModal(); }
-                else tg.showAlert(r.message);
-            });
+        function copyN() { navigator.clipboard.writeText("0998815949"); tg.showAlert("Number Copied!"); }
+        function closeModal() { document.getElementById('pay-modal').style.display = 'none'; }
+
+        async function sendPayment() {
+            const ph = document.getElementById('phone').value;
+            const file = document.getElementById('photo').files[0];
+            if(!ph || !file) return tg.showAlert("Fill all fields");
+            const fd = new FormData();
+            fd.append('photo', file); fd.append('userId', tg.initDataUnsafe.user.id);
+            fd.append('tierId', cTier); fd.append('number', selN); fd.append('phone', ph); fd.append('round', curRound);
+            const res = await fetch('/api/upload-payment', { method: 'POST', body: fd });
+            if(res.ok) { tg.showAlert("Sent!"); closeModal(); load(); }
         }
 
-        function openModal() {
-            document.getElementById('pay-modal').style.display = 'flex';
-            let timeLeft = 420;
-            timerInt = setInterval(() => {
-                timeLeft--;
-                let m = Math.floor(timeLeft/60), s = timeLeft%60;
-                document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`;
-                if(timeLeft <= 0) closeModal();
+        function startDrawOverlay() {
+            document.getElementById('draw-overlay').style.display = 'flex';
+            let s = 300;
+            setInterval(() => {
+                s--;
+                let m = Math.floor(s/60), sec = s%60;
+                document.getElementById('d-timer').innerText = `${m}:${sec<10?'0':''}${sec}`;
+                document.getElementById('shuffle').innerText = Math.floor(Math.random()*100)+1;
+                if(s<=0) location.reload();
             }, 1000);
         }
 
-        function closeModal() {
-            clearInterval(timerInt);
-            document.getElementById('pay-modal').style.display = 'none';
-            loadGrid();
+        function toggleLang() {
+            lang = lang === 'am' ? 'en' : 'am';
+            document.getElementById('l-btn').innerText = lang === 'am' ? 'English' : 'አማርኛ';
+            load();
         }
-
-        async function sendPayment() {
-            const phone = document.getElementById('phone').value, file = document.getElementById('photo').files[0];
-            if(!phone || !file) return tg.showAlert("Please fill all fields.");
-            const fd = new FormData();
-            fd.append('photo', file); fd.append('userId', tg.initDataUnsafe.user.id);
-            fd.append('tierId', currentTier); fd.append('number', selectedNum); fd.append('phone', phone);
-            const res = await fetch('/api/upload-payment', { method: 'POST', body: fd });
-            if(res.ok) { tg.showAlert("Sent! Waiting for approval."); closeModal(); }
-        }
-
-        updateUI();
     </script>
 </body>
 </html>
