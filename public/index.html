@@ -5,33 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Siket Lotto | ስኬት ሎቶ</title>
     
-    <!-- External Libraries -->
+    <!-- Scripts -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
         :root { 
-            --orange: #ff7a2f; --gold-l: #FFD36A; --gold-d: #C89B3C;
+            --orange: #ff7a2f; --gold: #FFD36A; --silver: #e5e7eb; --bronze: #cd7f32;
             --navy: #020617; --midnight: #0f172a; --glass: rgba(255, 255, 255, 0.05);
+            --blue: #1d4ed8; --green: #15803d; --yellow: #eab308;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; margin: 0; padding: 0; background: var(--navy); color: white; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
+        html, body { height: 100%; margin: 0; padding: 0; background: var(--navy); color: white; font-family: 'Segoe UI', sans-serif; }
+        body { display: flex; flex-direction: column; overflow-x: hidden; }
 
-        /* --- STICKY HEADER --- */
+        /* --- HEADER --- */
         header {
             position: fixed; top: 0; width: 100%; z-index: 1000;
-            background: rgba(2, 6, 23, 0.8); 
-            -webkit-backdrop-filter: blur(15px);
-            backdrop-filter: blur(15px);
+            background: rgba(2, 6, 23, 0.8); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
             padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         .header-logo { display: flex; align-items: center; gap: 10px; }
         .header-logo img { height: 30px; }
         .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 700; color: white; }
-        .header-round { font-size: 10px; color: var(--gold-l); font-weight: bold; margin-left: 5px;}
 
         .contact-btn { 
             background: var(--orange); color: white; text-decoration: none; padding: 6px 12px; 
@@ -40,58 +39,55 @@
         }
         @keyframes pulse-glow { 0% { transform: scale(1); } 70% { transform: scale(1.05); box-shadow: 0 0 10px var(--orange); } 100% { transform: scale(1); } }
 
-        /* --- HERO SECTION --- */
-        .hero { position: relative; height: 75vh; width: 100%; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-        .hero-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(2, 6, 23, 0.2), var(--navy)), url('images/background.png'); background-size: cover; background-position: center; z-index: 1; transition: 0.5s; }
-        .hero-content { position: relative; z-index: 10; margin-top: 80px; }
-        .hero-title { 
-            font-size: 42px; font-weight: 900; margin: 0; 
-            background: linear-gradient(to right, #FFD36A, #FFF); 
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent; 
-        }
-        .btn-play-hero { background: var(--orange); color: white; padding: 14px 40px; border-radius: 50px; font-size: 15px; font-weight: 800; text-decoration: none; display: inline-block; margin-top: 20px; box-shadow: 0 10px 20px rgba(255, 122, 47, 0.3); cursor: pointer;}
+        /* --- HERO --- */
+        .hero { position: relative; width: 100%; background: #000; line-height: 0; overflow: hidden; margin-top: 55px;}
+        .hero-img { width: 100%; height: auto; object-fit: contain; }
 
-        /* --- TICKET CARDS --- */
-        .comp-section { padding: 40px 20px; background: var(--navy); }
-        .comp-grid { display: flex; flex-direction: column; gap: 25px; align-items: center; }
+        /* --- TICKET CARDS (1.5 Ratio) --- */
+        .comp-section { padding: 30px 15px; background: var(--navy); text-align: center; }
+        .comp-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; color: var(--gold); }
+        .comp-grid { display: flex; flex-direction: column; gap: 20px; align-items: center; }
         .ticket-card { 
             width: 95%; max-width: 350px; aspect-ratio: 1.5 / 1; border-radius: 20px; overflow: hidden; position: relative;
             border: 1px solid rgba(255,255,255,0.1); background: #000; cursor: pointer;
         }
         .ticket-card img { width: 100%; height: 100%; object-fit: fill; }
         .buy-overlay { position: absolute; bottom: 15px; right: 15px; }
-        .btn-buy { background: var(--orange); color: white; padding: 8px 18px; border-radius: 8px; border: none; font-weight: bold; font-size: 13px; }
+        .btn-buy { background: var(--orange); color: white; border: none; padding: 8px 18px; border-radius: 8px; font-weight: bold; font-size: 13px; }
 
-        /* --- MINIMIZED GRID (Psychological Fullness) --- */
-        #grid-view { display: none; padding: 80px 15px 30px 15px; text-align: center; }
-        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; margin-top: 15px; }
+        /* --- VIRTUAL LEAGUE STATUS TABLE --- */
+        .league-container { background: var(--blue-black); padding: 30px 15px; border-top: 1px solid #1e293b; }
+        .league-table { width: 100%; border-collapse: collapse; background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden; font-size: 12px; }
+        .league-table th { background: rgba(255,255,255,0.05); text-align: left; padding: 12px; color: #94a3b8; text-transform: uppercase; font-size: 10px; }
+        .league-table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 10px; display: inline-flex; align-items: center; gap: 4px; }
+        .status-sold { background: rgba(255, 255, 255, 0.1); color: white; }
+        .status-drawing { background: var(--orange); color: white; animation: blink-status 1s infinite; }
+        .status-done { background: var(--green); color: white; }
+
+        /* --- COMING SOON SECTION (NEW) --- */
+        .soon-section {
+    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('images/soon.png');
+    background-size: cover;
+    background-position: center;
+}
+        .soon-title { font-size: 24px; font-weight: 900; color: var(--gold); margin-bottom: 10px; }
+        .soon-text { font-size: 14px; color: #cbd5e1; line-height: 1.5; }
+
+        /* --- PSYCHOLOGICAL GRID --- */
+        #grid-view { display: none; padding: 80px 15px 30px 15px; text-align: center; flex: 1; }
+        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; margin: 15px 0; }
         .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; border-radius: 3px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;}
         .available { background: #1d4ed8; color: white; }
-        .pending { background: #eab308; color: black; animation: blink 1s infinite; }
+        .pending { background: #eab308; color: black; }
         .sold { background: #15803d; opacity: 0.3; pointer-events: none; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-
-        /* --- 3D CINEMATIC DRAW STUDIO --- */
-        #draw-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle, #1e293b, #020617); z-index:2000; flex-direction:column; align-items:center; justify-content:center; }
-        .draw-header { text-align: center; margin-bottom: 10px; }
-        .draw-status { letter-spacing: 4px; font-size: 14px; color: white; margin: 0; }
-        .h-clock { font-size: 60px; font-weight: 900; color: var(--gold-l); text-shadow: 0 0 20px var(--gold-l); font-family: monospace; margin: 10px 0;}
-        #three-canvas { width: 100%; height: 320px; }
-        .leaderboard { width: 85%; background: var(--glass); border: 1px solid var(--gold-l); border-radius: 15px; padding: 15px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
-        .rank-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: bold; }
-        .win-num { color: var(--gold-l); font-size: 18px; }
 
         /* --- FOOTER --- */
-        footer { padding: 40px 20px; background: #000; border-top: 1px solid #111827; }
+        footer { padding: 40px 20px; background: #000; border-top: 1px solid #111827; margin-top: auto; }
         .disclaimer-card { background: var(--glass); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .disc-text { font-size: 11px; color: #64748b; line-height: 1.6; }
-        .copy-text { margin-top: 30px; font-size: 10px; color: #444; text-align: center;}
 
-        /* MODAL */
-        #pay-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:3000; align-items: center; justify-content: center; }
-        .modal-box { background: #111827; padding: 30px; border-radius: 20px; width: 85%; border: 1px solid var(--orange); text-align: center; }
+        @keyframes blink-status { 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
@@ -99,7 +95,7 @@
     <header>
         <div class="header-logo">
             <img src="images/logo.png" alt="Siket Logo">
-            <h1>ስኬት ሎቶ <span id="round-tag" class="header-round">ROUND #0001</span></h1>
+            <h1 id="nav-title">ስኬት ሎቶ | Siket Lotto</h1>
         </div>
         <div class="header-logo">
             <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
@@ -108,93 +104,125 @@
     </header>
 
     <main id="home-view">
+        <!-- Hero Section -->
         <section class="hero">
-            <div class="hero-bg"></div>
-            <div class="hero-content">
-                <h2 class="hero-title">SIKET SUCCESS</h2>
-                <p id="hero-desc">Your Journey to Financial Freedom</p>
-                <a href="#tickets" class="btn-play-hero" id="play-btn">Play Now</a>
+            <img src="images/background.png" class="hero-img" alt="Luxury Hero Banner">
+        </section>
+
+        <!-- Tickets Section -->
+        <section class="comp-section">
+            <h2 class="comp-title" id="sec-t">አሸናፊ የሚያደረጉዋችሁ እጣዎች</h2>
+            <div class="comp-grid">
+                <div class="ticket-card" onclick="openTier(3)"><img src="images/golden.png" alt="Gold"><div class="buy-overlay"><button class="btn-buy">Buy Gold</button></div></div>
+                <div class="ticket-card" onclick="openTier(2)"><img src="images/silver.png" alt="Silver"><div class="buy-overlay"><button class="btn-buy">Buy Silver</button></div></div>
+                <div class="ticket-card" onclick="openTier(1)"><img src="images/bronze.png" alt="Bronze"><div class="buy-overlay"><button class="btn-buy">Buy Bronze</button></div></div>
             </div>
         </section>
 
-        <section class="comp-section" id="tickets">
-            <div class="comp-grid">
-                <div class="ticket-card" onclick="openTier(3)"><img src="images/golden.png" alt="Golden Ticket"><div class="buy-overlay"><button class="btn-buy">Buy Gold</button></div></div>
-                <div class="ticket-card" onclick="openTier(2)"><img src="images/silver.png" alt="Silver Ticket"><div class="buy-overlay"><button class="btn-buy">Buy Silver</button></div></div>
-                <div class="ticket-card" onclick="openTier(1)"><img src="images/bronze.png" alt="Bronze Ticket"><div class="buy-overlay"><button class="btn-buy">Buy Bronze</button></div></div>
-            </div>
+        <!-- League Status Section -->
+        <section class="league-container">
+            <h2 class="comp-title" id="league-t">ሊግ ሁኔታ (League Status)</h2>
+            <table class="league-table">
+                <thead>
+                    <tr>
+                        <th id="th-type">Game Type</th>
+                        <th id="th-round">Round</th>
+                        <th id="th-status">Status</th>
+                        <th id="th-price">Price</th>
+                    </tr>
+                </thead>
+                <tbody id="league-body">
+                    <!-- Dynamic Data -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- COMING SOON SECTION -->
+        <section class="soon-section">
+            <div class="soon-title" id="soon-t">በቅርቡ ይጠብቁ!</div>
+            <p class="soon-text" id="soon-b">አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!</p>
         </section>
 
         <footer>
             <div class="disclaimer-card">
-                <p style="font-size: 14px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;">መግለጫ (Disclaimer)</p>
-                <p class="disc-text" id="disc-text">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አንዴ ከተፈጸመ አይመለስም። ዕጣው በዘፈቀደ የሚወጣ ይሆናል።</p>
+                <p style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;" id="f-h">መግለጫ (Disclaimer)</p>
+                <p class="disc-text" id="disc-text">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አይመለስም። ዕጣው በዘፈቀደ የሚወጣ ይሆናል።</p>
             </div>
-            <p class="copy-text">Siket Success &copy; 2026. All Rights Reserved.</p>
+            <p style="margin-top:30px; font-size:10px; color:#444; text-align:center;">Siket Success &copy; 2026. All Rights Reserved.</p>
         </footer>
     </main>
 
     <div id="grid-view">
         <button onclick="location.reload()" style="color:var(--orange); background:none; border:none; font-weight:bold; cursor:pointer;">← BACK</button>
-        <h3 id="grid-round-title" style="color:var(--gold-l); margin:20px 0 10px 0;">ROUND #0001</h3>
-        <div class="grid" id="main-grid"></div>
-    </div>
-
-    <!-- 3D VIRTUAL DRAW OVERLAY -->
-    <div id="draw-overlay">
-        <div class="draw-header">
-            <h3 id="draw-status" class="draw-status">INITIALIZING DRAW</h3>
-            <div class="h-clock" id="h-clock">03:00</div>
-        </div>
-        <div id="three-canvas"></div>
-        <div class="leaderboard">
-            <div class="rank-row"><span>🥇 1st:</span> <span id="w1" class="win-num">--</span></div>
-            <div class="rank-row"><span>🥈 2nd:</span> <span id="w2" class="win-num">--</span></div>
-            <div class="rank-row"><span>🥉 3rd:</span> <span id="w3" class="win-num">--</span></div>
-        </div>
+        <div id="grid-main" class="grid"></div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        let currentTier = 3;
+        let lang = 'am';
 
-        // --- 3D LOTTERY ENGINE ---
-        let scene, camera, renderer, globe;
-        function init3D() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / 320, 0.1, 1000);
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, 320);
-            document.getElementById('three-canvas').innerHTML = '';
-            document.getElementById('three-canvas').appendChild(renderer.domElement);
-
-            const geometry = new THREE.SphereGeometry(5, 32, 32);
-            const material = new THREE.MeshPhongMaterial({ color: 0x00f2ff, transparent: true, opacity: 0.2, wireframe: true });
-            globe = new THREE.Mesh(geometry, material);
-            scene.add(globe);
-
-            const light = new THREE.PointLight(0xffffff, 1, 100);
-            light.position.set(10, 10, 10);
-            scene.add(light);
-            camera.position.z = 10;
-
-            function animate() {
-                requestAnimationFrame(animate);
-                globe.rotation.y += 0.05;
-                renderer.render(scene, camera);
+        const langData = {
+            am: { 
+                thT: "ዓይነት", thR: "ዙር", thS: "ሁኔታ", thP: "ዋጋ", 
+                leagueT: "ሊግ ሁኔታ (League Status)", statusSold: "ተሽጧል", statusDraw: "ዕጣ በመውጣት ላይ", statusDone: "ተጠናቋል",
+                soonT: "በቅርቡ ይጠብቁ!", soonB: "አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!" 
+            },
+            en: { 
+                thT: "Game Type", thR: "Round", thS: "Status", thP: "Price", 
+                leagueT: "Virtual League Status", statusSold: "Sold", statusDraw: "Drawing", statusDone: "Completed",
+                soonT: "Coming Soon!", soonB: "We are preparing exciting new lotteries and even bigger prizes. Stay tuned!"
             }
-            animate();
+        };
+
+        async function loadLeagueData() {
+            const leagueBody = document.getElementById('league-body');
+            leagueBody.innerHTML = '';
+            const tiers = [
+                { id: 3, name: "🏆 GOLD", price: "500 ETB", color: "var(--gold)" },
+                { id: 2, name: "🥈 SILVER", price: "300 ETB", color: "var(--silver)" },
+                { id: 1, name: "🥉 BRONZE", price: "100 ETB", color: "var(--bronze)" }
+            ];
+
+            for(let t of tiers) {
+                try {
+                    const res = await fetch(`/api/status/${t.id}`);
+                    const data = await res.json();
+                    const sold = data.tickets.filter(tk => tk.status === 'sold').length;
+                    let statusHtml = `<span class="status-badge status-sold">${sold}/100 ${langData[lang].statusSold}</span>`;
+                    if(sold === 100) statusHtml = `<span class="status-badge status-drawing">🕒 ${langData[lang].statusDraw}</span>`;
+                    
+                    leagueBody.innerHTML += `
+                        <tr>
+                            <td class="league-type" style="color:${t.color}; font-weight:800">${t.name}</td>
+                            <td>#${String(data.round).padStart(4, '0')}</td>
+                            <td>${statusHtml}</td>
+                            <td style="color:var(--orange); font-weight:bold;">${t.price}</td>
+                        </tr>
+                    `;
+                } catch(e) {}
+            }
+        }
+
+        function toggleLang() {
+            lang = lang === 'am' ? 'en' : 'am';
+            document.getElementById('lang-btn').innerText = lang === 'am' ? 'EN' : 'አማርኛ';
+            document.getElementById('th-type').innerText = langData[lang].thT;
+            document.getElementById('th-round').innerText = langData[lang].thR;
+            document.getElementById('th-status').innerText = langData[lang].thS;
+            document.getElementById('th-price').innerText = langData[lang].thP;
+            document.getElementById('league-t').innerText = langData[lang].leagueT;
+            document.getElementById('soon-t').innerText = langData[lang].soonT;
+            document.getElementById('soon-b').innerText = langData[lang].soonB;
+            loadLeagueData();
         }
 
         async function openTier(id) {
-            currentTier = id;
             document.getElementById('home-view').style.display = 'none';
             document.getElementById('grid-view').style.display = 'block';
             const res = await fetch(`/api/status/${id}`);
             const data = await res.json();
-            document.getElementById('grid-round-title').innerText = `ROUND #${String(data.round).padStart(4, '0')}`;
-            const g = document.getElementById('main-grid');
+            const g = document.getElementById('grid-main');
             g.innerHTML = '';
             data.tickets.forEach(t => {
                 const d = document.createElement('div');
@@ -202,30 +230,9 @@
                 d.innerText = t.number_val;
                 g.appendChild(d);
             });
-            if(data.soldCount === 100) startCinemaDraw(data.winners);
         }
 
-        function startCinemaDraw(winners) {
-            document.getElementById('draw-overlay').style.display = 'flex';
-            init3D();
-            let sec = 180;
-            const timer = setInterval(() => {
-                sec--;
-                let m = Math.floor(sec/60), s = sec%60;
-                document.getElementById('h-clock').innerText = `${m}:${s<10?'0':''}${s}`;
-                if(sec <= 0) { clearInterval(timer); revealSteps(winners); }
-            }, 1000);
-        }
-
-        async function revealSteps(w) {
-            const steps = [{id:'w3', val:w.third, label:'Drawing 3rd Prize...'}, {id:'w2', val:w.second, label:'Drawing 2nd Prize...'}, {id:'w1', val:w.first, label:'JACKPOT WINNER!'}];
-            for(let s of steps) {
-                document.getElementById('draw-status').innerText = s.label;
-                await new Promise(r => setTimeout(r, 5000));
-                document.getElementById(s.id).innerText = "#" + s.val;
-                if(s.id === 'w1') confetti({ particleCount: 300, spread: 100, origin: { y: 0.6 } });
-            }
-        }
+        loadLeagueData();
     </script>
 </body>
 </html>
