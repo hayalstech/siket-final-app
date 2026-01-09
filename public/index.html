@@ -4,151 +4,228 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Siket Lotto | ስኬት ሎቶ</title>
+    
+    <!-- External Libraries -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
     <style>
-        :root { --orange: #ff6b35; --gold: #fbbf24; --blue: #1d4ed8; --green: #15803d; --bg: #050a14; }
-        body { font-family: sans-serif; margin: 0; padding: 0; color: white; background: var(--bg); display: flex; flex-direction: column; min-height: 100vh; }
+        :root { 
+            --orange: #ff7a2f; --gold-l: #FFD36A; --gold-d: #C89B3C;
+            --navy: #020617; --midnight: #0f172a; --glass: rgba(255, 255, 255, 0.05);
+        }
 
-        /* HEADER */
-        header { background: #000; padding: 12px 15px; border-bottom: 2px solid var(--orange); display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
-        .nav-title { font-size: 14px; font-weight: bold; margin: 0; }
-        .lang-btn { background: none; border: 1px solid var(--orange); color: white; padding: 5px 10px; border-radius: 5px; font-size: 10px; cursor: pointer; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { height: 100%; margin: 0; padding: 0; background: var(--navy); color: white; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
 
-        /* SECTION 1: HERO (Visible background.png) */
-        .hero { width: 100%; background: #000; line-height: 0; }
-        .hero img { width: 100%; height: auto; object-fit: contain; }
+        /* --- STICKY HEADER --- */
+        header {
+            position: fixed; top: 0; width: 100%; z-index: 1000;
+            background: rgba(2, 6, 23, 0.8); 
+            -webkit-backdrop-filter: blur(15px);
+            backdrop-filter: blur(15px);
+            padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header-logo { display: flex; align-items: center; gap: 10px; }
+        .header-logo img { height: 30px; }
+        .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 700; color: white; }
+        .header-round { font-size: 10px; color: var(--gold-l); font-weight: bold; margin-left: 5px;}
 
-        /* SECTION 2: THE 3 TICKET BLOCKS (1.5 Ratio) */
-        .comp-section { background: #0f172a; padding: 25px 15px; text-align: center; }
-        .comp-title { font-size: 18px; color: var(--gold); margin-bottom: 20px; font-weight: bold; }
+        .contact-btn { 
+            background: var(--orange); color: white; text-decoration: none; padding: 6px 12px; 
+            border-radius: 20px; font-size: 11px; font-weight: bold;
+            animation: pulse-glow 2s infinite; border: 1px solid rgba(255,255,255,0.2);
+        }
+        @keyframes pulse-glow { 0% { transform: scale(1); } 70% { transform: scale(1.05); box-shadow: 0 0 10px var(--orange); } 100% { transform: scale(1); } }
+
+        /* --- HERO SECTION --- */
+        .hero { position: relative; height: 75vh; width: 100%; overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .hero-bg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-image: linear-gradient(rgba(2, 6, 23, 0.2), var(--navy)), url('images/background.png'); background-size: cover; background-position: center; z-index: 1; transition: 0.5s; }
+        .hero-content { position: relative; z-index: 10; margin-top: 80px; }
+        .hero-title { 
+            font-size: 42px; font-weight: 900; margin: 0; 
+            background: linear-gradient(to right, #FFD36A, #FFF); 
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent; 
+        }
+        .btn-play-hero { background: var(--orange); color: white; padding: 14px 40px; border-radius: 50px; font-size: 15px; font-weight: 800; text-decoration: none; display: inline-block; margin-top: 20px; box-shadow: 0 10px 20px rgba(255, 122, 47, 0.3); cursor: pointer;}
+
+        /* --- TICKET CARDS --- */
+        .comp-section { padding: 40px 20px; background: var(--navy); }
         .comp-grid { display: flex; flex-direction: column; gap: 25px; align-items: center; }
-        
         .ticket-card { 
-            width: 95%; max-width: 340px; aspect-ratio: 1.5 / 1; 
-            background: #000; border-radius: 15px; overflow: hidden; 
-            border: 1px solid rgba(255,255,255,0.1); position: relative;
+            width: 95%; max-width: 350px; aspect-ratio: 1.5 / 1; border-radius: 20px; overflow: hidden; position: relative;
+            border: 1px solid rgba(255,255,255,0.1); background: #000; cursor: pointer;
         }
         .ticket-card img { width: 100%; height: 100%; object-fit: fill; }
-        .buy-btn { 
-            position: absolute; bottom: 12px; right: 12px;
-            background: var(--orange); color: white; border: none; 
-            padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 14px; cursor: pointer;
-        }
+        .buy-overlay { position: absolute; bottom: 15px; right: 15px; }
+        .btn-buy { background: var(--orange); color: white; padding: 8px 18px; border-radius: 8px; border: none; font-weight: bold; font-size: 13px; }
 
-        /* SECTION 3: WINNERS TICKER */
-        .ticker-wrap { background: rgba(255,255,255,0.03); margin: 20px 15px; padding: 15px; border-radius: 12px; border: 1px solid #1e293b; }
-        .ticker-row { display: flex; justify-content: space-between; font-size: 11px; padding: 8px 0; border-bottom: 1px solid #1e293b; color: #94a3b8; }
+        /* --- MINIMIZED GRID (Psychological Fullness) --- */
+        #grid-view { display: none; padding: 80px 15px 30px 15px; text-align: center; }
+        .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; margin-top: 15px; }
+        .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; border-radius: 3px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;}
+        .available { background: #1d4ed8; color: white; }
+        .pending { background: #eab308; color: black; animation: blink 1s infinite; }
+        .sold { background: #15803d; opacity: 0.3; pointer-events: none; }
+        @keyframes blink { 50% { opacity: 0.5; } }
 
-        /* GRID VIEW (Hidden until click) */
-        #grid-view { display: none; padding: 20px; text-align: center; flex: 1; }
-        .grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding-top: 20px; }
-        .cell { padding: 15px 0; border-radius: 8px; font-weight: bold; text-align: center; border: 1px solid rgba(255,255,255,0.1); }
-        .available { background: var(--blue); }
-        .pending { background: var(--yellow); color: #000; animation: pulse 1s infinite; }
-        .sold { background: var(--green); opacity: 0.8; }
+        /* --- 3D CINEMATIC DRAW STUDIO --- */
+        #draw-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background: radial-gradient(circle, #1e293b, #020617); z-index:2000; flex-direction:column; align-items:center; justify-content:center; }
+        .draw-header { text-align: center; margin-bottom: 10px; }
+        .draw-status { letter-spacing: 4px; font-size: 14px; color: white; margin: 0; }
+        .h-clock { font-size: 60px; font-weight: 900; color: var(--gold-l); text-shadow: 0 0 20px var(--gold-l); font-family: monospace; margin: 10px 0;}
+        #three-canvas { width: 100%; height: 320px; }
+        .leaderboard { width: 85%; background: var(--glass); border: 1px solid var(--gold-l); border-radius: 15px; padding: 15px; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+        .rank-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-weight: bold; }
+        .win-num { color: var(--gold-l); font-size: 18px; }
 
-        /* FOOTER */
-        footer { padding: 30px 20px; background: #000; border-top: 1px solid #334155; margin-top: auto; text-align: left; }
-        .f-text { font-size: 11px; color: #64748b; line-height: 1.6; }
+        /* --- FOOTER --- */
+        footer { padding: 40px 20px; background: #000; border-top: 1px solid #111827; }
+        .disclaimer-card { background: var(--glass); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); text-align: left; }
+        .disc-text { font-size: 11px; color: #64748b; line-height: 1.6; }
+        .copy-text { margin-top: 30px; font-size: 10px; color: #444; text-align: center;}
 
-        #pay-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:200; align-items: center; justify-content: center; }
-        .modal-box { background: #1e293b; padding: 25px; border-radius: 20px; width: 85%; border: 1px solid var(--orange); text-align: center; }
-        @keyframes pulse { 50% { opacity: 0.5; } }
+        /* MODAL */
+        #pay-modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:3000; align-items: center; justify-content: center; }
+        .modal-box { background: #111827; padding: 30px; border-radius: 20px; width: 85%; border: 1px solid var(--orange); text-align: center; }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="header-left">
-            <img src="images/logo.png" alt="S" height="28">
-            <h1 class="nav-title" id="nav-title">ስኬት ሎቶ | Siket Lotto</h1>
+        <div class="header-logo">
+            <img src="images/logo.png" alt="Siket Logo">
+            <h1>ስኬት ሎቶ <span id="round-tag" class="header-round">ROUND #0001</span></h1>
         </div>
-        <button class="lang-btn" onclick="toggleLang()" id="l-btn">English</button>
+        <div class="header-logo">
+            <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
+            <a href="https://t.me/Contact_Siketlottery" class="contact-btn">ያግኙን</a>
+        </div>
     </header>
 
-    <main id="main-content">
-        <!-- HOME VIEW -->
-        <div id="home-view">
-            <section class="hero"><img src="images/background.png" alt="Hero Banner"></section>
-            
-            <section class="comp-section">
-                <div class="comp-title" id="sec-title">አሸናፊ የሚያደረጉዋችሁ እጣዎች</div>
-                <div class="comp-grid">
-                    <div class="ticket-card"><img src="images/golden.png" alt="Gold"><button class="buy-btn" onclick="openTier(3)">Buy Gold</button></div>
-                    <div class="ticket-card"><img src="images/silver.png" alt="Silver"><button class="buy-btn" onclick="openTier(2)">Buy Silver</button></div>
-                    <div class="ticket-card"><img src="images/bronze.png" alt="Bronze"><button class="buy-btn" onclick="openTier(1)">Buy Bronze</button></div>
-                </div>
-            </section>
-
-            <!-- WINNERS TICKER -->
-            <div class="ticker-wrap">
-                <div style="font-size:12px; color:var(--gold); font-weight:bold; margin-bottom:10px;">Recent Winners</div>
-                <div class="ticker-row"><span>Round #0044</span> <span>Ticket #07</span> <span>Yohannes T.</span></div>
-                <div class="ticker-row"><span>Round #0043</span> <span>Ticket #82</span> <span>Sara M.</span></div>
+    <main id="home-view">
+        <section class="hero">
+            <div class="hero-bg"></div>
+            <div class="hero-content">
+                <h2 class="hero-title">SIKET SUCCESS</h2>
+                <p id="hero-desc">Your Journey to Financial Freedom</p>
+                <a href="#tickets" class="btn-play-hero" id="play-btn">Play Now</a>
             </div>
-        </div>
+        </section>
 
-        <!-- GRID VIEW -->
-        <div id="grid-view">
-            <button onclick="showHome()" style="color:var(--orange); background:none; border:none; font-weight:bold; cursor:pointer;">← Back</button>
-            <div id="grid-header" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-top:15px; border:1px solid var(--gold);">
-                <h2 id="tier-name" style="margin:0; color:var(--gold)"></h2>
-                <div id="prize-list" style="font-size:12px; margin-top:10px;"></div>
+        <section class="comp-section" id="tickets">
+            <div class="comp-grid">
+                <div class="ticket-card" onclick="openTier(3)"><img src="images/golden.png" alt="Golden Ticket"><div class="buy-overlay"><button class="btn-buy">Buy Gold</button></div></div>
+                <div class="ticket-card" onclick="openTier(2)"><img src="images/silver.png" alt="Silver Ticket"><div class="buy-overlay"><button class="btn-buy">Buy Silver</button></div></div>
+                <div class="ticket-card" onclick="openTier(1)"><img src="images/bronze.png" alt="Bronze Ticket"><div class="buy-overlay"><button class="btn-buy">Buy Bronze</button></div></div>
             </div>
-            <div class="grid" id="main-grid"></div>
-        </div>
+        </section>
+
+        <footer>
+            <div class="disclaimer-card">
+                <p style="font-size: 14px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;">መግለጫ (Disclaimer)</p>
+                <p class="disc-text" id="disc-text">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አንዴ ከተፈጸመ አይመለስም። ዕጣው በዘፈቀደ የሚወጣ ይሆናል።</p>
+            </div>
+            <p class="copy-text">Siket Success &copy; 2026. All Rights Reserved.</p>
+        </footer>
     </main>
 
-    <footer>
-        <div id="f-t" style="font-weight:bold; color:white; margin-bottom:10px;">መግለጫ (Disclaimer)</div>
-        <div class="f-text" id="f-b">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አንዴ ከተፈጸመ አይመለስም። ዕጣው በዘፈቀደ (Randomly) የሚወጣ ይሆናል።</div>
-    </footer>
+    <div id="grid-view">
+        <button onclick="location.reload()" style="color:var(--orange); background:none; border:none; font-weight:bold; cursor:pointer;">← BACK</button>
+        <h3 id="grid-round-title" style="color:var(--gold-l); margin:20px 0 10px 0;">ROUND #0001</h3>
+        <div class="grid" id="main-grid"></div>
+    </div>
 
-    <!-- Payment Modal -->
-    <div id="pay-modal">
-        <div class="modal-box">
-            <h2 style="color:var(--orange); margin:0;">Payment / ክፍያ</h2>
-            <p>Phone: <b>0998815949</b></p>
-            <input type="text" id="phone" placeholder="የከፈሉበት ስልክ ቁጥር" style="width:100%; padding:10px; margin:10px 0; background:#000; border:1px solid #444; color:white; border-radius:5px;">
-            <input type="file" id="photo" accept="image/*">
-            <button onclick="submitP()" class="buy-btn" style="position:static; width:100%; margin-top:20px; padding:15px;">Submit</button>
-            <button onclick="closeModal()" style="background:none; border:none; color:grey; margin-top:15px;">Cancel</button>
+    <!-- 3D VIRTUAL DRAW OVERLAY -->
+    <div id="draw-overlay">
+        <div class="draw-header">
+            <h3 id="draw-status" class="draw-status">INITIALIZING DRAW</h3>
+            <div class="h-clock" id="h-clock">03:00</div>
+        </div>
+        <div id="three-canvas"></div>
+        <div class="leaderboard">
+            <div class="rank-row"><span>🥇 1st:</span> <span id="w1" class="win-num">--</span></div>
+            <div class="rank-row"><span>🥈 2nd:</span> <span id="w2" class="win-num">--</span></div>
+            <div class="rank-row"><span>🥉 3rd:</span> <span id="w3" class="win-num">--</span></div>
         </div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        let cTier = 3, lang = 'am', selN = null;
+        let currentTier = 3;
 
-        async function openTier(id) {
-            cTier = id;
-            document.getElementById('home-view').style.display = 'none';
-            document.getElementById('grid-view').style.display = 'block';
-            load();
+        // --- 3D LOTTERY ENGINE ---
+        let scene, camera, renderer, globe;
+        function init3D() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / 320, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, 320);
+            document.getElementById('three-canvas').innerHTML = '';
+            document.getElementById('three-canvas').appendChild(renderer.domElement);
+
+            const geometry = new THREE.SphereGeometry(5, 32, 32);
+            const material = new THREE.MeshPhongMaterial({ color: 0x00f2ff, transparent: true, opacity: 0.2, wireframe: true });
+            globe = new THREE.Mesh(geometry, material);
+            scene.add(globe);
+
+            const light = new THREE.PointLight(0xffffff, 1, 100);
+            light.position.set(10, 10, 10);
+            scene.add(light);
+            camera.position.z = 10;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                globe.rotation.y += 0.05;
+                renderer.render(scene, camera);
+            }
+            animate();
         }
 
-        function showHome() { document.getElementById('home-view').style.display = 'block'; document.getElementById('grid-view').style.display = 'none'; }
-
-        async function load() {
-            const res = await fetch(`/api/status/${cTier}`);
+        async function openTier(id) {
+            currentTier = id;
+            document.getElementById('home-view').style.display = 'none';
+            document.getElementById('grid-view').style.display = 'block';
+            const res = await fetch(`/api/status/${id}`);
             const data = await res.json();
-            document.getElementById('tier-name').innerText = lang === 'am' ? data.prizes.name_am : data.prizes.name_en;
-            document.getElementById('prize-list').innerText = `1st: ${data.prizes.p1_prize} ETB | 2nd: ${data.prizes.p2_prize} ETB | 3rd: ${data.prizes.p3_prize}`;
+            document.getElementById('grid-round-title').innerText = `ROUND #${String(data.round).padStart(4, '0')}`;
             const g = document.getElementById('main-grid');
             g.innerHTML = '';
             data.tickets.forEach(t => {
                 const d = document.createElement('div');
                 d.className = `cell ${t.status}`;
                 d.innerText = t.number_val;
-                d.onclick = () => { if(t.status==='available') { selN=t.number_val; document.getElementById('pay-modal').style.display='flex'; } };
                 g.appendChild(d);
             });
+            if(data.soldCount === 100) startCinemaDraw(data.winners);
         }
-        function closeModal() { document.getElementById('pay-modal').style.display = 'none'; }
-        async function submitP() { /* Reuse existing fetch logic */ }
-        function toggleLang() { /* Reuse lang swap logic */ }
+
+        function startCinemaDraw(winners) {
+            document.getElementById('draw-overlay').style.display = 'flex';
+            init3D();
+            let sec = 180;
+            const timer = setInterval(() => {
+                sec--;
+                let m = Math.floor(sec/60), s = sec%60;
+                document.getElementById('h-clock').innerText = `${m}:${s<10?'0':''}${s}`;
+                if(sec <= 0) { clearInterval(timer); revealSteps(winners); }
+            }, 1000);
+        }
+
+        async function revealSteps(w) {
+            const steps = [{id:'w3', val:w.third, label:'Drawing 3rd Prize...'}, {id:'w2', val:w.second, label:'Drawing 2nd Prize...'}, {id:'w1', val:w.first, label:'JACKPOT WINNER!'}];
+            for(let s of steps) {
+                document.getElementById('draw-status').innerText = s.label;
+                await new Promise(r => setTimeout(r, 5000));
+                document.getElementById(s.id).innerText = "#" + s.val;
+                if(s.id === 'w1') confetti({ particleCount: 300, spread: 100, origin: { y: 0.6 } });
+            }
+        }
     </script>
 </body>
 </html>
