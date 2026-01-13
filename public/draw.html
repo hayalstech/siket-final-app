@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Draw | Siket Lotto</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+        }
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .overlay-text {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 122, 47, 0.5);
+            font-size: 14px;
+            font-weight: bold;
+            color: #FFD36A;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+        .winner-display {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px 50px;
+            border-radius: 20px;
+            border: 3px solid #FFD36A;
+            min-width: 300px;
+            display: none;
+        }
+        .winner-display.active {
+            display: block;
+            animation: winnerReveal 0.5s ease-out;
+        }
+        @keyframes winnerReveal {
+            from { opacity: 0; transform: translateX(-50%) translateY(50px) scale(0.8); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+        }
+        .winner-title {
+            font-size: 18px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .winner-number {
+            font-size: 72px;
+            font-weight: 900;
+            color: #FFD36A;
+            text-shadow: 0 0 30px rgba(255, 211, 106, 0.8);
+            margin: 10px 0;
+        }
+        .winner-place {
+            font-size: 24px;
+            color: #ff7a2f;
+            font-weight: bold;
+        }
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+        }
+        .loading-text {
+            font-size: 24px;
+            color: #FFD36A;
+            margin-top: 20px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 211, 106, 0.3);
+            border-top-color: #FFD36A;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .round-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 25px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 122, 47, 0.5);
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loading-screen">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Draw Animation...</div>
+    </div>
+
+    <div class="round-info" id="round-info">Round #0000</div>
+    <div class="overlay-text" id="overlay-text">Next round starts after this draw ends</div>
+    
+    <div id="canvas-container"></div>
+    
+    <div class="winner-display" id="winner-display">
+        <div class="winner-title" id="winner-title">3rd Place</div>
+        <div class="winner-number" id="winner-number">00</div>
+        <div class="winner-place">Winner!</div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, drum, balls = [];
+        let animationId;
+        let currentTierId = 3; // Default to Gold
+        let winners = { first: 0, second: 0, third: 0 };
+        let drawSequence = 0; // 0 = 3rd, 1 = 2nd, 2 = 1st
+        let isAnimating = false;
+
+        // Get tier ID from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('tier')) {
+            currentTierId = parseInt(urlParams.get('tier'));
+        }
+
+        // Initialize Three.js
+        function init() {
+            const container = document.getElementById('canvas-container');
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0e27);
+
+            camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            camera.position.set(0, 2, 8);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // 4K support
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(5, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            const pointLight = new THREE.PointLight(0xFFD36A, 1, 100);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+
+            // Create glass drum
+            createDrum();
+
+            // Create balls (100 numbered balls)
+            createBalls();
+
+            // Start animation
+            animate();
+
+            // Load draw data
+            loadDrawData();
+        }
+
+        function createDrum() {
+            const drumGroup = new THREE.Group();
+
+            // Glass cylinder (transparent)
+            const geometry = new THREE.CylinderGeometry(2, 2, 3, 64);
+            const material = new THREE.MeshPhysicalMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.1,
+                roughness: 0.1,
+                metalness: 0.9,
+                clearcoat: 1.0,
+                clearcoatRoughness: 0.1,
+                transmission: 0.9,
+                thickness: 0.5
+            });
+            drum = new THREE.Mesh(geometry, material);
+            drum.receiveShadow = true;
+            drum.castShadow = true;
+            drumGroup.add(drum);
+
+            // Top and bottom caps (glass)
+            const capGeometry = new THREE.CylinderGeometry(2.1, 2.1, 0.1, 64);
+            const topCap = new THREE.Mesh(capGeometry, material);
+            topCap.position.y = 1.5;
+            drumGroup.add(topCap);
+
+            const bottomCap = new THREE.Mesh(capGeometry, material);
+            bottomCap.position.y = -1.5;
+            drumGroup.add(bottomCap);
+
+            // Metallic rim
+            const rimMaterial = new THREE.MeshStandardMaterial({
+                color: 0xFFD36A,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const rimGeometry = new THREE.TorusGeometry(2.05, 0.05, 16, 100);
+            const topRim = new THREE.Mesh(rimGeometry, rimMaterial);
+            topRim.position.y = 1.5;
+            topRim.rotation.x = Math.PI / 2;
+            drumGroup.add(topRim);
+
+            const bottomRim = new THREE.Mesh(rimGeometry, rimMaterial);
+            bottomRim.position.y = -1.5;
+            bottomRim.rotation.x = Math.PI / 2;
+            drumGroup.add(bottomRim);
+
+            drumGroup.position.y = 0;
+            scene.add(drumGroup);
+        }
+
+        function createBalls() {
+            const ballGeometry = new THREE.SphereGeometry(0.15, 32, 32);
+            
+            for (let i = 1; i <= 100; i++) {
+                const ballMaterial = new THREE.MeshStandardMaterial({
+                    color: i <= 33 ? 0xFFD36A : (i <= 66 ? 0xe5e7eb : 0xcd7f32), // Gold, Silver, Bronze
+                    metalness: 0.7,
+                    roughness: 0.3
+                });
+                
+                const ball = new THREE.Mesh(ballGeometry, ballMaterial);
+                
+                // Random position inside drum
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 1.5;
+                const height = (Math.random() - 0.5) * 2.5;
+                
+                ball.position.set(
+                    Math.cos(angle) * radius,
+                    height,
+                    Math.sin(angle) * radius
+                );
+                
+                // Add number label
+                const canvas = document.createElement('canvas');
+                canvas.width = 64;
+                canvas.height = 64;
+                const context = canvas.getContext('2d');
+                context.fillStyle = '#000';
+                context.font = 'bold 32px Arial';
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(i, 32, 32);
+                
+                const texture = new THREE.CanvasTexture(canvas);
+                const labelMaterial = new THREE.MeshBasicMaterial({ map: texture, transparent: true });
+                const labelGeometry = new THREE.PlaneGeometry(0.1, 0.1);
+                const label = new THREE.Mesh(labelGeometry, labelMaterial);
+                label.lookAt(camera.position);
+                ball.add(label);
+                ball.userData.number = i;
+                
+                // Physics properties
+                ball.userData.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.02,
+                    (Math.random() - 0.5) * 0.02,
+                    (Math.random() - 0.5) * 0.02
+                );
+                
+                balls.push(ball);
+                scene.add(ball);
+            }
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+
+            // Rotate drum
+            if (drum) {
+                drum.rotation.y += 0.01;
+            }
+
+            // Animate balls with physics
+            balls.forEach(ball => {
+                // Apply velocity
+                ball.position.add(ball.userData.velocity);
+
+                // Bounce off drum walls
+                const distance = Math.sqrt(ball.position.x ** 2 + ball.position.z ** 2);
+                if (distance > 1.8) {
+                    const normal = new THREE.Vector3(ball.position.x, 0, ball.position.z).normalize();
+                    ball.userData.velocity.reflect(normal).multiplyScalar(0.8);
+                    ball.position.set(
+                        normal.x * 1.8,
+                        ball.position.y,
+                        normal.z * 1.8
+                    );
+                }
+
+                // Bounce off top and bottom
+                if (ball.position.y > 1.4 || ball.position.y < -1.4) {
+                    ball.userData.velocity.y *= -0.8;
+                    ball.position.y = Math.max(-1.4, Math.min(1.4, ball.position.y));
+                }
+
+                // Gravity
+                ball.userData.velocity.y -= 0.001;
+
+                // Update label to face camera
+                if (ball.children[0]) {
+                    ball.children[0].lookAt(camera.position);
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        async function loadDrawData() {
+            try {
+                const res = await fetch(`/api/draw/${currentTierId}`);
+                const data = await res.json();
+                
+                document.getElementById('round-info').textContent = `Round #${String(data.currentRound).padStart(4, '0')}`;
+                
+                if (data.lastDraw) {
+                    winners = {
+                        first: data.lastDraw.first,
+                        second: data.lastDraw.second,
+                        third: data.lastDraw.third
+                    };
+                    
+                    // Hide loading screen
+                    document.getElementById('loading-screen').style.display = 'none';
+                    
+                    // Start draw sequence
+                    setTimeout(() => startDrawSequence(), 2000);
+                } else {
+                    document.getElementById('loading-screen').innerHTML = `
+                        <div class="spinner"></div>
+                        <div class="loading-text">Waiting for draw to complete...</div>
+                    `;
+                    // Poll for draw results
+                    setTimeout(loadDrawData, 5000);
+                }
+            } catch (error) {
+                console.error('Error loading draw data:', error);
+                document.getElementById('loading-screen').innerHTML = `
+                    <div style="color: #ff7a2f;">Error loading draw. Please refresh.</div>
+                `;
+            }
+        }
+
+        function startDrawSequence() {
+            if (isAnimating) return;
+            isAnimating = true;
+
+            // Draw sequence: 3rd, 2nd, 1st
+            const sequence = [
+                { place: '3rd Place', number: winners.third, delay: 0 },
+                { place: '2nd Place', number: winners.second, delay: 5000 },
+                { place: '1st Place', number: winners.first, delay: 10000 }
+            ];
+
+            sequence.forEach((item, index) => {
+                setTimeout(() => {
+                    revealWinner(item.place, item.number);
+                    
+                    // Highlight winning ball
+                    const winningBall = balls.find(b => b.userData.number === item.number);
+                    if (winningBall) {
+                        highlightBall(winningBall);
+                    }
+                }, item.delay);
+            });
+
+            // Reset after 30 seconds
+            setTimeout(() => {
+                resetRound();
+            }, 30000);
+        }
+
+        function revealWinner(place, number) {
+            const display = document.getElementById('winner-display');
+            document.getElementById('winner-title').textContent = place;
+            document.getElementById('winner-number').textContent = String(number).padStart(2, '0');
+            display.classList.add('active');
+
+            // Hide after 3 seconds
+            setTimeout(() => {
+                display.classList.remove('active');
+            }, 3000);
+        }
+
+        function highlightBall(ball) {
+            const originalColor = ball.material.color.getHex();
+            const highlightColor = 0xff0000;
+            
+            // Pulse animation
+            let pulseCount = 0;
+            const pulseInterval = setInterval(() => {
+                if (pulseCount++ > 10) {
+                    clearInterval(pulseInterval);
+                    ball.material.color.setHex(originalColor);
+                    return;
+                }
+                
+                const intensity = Math.sin(pulseCount * 0.5) * 0.5 + 0.5;
+                ball.material.color.setHex(
+                    originalColor === highlightColor ? 
+                    originalColor : 
+                    (pulseCount % 2 === 0 ? highlightColor : originalColor)
+                );
+                
+                // Scale pulse
+                const scale = 1 + Math.sin(pulseCount * 0.5) * 0.3;
+                ball.scale.set(scale, scale, scale);
+            }, 200);
+        }
+
+        function resetRound() {
+            // Reset balls
+            balls.forEach(ball => {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = Math.random() * 1.5;
+                const height = (Math.random() - 0.5) * 2.5;
+                
+                ball.position.set(
+                    Math.cos(angle) * radius,
+                    height,
+                    Math.sin(angle) * radius
+                );
+                
+                ball.userData.velocity.set(
+                    (Math.random() - 0.5) * 0.02,
+                    (Math.random() - 0.5) * 0.02,
+                    (Math.random() - 0.5) * 0.02
+                );
+                
+                ball.scale.set(1, 1, 1);
+            });
+
+            isAnimating = false;
+            
+            // Reload for next round
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

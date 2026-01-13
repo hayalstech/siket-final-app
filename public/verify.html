@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify & Claim Prize | Siket Lotto</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root { 
+            --orange: #ff7a2f; --gold: #FFD36A; --navy: #020617;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--navy);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: var(--gold);
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #94a3b8;
+            font-size: 14px;
+        }
+        .winner-badge {
+            background: linear-gradient(135deg, var(--gold), var(--orange));
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(255, 211, 106, 0.3);
+        }
+        .winner-badge h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .winner-badge .ticket-number {
+            font-size: 48px;
+            font-weight: 900;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .form-container {
+            background: var(--glass);
+            padding: 25px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #cbd5e1;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 14px;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--orange);
+            box-shadow: 0 0 0 3px rgba(255, 122, 47, 0.1);
+        }
+        .form-group .hint {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 5px;
+        }
+        .submit-btn {
+            width: 100%;
+            background: var(--orange);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s;
+        }
+        .submit-btn:hover {
+            background: #ff8a3f;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 122, 47, 0.4);
+        }
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .success-message {
+            background: rgba(21, 128, 61, 0.2);
+            border: 1px solid #15803d;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        .success-message.active {
+            display: block;
+        }
+        .error-message {
+            background: rgba(220, 38, 38, 0.2);
+            border: 1px solid #dc2626;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+        .error-message.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Winner Verification</h1>
+            <p>አሸናፊ ማረጋገጥ</p>
+        </div>
+
+        <div class="winner-badge">
+            <h2 id="place-text">Winner!</h2>
+            <div class="ticket-number" id="ticket-number">#00</div>
+        </div>
+
+        <div class="form-container">
+            <form id="verification-form">
+                <div class="form-group">
+                    <label for="full-name">Full Name | ሙሉ ስም</label>
+                    <input type="text" id="full-name" name="fullName" required placeholder="Enter your full name">
+                </div>
+
+                <div class="form-group">
+                    <label for="payment-method">Preferred Payment Method | የክፍያ መንገድ</label>
+                    <select id="payment-method" name="paymentMethod" required>
+                        <option value="">Select payment method</option>
+                        <option value="Telebirr">Telebirr</option>
+                        <option value="Cbebirr">Cbebirr</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="account-number">Account Number for Prize Transfer | ሽልማት የሚላክበት ቁጥር</label>
+                    <input type="text" id="account-number" name="accountNumber" required placeholder="Enter account number">
+                    <div class="hint">Note: You may provide a different account than the one used to purchase the ticket. / ማሳሰቢያ: ትኬቱን ከገዙበት አካውንት የተለየ ሌላ ቁጥር መጠቀም ይችላሉ።</div>
+                </div>
+
+                <button type="submit" class="submit-btn" id="submit-btn">Submit Verification | ማረጋገጥ አስገባ</button>
+            </form>
+
+            <div class="success-message" id="success-message">
+                ✅ Verification submitted successfully! You will receive your prize shortly. / ማረጋገጥ በተሳካ ሁኔታ ተሰርቷል! ሽልማትዎን በቅርቡ ይቀበላሉ።
+            </div>
+
+            <div class="error-message" id="error-message">
+                ❌ Error submitting verification. Please try again.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // Get parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const tierId = urlParams.get('tier');
+        const roundNo = urlParams.get('round');
+        const ticketNumber = urlParams.get('ticket');
+        const place = urlParams.get('place');
+
+        // Update UI
+        const placeTexts = {
+            '1': '1st Place Winner!',
+            '2': '2nd Place Winner!',
+            '3': '3rd Place Winner!'
+        };
+        const placeTextsAm = {
+            '1': '1ኛ ምድብ አሸናፊ!',
+            '2': '2ኛ ምድብ አሸናፊ!',
+            '3': '3ኛ ምድብ አሸናፊ!'
+        };
+
+        document.getElementById('place-text').textContent = placeTexts[place] || 'Winner!';
+        document.getElementById('ticket-number').textContent = `#${ticketNumber || '00'}`;
+
+        // Check if already verified
+        async function checkStatus() {
+            try {
+                const res = await fetch(`/api/winner/status/${tierId}/${roundNo}/${ticketNumber}`);
+                const data = await res.json();
+                
+                if (data && data.status === 'verification_submitted') {
+                    document.getElementById('verification-form').style.display = 'none';
+                    document.getElementById('success-message').classList.add('active');
+                    document.getElementById('success-message').textContent = 
+                        '✅ Verification already submitted! Status: ' + data.status + 
+                        ' / ማረጋገጥ አስቀድሞ ተሰርቷል!';
+                } else if (data && data.status === 'paid') {
+                    document.getElementById('verification-form').style.display = 'none';
+                    document.getElementById('success-message').classList.add('active');
+                    document.getElementById('success-message').textContent = 
+                        '✅ Prize has been paid! / ሽልማት ተከፍሏል!';
+                }
+            } catch (error) {
+                console.error('Status check error:', error);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('verification-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            const formData = {
+                tierId: parseInt(tierId),
+                roundNo: parseInt(roundNo),
+                ticketNumber: parseInt(ticketNumber),
+                userId: tg.initDataUnsafe?.user?.id || 0,
+                place: parseInt(place),
+                fullName: document.getElementById('full-name').value,
+                paymentMethod: document.getElementById('payment-method').value,
+                accountNumber: document.getElementById('account-number').value
+            };
+
+            try {
+                const res = await fetch('/api/winner/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('verification-form').style.display = 'none';
+                    document.getElementById('success-message').classList.add('active');
+                    document.getElementById('error-message').classList.remove('active');
+                } else {
+                    throw new Error('Submission failed');
+                }
+            } catch (error) {
+                console.error('Submission error:', error);
+                document.getElementById('error-message').classList.add('active');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Verification | ማረጋገጥ አስገባ';
+            }
+        });
+
+        // Check status on load
+        checkStatus();
+    </script>
+</body>
+</html>

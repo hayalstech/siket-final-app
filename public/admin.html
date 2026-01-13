@@ -63,6 +63,16 @@
             border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.1);
         }
+        .winner-status {
+            font-size: 10px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .winner-pending { background: #eab308; color: black; }
+        .winner-verified { background: #3b82f6; color: white; }
+        .winner-paid { background: #15803d; color: white; }
+        .winner-rejected { background: #dc2626; color: white; }
         .stat-label {
             font-size: 12px;
             color: #94a3b8;
@@ -192,6 +202,7 @@
                     <th>Phone</th>
                     <th>Screenshot</th>
                     <th>Status</th>
+                    <th>Winner Status</th>
                 </tr>
             </thead>
             <tbody id="table-body">
@@ -247,7 +258,7 @@
             tbody.innerHTML = '';
 
             if(filtered.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8;">No data found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center; padding:40px; color:#94a3b8;">No data found</td></tr>';
             } else {
                 filtered.forEach(item => {
                     const row = document.createElement('tr');
@@ -266,6 +277,10 @@
                         ? item.screenshot_url 
                         : `/uploads/${item.screenshot_url.split('/').pop()}`;
                     
+                    const winnerStatusHtml = item.winnerStatus ? 
+                        `<span class="winner-status winner-${item.winnerStatus.replace('_', '-')}">${item.winnerStatus.replace('_', ' ').toUpperCase()}</span>` : 
+                        '<span style="color: #64748b;">-</span>';
+                    
                     row.innerHTML = `
                         <td>#${String(item.round_no).padStart(4, '0')}</td>
                         <td>${dateStr} ${timeStr}</td>
@@ -275,6 +290,7 @@
                         <td>${item.phone || 'N/A'}</td>
                         <td><a href="${screenshotUrl}" target="_blank" class="screenshot-link">View</a></td>
                         <td><span class="status-badge status-${item.status}">${item.status.toUpperCase()}</span></td>
+                        <td>${winnerStatusHtml}</td>
                     `;
                     tbody.appendChild(row);
                 });
