@@ -350,12 +350,14 @@ async function runDrawLogic(tId, rnd) {
         }
     }
 
-    // Wait 30 seconds after animation ends, then send winner notifications
+    // Animation sequence: 3rd at 0s, 2nd at 5s, 1st at 10s, each displayed for 3s
+    // Animation completes at ~13 seconds (10s delay + 3s display for 1st place)
+    // Wait 30 seconds AFTER animation ends (at 43 seconds total), then send winner notifications
     setTimeout(async () => {
         await sendWinnerNotifications(winners);
-    }, 30000); // 30 seconds after draw completes
+    }, 43000); // 13s animation + 30s wait = 43 seconds after draw starts
 
-    // Wait 30 seconds before resetting round
+    // Wait 60 seconds total before resetting round (gives time for notifications)
     setTimeout(async () => {
         // Increment and Reset
         let nextR = parseInt(rnd) + 1;
@@ -365,7 +367,7 @@ async function runDrawLogic(tId, rnd) {
         
         // Alert Admin
         await bot.api.sendMessage(process.env.ADMIN_ID, `🔄 **ROUND #${nextR} STARTED**\nTier ${tId} is now accepting tickets for Round #${nextR}`);
-    }, 30000); // 30 seconds
+    }, 60000); // 60 seconds total
 }
 
 async function sendWinnerNotifications(winners) {

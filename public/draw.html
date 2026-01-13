@@ -133,7 +133,7 @@
     <div class="winner-display" id="winner-display">
         <div class="winner-title" id="winner-title">3rd Place</div>
         <div class="winner-number" id="winner-number">00</div>
-        <div class="winner-place">Winner!</div>
+        <div class="winner-place" id="winner-place-text">Winner!</div>
     </div>
 
     <script>
@@ -143,12 +143,27 @@
         let winners = { first: 0, second: 0, third: 0 };
         let drawSequence = 0; // 0 = 3rd, 1 = 2nd, 2 = 1st
         let isAnimating = false;
+        let lang = localStorage.getItem('language') || 'am';
 
         // Get tier ID from URL parameter
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('tier')) {
             currentTierId = parseInt(urlParams.get('tier'));
         }
+        
+        // Update overlay text based on language
+        const overlayTexts = {
+            am: 'ዕጣው ከተጠናቀቀ በኋላ የሚቀጥለው ዙር ይጀምራል',
+            en: 'Next round starts after this draw ends'
+        };
+        document.getElementById('overlay-text').textContent = overlayTexts[lang];
+        
+        // Update winner place text
+        const winnerTexts = {
+            am: 'አሸናፊ!',
+            en: 'Winner!'
+        };
+        document.getElementById('winner-place-text').textContent = winnerTexts[lang];
 
         // Initialize Three.js
         function init() {
@@ -385,10 +400,15 @@
             isAnimating = true;
 
             // Draw sequence: 3rd, 2nd, 1st
+            const placeTexts = {
+                am: { third: '3ኛ ምድብ', second: '2ኛ ምድብ', first: '1ኛ ምድብ' },
+                en: { third: '3rd Place', second: '2nd Place', first: '1st Place' }
+            };
+            
             const sequence = [
-                { place: '3rd Place', number: winners.third, delay: 0 },
-                { place: '2nd Place', number: winners.second, delay: 5000 },
-                { place: '1st Place', number: winners.first, delay: 10000 }
+                { place: placeTexts[lang].third, placeKey: 'third', number: winners.third, delay: 0 },
+                { place: placeTexts[lang].second, placeKey: 'second', number: winners.second, delay: 5000 },
+                { place: placeTexts[lang].first, placeKey: 'first', number: winners.first, delay: 10000 }
             ];
 
             sequence.forEach((item, index) => {
@@ -403,10 +423,12 @@
                 }, item.delay);
             });
 
-            // Reset after 30 seconds
+            // Animation completes at ~13 seconds (10s delay + 3s display)
+            // Winner notifications are sent 30 seconds AFTER animation ends (at 43 seconds total)
+            // Reset happens after notifications are sent (at 60 seconds total)
             setTimeout(() => {
                 resetRound();
-            }, 30000);
+            }, 60000); // 60 seconds total: 13s animation + 30s wait + 17s buffer
         }
 
         function revealWinner(place, number) {

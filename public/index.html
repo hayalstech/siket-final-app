@@ -903,14 +903,12 @@
             const data = await res.json();
             currentRound = data.round;
             
-            // Check if draw is active (100 sold) - if so, redirect Gold tier to animation
-            if(id === 3) {
-                const sold = data.tickets.filter(tk => tk.status === 'sold').length;
-                if(sold === 100) {
-                    // Draw is active, redirect to animation
-                    window.location.href = 'draw.html?tier=3';
-                    return;
-                }
+            // Check if draw is active (100 sold) - if so, redirect to animation for ANY tier
+            const sold = data.tickets.filter(tk => tk.status === 'sold').length;
+            if(sold === 100) {
+                // Draw is active, redirect to animation
+                window.location.href = `draw.html?tier=${id}`;
+                return;
             }
             
             // Update prize header
