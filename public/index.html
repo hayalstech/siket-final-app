@@ -9,6 +9,11 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Google Fonts for better typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Ethiopic:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
     <style>
         :root { 
@@ -34,8 +39,24 @@
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-primary); color: var(--text-primary); font-family: 'Segoe UI', sans-serif; transition: background 0.3s, color 0.3s; }
+        html, body { height: 100%; margin: 0; padding: 0; background: var(--bg-primary); color: var(--text-primary); font-family: 'Inter', 'Noto Sans Ethiopic', 'Segoe UI', sans-serif; transition: background 0.3s, color 0.3s; }
         body { display: flex; flex-direction: column; overflow-x: hidden; }
+        
+        /* Font classes for language-specific styling */
+        .lang-en { font-family: 'Inter', 'Segoe UI', sans-serif; }
+        .lang-am { font-family: 'Noto Sans Ethiopic', 'Segoe UI', sans-serif; }
+        
+        /* Language visibility - default to Amharic */
+        .lang-en { display: none; }
+        .lang-am { display: block; }
+        
+        /* Language visibility when English is selected */
+        [data-lang="en"] .lang-en { display: block; }
+        [data-lang="en"] .lang-am { display: none; }
+        
+        /* Language visibility when Amharic is selected */
+        [data-lang="am"] .lang-en { display: none; }
+        [data-lang="am"] .lang-am { display: block; }
 
         /* --- HEADER --- */
         header {
@@ -439,7 +460,7 @@
     <header>
         <div class="header-logo">
             <img src="images/logo.png" alt="Siket Logo">
-            <h1 id="nav-title">ስኬት ሎቶ</h1>
+            <h1 id="nav-title" class="lang-am">ስኬት ሎቶ</h1>
         </div>
         <div class="header-logo">
             <a href="#about-us" class="nav-link" id="nav-about">About Us</a>
@@ -507,56 +528,87 @@
 
         <!-- About Us Section -->
         <section class="about-section" id="about-us">
-            <h2 class="about-title" id="about-title">About Siket Lottery | ስለ ሲኬት ሎተሪ</h2>
+            <h2 class="about-title lang-en" id="about-title-en">About Siket Lottery</h2>
+            <h2 class="about-title lang-am" id="about-title-am">ስለ ሲኬት ሎተሪ</h2>
             
             <div class="about-content">
-                <h3 class="about-subtitle" id="prize-structure-title">Official Prize Structure | የሽልማት ዝርዝር</h3>
+                <h3 class="about-subtitle lang-en" id="prize-structure-title-en">Official Prize Structure</h3>
+                <h3 class="about-subtitle lang-am" id="prize-structure-title-am">የሽልማት ዝርዝር</h3>
                 
                 <div class="prize-tier">
-                    <h4 class="tier-name">Gold Ticket (የወርቅ ዕጣ): Entry 500 ETB</h4>
-                    <p class="prize-details">1st: 30,000 ETB | 2nd: 7,000 ETB | 3rd: 3,000 ETB</p>
-                </div>
-                
-                <div class="prize-tier">
-                    <h4 class="tier-name">Silver Ticket (የብር ዕጣ): Entry 300 ETB</h4>
-                    <p class="prize-details">1st: 15,000 ETB | 2nd: 4,000 ETB | 3rd: 2,000 ETB</p>
+                    <h4 class="tier-name lang-en">Gold Ticket: Entry 500 ETB</h4>
+                    <h4 class="tier-name lang-am">የወርቅ ቲኬት: ዋጋ 500 ብር</h4>
+                    <p class="prize-details lang-en">1st: 30,000 ETB | 2nd: 7,000 ETB | 3rd: 3,000 ETB</p>
+                    <p class="prize-details lang-am">1ኛ: 30,000 ብር | 2ኛ: 7,000 ብር | 3ኛ: 3,000 ብር</p>
                 </div>
                 
                 <div class="prize-tier">
-                    <h4 class="tier-name">Bronze Ticket (የነሐስ ዕጣ): Entry 100 ETB</h4>
-                    <p class="prize-details">1st: 5,000 ETB | 2nd: 2,000 ETB | 3rd: 2 Free Tickets</p>
+                    <h4 class="tier-name lang-en">Silver Ticket: Entry 300 ETB</h4>
+                    <h4 class="tier-name lang-am">የብር ቲኬት: ዋጋ 300 ብር</h4>
+                    <p class="prize-details lang-en">1st: 15,000 ETB | 2nd: 4,000 ETB | 3rd: 2,000 ETB</p>
+                    <p class="prize-details lang-am">1ኛ: 15,000 ብር | 2ኛ: 4,000 ብር | 3ኛ: 2,000 ብር</p>
                 </div>
                 
-                <h3 class="about-subtitle" id="principles-title">Our Core Principles | መመሪያዎቻችን</h3>
+                <div class="prize-tier">
+                    <h4 class="tier-name lang-en">Bronze Ticket: Entry 100 ETB</h4>
+                    <h4 class="tier-name lang-am">የነሐስ ቲኬት: ዋጋ 100 ብር</h4>
+                    <p class="prize-details lang-en">1st: 5,000 ETB | 2nd: 2,000 ETB | 3rd: 2 Free Tickets</p>
+                    <p class="prize-details lang-am">1ኛ: 5,000 ብር | 2ኛ: 2,000 ብር | 3ኛ: 2 ነጻ ቲኬቶች</p>
+                </div>
+                
+                <h3 class="about-subtitle lang-en" id="principles-title-en">Our Core Principles</h3>
+                <h3 class="about-subtitle lang-am" id="principles-title-am">መመሪያዎቻችን</h3>
                 
                 <div class="principle-item">
-                    <strong>Transparency (ግልጽነት):</strong> <span id="transparency-text">Cinematic live draws from 3rd to 1st prize ensure fairness.</span>
+                    <strong class="lang-en">Transparency:</strong>
+                    <strong class="lang-am">ግልጽነት:</strong>
+                    <span class="lang-en" id="transparency-text-en">Cinematic live draws from 3rd to 1st prize ensure fairness.</span>
+                    <span class="lang-am" id="transparency-text-am">እጣዎች ከ3ኛ እስከ 1ኛ ደረጃ ለሁሉም በሚታይ መልኩ ይወጣሉ፡፡</span>
                 </div>
                 
                 <div class="principle-item">
-                    <strong>Fast Payouts (ፈጣን ክፍያ):</strong> <span id="payouts-text">Winners receive prizes via Telebirr/Cbebirr instantly after the round ends.</span>
+                    <strong class="lang-en">Fast Payouts:</strong>
+                    <strong class="lang-am">ፈጣን ክፍያ:</strong>
+                    <span class="lang-en" id="payouts-text-en">Winners receive prizes via Telebirr/Cbebirr instantly after the round ends.</span>
+                    <span class="lang-am" id="payouts-text-am">የሽልማት ገንዘብዎ በቴሌብር ወይም በንግድ ባንክ ወዲያውኑ ይላክልዎታል፡፡</span>
                 </div>
                 
                 <div class="principle-item">
-                    <strong>Frequency (ተከታታይነት):</strong> <span id="frequency-text">Only 100 tickets per round for faster games and more wins.</span>
+                    <strong class="lang-en">Frequency:</strong>
+                    <strong class="lang-am">ተከታታይነት:</strong>
+                    <span class="lang-en" id="frequency-text-en">Only 100 tickets per round for faster games and more wins.</span>
+                    <span class="lang-am" id="frequency-text-am">ፈጣን ጨዋታና ብዙ እድል እንዲኖር በአንድ ዙር 100 ቲኬቶች ብቻ፡፡</span>
                 </div>
                 
-                <h3 class="about-subtitle" id="rules-title">Rules & Notice | ደንቦች እና ማሳሰቢያ</h3>
+                <h3 class="about-subtitle lang-en" id="rules-title-en">Rules & Notice</h3>
+                <h3 class="about-subtitle lang-am" id="rules-title-am">ደንቦች እና ማሳሰቢያ</h3>
                 
                 <div class="rule-item">
-                    <strong>Payout Policy:</strong> <span id="payout-policy-text">You can receive your prize money via a different Telebirr or Cbebirr account than the one used for purchase.</span>
+                    <strong class="lang-en">Payout Policy:</strong>
+                    <strong class="lang-am">የክፍያ ሁኔታ:</strong>
+                    <span class="lang-en" id="payout-policy-text-en">You can receive your prize money via a different Telebirr or Cbebirr account than the one used for purchase.</span>
+                    <span class="lang-am" id="payout-policy-text-am">የሽልማት ገንዘብዎን በተለያዩ ባንኮች መቀበል ይችላሉ፡፡</span>
                 </div>
                 
                 <div class="rule-item">
-                    <strong>Tipping Policy:</strong> <span id="tipping-policy-text">You are NOT obligated to tip Contact Center workers. Tipping is 100% optional.</span>
+                    <strong class="lang-en">Tipping Policy:</strong>
+                    <strong class="lang-am">የቲኬት አጠቃቀም:</strong>
+                    <span class="lang-en" id="tipping-policy-text-en">You are NOT obligated to tip Contact Center workers. Tipping is 100% optional.</span>
+                    <span class="lang-am" id="tipping-policy-text-am">በመረጃ ማዕከል በኩል መጠቀም ምርጫዎ ነው።</span>
                 </div>
                 
                 <div class="rule-item">
-                    <strong>Draw Timing:</strong> <span id="draw-timing-text">The 3-minute countdown after a sell-out is to allow all buyers time to join the live animation.</span>
+                    <strong class="lang-en">Draw Timing:</strong>
+                    <strong class="lang-am">የዕጣ ጊዜ:</strong>
+                    <span class="lang-en" id="draw-timing-text-en">The 3-minute countdown after a sell-out is to allow all buyers time to join the live animation.</span>
+                    <span class="lang-am" id="draw-timing-text-am">ሁሉም ቲኬቶች እንደተሸጡ የ5 ደቂቃ ቆጠራ ይጀምራል፡፡</span>
                 </div>
                 
                 <div class="rule-item">
-                    <strong>Restrictions:</strong> <span id="restrictions-text">Players must be 18+. Play responsibly.</span>
+                    <strong class="lang-en">Restrictions:</strong>
+                    <strong class="lang-am">ክልከላዎች:</strong>
+                    <span class="lang-en" id="restrictions-text-en">Players must be 18+. Play responsibly.</span>
+                    <span class="lang-am" id="restrictions-text-am">ተጫዋቾች 18+ መሆን አለባቸው። በኃላፊነት ይጫወቱ።</span>
                 </div>
                 
                 <div class="rule-item" style="border: none; padding-left: 0;">
@@ -567,10 +619,13 @@
 
         <footer>
             <div class="disclaimer-card">
-                <p style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;" id="f-h">መግለጫ (Disclaimer)</p>
-                <p class="disc-text" id="disc-text">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አይመለስም። ዕጣው በዘፈቀደ የሚወጣ ይሆናል።</p>
+                <p class="lang-en" style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;">Disclaimer</p>
+                <p class="lang-am" style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;">መግለጫ</p>
+                <p class="disc-text lang-en" id="disc-text-en">Siket Lottery members must be 18+. Participants must be residents of Ethiopia. Payments are non-refundable. The draw will be random.</p>
+                <p class="disc-text lang-am" id="disc-text-am">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አይመለስም። ዕጣው በዘፈቀደ የሚወጣ ይሆናል።</p>
             </div>
-            <p style="margin-top:30px; font-size:10px; color:#444; text-align:center;">Siket Success &copy; 2026. All Rights Reserved.</p>
+            <p class="lang-en" style="margin-top:30px; font-size:10px; color:#444; text-align:center;">Siket Success &copy; 2026. All Rights Reserved.</p>
+            <p class="lang-am" style="margin-top:30px; font-size:10px; color:#444; text-align:center;">ስኬት ስኬት &copy; 2026. ሁሉም መብቶች የተጠበቁ ናቸው።</p>
         </footer>
     </main>
 
@@ -674,6 +729,14 @@
             document.getElementById('lang-btn').innerText = lang === 'am' ? 'EN' : 'አማርኛ';
         }
         
+        // Set initial language attribute on html element
+        document.documentElement.setAttribute('data-lang', lang);
+        
+        // Function to toggle language visibility
+        function toggleLanguageVisibility() {
+            document.documentElement.setAttribute('data-lang', lang);
+        }
+        
         // Initialize translations on page load
         function initializeTranslations() {
             if(document.getElementById('sec-t')) document.getElementById('sec-t').innerText = langData[lang].hottestCompetitions;
@@ -690,6 +753,9 @@
             if(document.getElementById('th-round')) document.getElementById('th-round').innerText = langData[lang].thR;
             if(document.getElementById('th-status')) document.getElementById('th-status').innerText = langData[lang].thS;
             if(document.getElementById('th-price')) document.getElementById('th-price').innerText = langData[lang].thP;
+            
+            // Toggle language visibility
+            toggleLanguageVisibility();
         }
         
         // Run initialization when DOM is ready
@@ -705,6 +771,7 @@
                 leagueT: "የዕጣዎች ሁኔታ", statusSold: "ተሽጧል", statusDraw: "ዕጣ በመውጣት ላይ", statusDone: "ተጠናቋል",
                 soonT: "በቅርቡ ይጠብቁ!", soonB: "አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!",
                 navAbout: "ስለእኛ", commentBtn: "አስተያየት",
+                navTitle: "ስኬት ሎቶ",
                 aboutTitle: "ስለ ሲኬት ሎተሪ",
                 prizeStructureTitle: "የሽልማት ዝርዝር",
                 principlesTitle: "መመሪያዎቻችን",
@@ -833,6 +900,7 @@
         function toggleLang() {
             lang = lang === 'am' ? 'en' : 'am';
             localStorage.setItem('language', lang);
+            document.documentElement.setAttribute('data-lang', lang);
             document.getElementById('lang-btn').innerText = lang === 'am' ? 'EN' : 'አማርኛ';
             document.getElementById('th-type').innerText = langData[lang].thT;
             document.getElementById('th-round').innerText = langData[lang].thR;
@@ -845,27 +913,14 @@
             document.getElementById('contact-btn').innerText = langData[lang].commentBtn;
             document.getElementById('nav-title').innerText = langData[lang].navTitle;
             document.getElementById('page-title').innerText = langData[lang].navTitle;
-            document.getElementById('about-title').innerText = langData[lang].aboutTitle;
             if(document.getElementById('sec-t')) document.getElementById('sec-t').innerText = langData[lang].hottestCompetitions;
             if(document.getElementById('buy-ticket-btn')) document.getElementById('buy-ticket-btn').innerText = langData[lang].buyTicket;
             if(document.getElementById('buy-gold-btn')) document.getElementById('buy-gold-btn').innerText = langData[lang].buyGold;
             if(document.getElementById('buy-silver-btn')) document.getElementById('buy-silver-btn').innerText = langData[lang].buySilver;
             if(document.getElementById('buy-bronze-btn')) document.getElementById('buy-bronze-btn').innerText = langData[lang].buyBronze;
-            if(document.getElementById('prize-structure-title')) {
-                document.getElementById('prize-structure-title').innerText = langData[lang].prizeStructureTitle;
-                document.getElementById('principles-title').innerText = langData[lang].principlesTitle;
-                document.getElementById('rules-title').innerText = langData[lang].rulesTitle;
-                document.getElementById('transparency-text').innerText = langData[lang].transparencyText;
-                document.getElementById('payouts-text').innerText = langData[lang].payoutsText;
-                document.getElementById('frequency-text').innerText = langData[lang].frequencyText;
-                document.getElementById('payout-policy-text').innerText = langData[lang].payoutPolicyText;
-                document.getElementById('tipping-policy-text').innerText = langData[lang].tippingPolicyText;
-                document.getElementById('draw-timing-text').innerText = langData[lang].drawTimingText;
-                document.getElementById('restrictions-text').innerText = langData[lang].restrictionsText;
-                if(document.getElementById('ask-me-btn')) {
-                    document.getElementById('ask-me-btn').innerText = langData[lang].askMeBtn;
-                }
-            }
+            
+            // Toggle language visibility for all elements
+            toggleLanguageVisibility();
             
             // Update grid view elements if visible
             if(document.getElementById('grid-view').style.display !== 'none') {
