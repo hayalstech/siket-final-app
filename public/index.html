@@ -32,6 +32,12 @@
         .header-logo img { height: 30px; }
         .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 700; color: white; }
 
+        .nav-link {
+            color: white; text-decoration: none; padding: 6px 12px; 
+            border-radius: 20px; font-size: 11px; font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .nav-link:hover { background: rgba(255,255,255,0.1); }
         .contact-btn { 
             background: var(--orange); color: white; text-decoration: none; padding: 6px 12px; 
             border-radius: 20px; font-size: 11px; font-weight: bold;
@@ -42,6 +48,10 @@
         /* --- HERO --- */
         .hero { position: relative; width: 100%; background: #000; line-height: 0; overflow: hidden; margin-top: 55px;}
         .hero-img { width: 100%; height: auto; object-fit: contain; }
+        .hero-overlay { 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+            cursor: pointer; z-index: 10; background: transparent;
+        }
 
         /* --- TICKET CARDS (1.5 Ratio) --- */
         .comp-section { padding: 30px 15px; background: var(--navy); text-align: center; }
@@ -67,23 +77,268 @@
 
         /* --- COMING SOON SECTION (NEW) --- */
         .soon-section {
-    background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('images/soon.png');
-    background-size: cover;
-    background-position: center;
-}
+            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('images/soon.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 30px 15px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
         .soon-title { font-size: 24px; font-weight: 900; color: var(--gold); margin-bottom: 10px; }
         .soon-text { font-size: 14px; color: #cbd5e1; line-height: 1.5; }
+        .tier-grid { display: flex; flex-direction: column; gap: 20px; align-items: center; margin-top: 20px; }
+        .tier-card { 
+            width: 95%; max-width: 350px; aspect-ratio: 1.5 / 1; border-radius: 20px; 
+            overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.1); 
+            background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+        }
+        .tier-card.coming-soon { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); }
+        .tier-card .coming-soon-text { 
+            font-size: 20px; font-weight: 900; color: var(--gold); 
+            text-align: center; padding: 20px;
+        }
 
         /* --- PSYCHOLOGICAL GRID --- */
-        #grid-view { display: none; padding: 80px 15px 30px 15px; text-align: center; flex: 1; }
+        #grid-view { display: none; padding: 80px 15px 30px 15px; text-align: center; flex: 1; position: relative; }
+        .prize-header {
+            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('images/soon.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 20px 15px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .prize-header h3 {
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--gold);
+            margin: 0;
+        }
+        .prize-amount {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--orange);
+            margin-top: 5px;
+        }
+        .color-legend {
+            position: absolute;
+            top: 55px;
+            right: 15px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 10px;
+            z-index: 100;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin: 4px 0;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
         .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; margin: 15px 0; }
-        .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; border-radius: 3px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer;}
+        .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; border-radius: 3px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s;}
         .available { background: #1d4ed8; color: white; }
+        .selected { background: #eab308; color: black; }
         .pending { background: #eab308; color: black; }
+        .approved { background: #A1662F; color: white; pointer-events: none; }
         .sold { background: #15803d; opacity: 0.3; pointer-events: none; }
+        
+        /* --- PAYMENT MODAL --- */
+        .payment-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 2000;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .payment-modal.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .payment-content {
+            background: var(--navy);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .payment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .payment-header h3 {
+            margin: 0;
+            color: var(--gold);
+            font-size: 18px;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+        }
+        .account-info {
+            background: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        .account-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .account-label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .account-number {
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+            font-family: monospace;
+        }
+        .copy-btn {
+            background: var(--orange);
+            color: white;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .countdown-timer {
+            background: rgba(255,122,47,0.2);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--orange);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #cbd5e1;
+        }
+        .form-group input,
+        .form-group input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3);
+            color: white;
+            font-size: 14px;
+        }
+        .form-group input[type="file"] {
+            padding: 8px;
+        }
+        .file-required {
+            color: var(--orange);
+            font-size: 10px;
+            margin-top: 3px;
+        }
+        .submit-btn {
+            width: 100%;
+            background: var(--orange);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* --- WINNER FEED --- */
+        .winner-feed {
+            margin-top: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .winner-feed-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: var(--gold);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .winner-item {
+            padding: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .winner-item:last-child {
+            border-bottom: none;
+        }
+        .winner-number {
+            color: var(--orange);
+            font-weight: bold;
+        }
+        .winner-round {
+            color: #94a3b8;
+        }
+
+        /* --- ABOUT US SECTION --- */
+        .about-section { padding: 30px 15px; background: var(--navy); text-align: center; }
+        .about-title { font-size: 18px; font-weight: 800; margin-bottom: 15px; color: var(--gold); }
+        .about-text { font-size: 14px; color: #cbd5e1; line-height: 1.6; max-width: 600px; margin: 0 auto; }
+        .comment-btn { 
+            background: var(--orange); color: white; text-decoration: none; padding: 10px 20px; 
+            border-radius: 25px; font-size: 14px; font-weight: bold; display: inline-block;
+            margin-bottom: 30px; animation: pulse-glow 2s infinite; border: 1px solid rgba(255,255,255,0.2);
+        }
 
         /* --- FOOTER --- */
-        footer { padding: 40px 20px; background: #000; border-top: 1px solid #111827; margin-top: auto; }
+        footer { 
+            padding: 40px 20px; background: #000; border-top: 1px solid #111827; 
+            margin-top: auto; position: relative; z-index: 0;
+        }
         .disclaimer-card { background: var(--glass); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); text-align: left; }
         .disc-text { font-size: 11px; color: #64748b; line-height: 1.6; }
 
@@ -98,6 +353,7 @@
             <h1 id="nav-title">ስኬት ሎቶ | Siket Lotto</h1>
         </div>
         <div class="header-logo">
+            <a href="#about-us" class="nav-link" id="nav-about">About Us</a>
             <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
             <a href="https://t.me/Contact_Siketlottery" class="contact-btn">ያግኙን</a>
         </div>
@@ -105,13 +361,16 @@
 
     <main id="home-view">
         <!-- Hero Section -->
-        <section class="hero">
+        <section class="hero" onclick="scrollToTickets()" style="cursor: pointer;">
             <img src="images/background.png" class="hero-img" alt="Luxury Hero Banner">
         </section>
 
         <!-- Tickets Section -->
-        <section class="comp-section">
+        <section class="comp-section" id="ticket-selection">
             <h2 class="comp-title" id="sec-t">አሸናፊ የሚያደረጉዋችሁ እጣዎች</h2>
+            <div style="margin-bottom: 20px;">
+                <button class="btn-buy" onclick="document.getElementById('ticket-selection').scrollIntoView({behavior: 'smooth'})" style="font-size: 14px; padding: 10px 24px;">ትኬት ይቁረጡ</button>
+            </div>
             <div class="comp-grid">
                 <div class="ticket-card" onclick="openTier(3)"><img src="images/golden.png" alt="Gold"><div class="buy-overlay"><button class="btn-buy">Buy Gold</button></div></div>
                 <div class="ticket-card" onclick="openTier(2)"><img src="images/silver.png" alt="Silver"><div class="buy-overlay"><button class="btn-buy">Buy Silver</button></div></div>
@@ -141,6 +400,28 @@
         <section class="soon-section">
             <div class="soon-title" id="soon-t">በቅርቡ ይጠብቁ!</div>
             <p class="soon-text" id="soon-b">አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!</p>
+            <div class="tier-grid">
+                <div class="tier-card coming-soon">
+                    <div class="coming-soon-text">💎 DIAMOND<br><span style="font-size: 14px;">Coming Soon</span></div>
+                </div>
+                <div class="tier-card coming-soon">
+                    <div class="coming-soon-text">✨ PLATINUM<br><span style="font-size: 14px;">Coming Soon</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Comment Button Section -->
+        <section style="padding: 20px 15px; text-align: center; background: var(--navy);">
+            <a href="https://t.me/Contact_Siketlottery" class="comment-btn" id="comment-btn">💬 Comment</a>
+        </section>
+
+        <!-- About Us Section -->
+        <section class="about-section" id="about-us">
+            <h2 class="about-title" id="about-title">About Us</h2>
+            <p class="about-text" id="about-text">
+                Welcome to Siket Lotto, Ethiopia's premier lottery platform. We offer exciting ticket tiers with amazing prizes. 
+                Join thousands of players in our virtual league and experience the thrill of winning big!
+            </p>
         </section>
 
         <footer>
@@ -153,8 +434,82 @@
     </main>
 
     <div id="grid-view">
-        <button onclick="location.reload()" style="color:var(--orange); background:none; border:none; font-weight:bold; cursor:pointer;">← BACK</button>
+        <button onclick="location.reload()" style="color:var(--orange); background:none; border:none; font-weight:bold; cursor:pointer; margin-bottom: 10px;">← BACK</button>
+        
+        <!-- Color Legend -->
+        <div class="color-legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #1d4ed8;"></div>
+                <span>Available</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #eab308;"></div>
+                <span>Selected</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #A1662F;"></div>
+                <span>Approved</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #15803d; opacity: 0.3;"></div>
+                <span>Sold</span>
+            </div>
+        </div>
+        
+        <!-- Prize Header -->
+        <div class="prize-header" id="prize-header">
+            <h3 id="prize-title">Exciting | አጓጓጊ</h3>
+            <div class="prize-amount" id="prize-amount">0 ETB</div>
+        </div>
+        
         <div id="grid-main" class="grid"></div>
+        
+        <!-- Winner Feed -->
+        <div class="winner-feed">
+            <div class="winner-feed-title" id="winner-title">Recent Winners | የቅርብ ጊዜ አሸናፊዎች</div>
+            <div id="winner-list"></div>
+        </div>
+    </div>
+    
+    <!-- Payment Modal -->
+    <div class="payment-modal" id="payment-modal">
+        <div class="payment-content">
+            <div class="payment-header">
+                <h3 id="modal-title">Payment Verification</h3>
+                <button class="close-btn" onclick="closePaymentModal()">&times;</button>
+            </div>
+            
+            <div class="account-info">
+                <div class="account-item">
+                    <div>
+                        <div class="account-label">Telebirr</div>
+                        <div class="account-number" id="telebirr-account">0998815949</div>
+                    </div>
+                    <button class="copy-btn" onclick="copyAccount('0998815949')">Copy</button>
+                </div>
+                <div class="account-item">
+                    <div>
+                        <div class="account-label">Cbebirr</div>
+                        <div class="account-number" id="cbebirr-account">0998815949</div>
+                    </div>
+                    <button class="copy-btn" onclick="copyAccount('0998815949')">Copy</button>
+                </div>
+            </div>
+            
+            <div class="countdown-timer" id="countdown-timer">05:00</div>
+            
+            <form id="payment-form" onsubmit="submitPayment(event)">
+                <div class="form-group">
+                    <label for="phone-number" id="phone-label">Phone Number</label>
+                    <input type="tel" id="phone-number" name="phone" required placeholder="09XXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label for="payment-screenshot" id="screenshot-label">Payment Screenshot <span class="file-required">*Required</span></label>
+                    <input type="file" id="payment-screenshot" name="screenshot" accept="image/*" required>
+                </div>
+                <button type="submit" class="submit-btn" id="submit-btn">Submit Payment</button>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -166,12 +521,34 @@
             am: { 
                 thT: "ዓይነት", thR: "ዙር", thS: "ሁኔታ", thP: "ዋጋ", 
                 leagueT: "ሊግ ሁኔታ (League Status)", statusSold: "ተሽጧል", statusDraw: "ዕጣ በመውጣት ላይ", statusDone: "ተጠናቋል",
-                soonT: "በቅርቡ ይጠብቁ!", soonB: "አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!" 
+                soonT: "በቅርቡ ይጠብቁ!", soonB: "አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!",
+                navAbout: "ስለእኛ", commentBtn: "አስተያየት",
+                aboutTitle: "ስለእኛ", aboutText: "ወደ ስኬት ሎቶ እንኳን በደህና መጡ። የኢትዮጵያ ዋና የሎተሪ መድረክ። አስደሳች የትኬት ደረጃዎችን እና አስደሳች ሽልማቶችን እንሰጣለን። በሚሊዮኖች የሚቆጠሩ ተጫዋቾች ውስጥ ይቀላቀሉ እና የመሸነፍ ስሜትን ይለማመዱ!",
+                prizeTitle: "አጓጓጊ | Exciting",
+                modalTitle: "ክፍያ ማረጋገጥ",
+                phoneLabel: "ስልክ ቁጥር",
+                screenshotLabel: "የክፍያ ስክሪንሾት",
+                fileRequired: "*ያስፈልጋል",
+                submitBtn: "ክፍያ አስገባ",
+                submitting: "በመላክ ላይ...",
+                winnerTitle: "የቅርብ ጊዜ አሸናፊዎች | Recent Winners",
+                noWinners: "እስካሁን አሸናፊ የለም"
             },
             en: { 
                 thT: "Game Type", thR: "Round", thS: "Status", thP: "Price", 
                 leagueT: "Virtual League Status", statusSold: "Sold", statusDraw: "Drawing", statusDone: "Completed",
-                soonT: "Coming Soon!", soonB: "We are preparing exciting new lotteries and even bigger prizes. Stay tuned!"
+                soonT: "Coming Soon!", soonB: "We are preparing exciting new lotteries and even bigger prizes. Stay tuned!",
+                navAbout: "About Us", commentBtn: "Comment",
+                aboutTitle: "About Us", aboutText: "Welcome to Siket Lotto, Ethiopia's premier lottery platform. We offer exciting ticket tiers with amazing prizes. Join thousands of players in our virtual league and experience the thrill of winning big!",
+                prizeTitle: "Exciting | አጓጓጊ",
+                modalTitle: "Payment Verification",
+                phoneLabel: "Phone Number",
+                screenshotLabel: "Payment Screenshot",
+                fileRequired: "*Required",
+                submitBtn: "Submit Payment",
+                submitting: "Submitting...",
+                winnerTitle: "Recent Winners | የቅርብ ጊዜ አሸናፊዎች",
+                noWinners: "No winners yet"
             }
         };
 
@@ -214,23 +591,244 @@
             document.getElementById('league-t').innerText = langData[lang].leagueT;
             document.getElementById('soon-t').innerText = langData[lang].soonT;
             document.getElementById('soon-b').innerText = langData[lang].soonB;
+            document.getElementById('nav-about').innerText = langData[lang].navAbout;
+            document.getElementById('comment-btn').innerText = langData[lang].commentBtn;
+            document.getElementById('about-title').innerText = langData[lang].aboutTitle;
+            document.getElementById('about-text').innerText = langData[lang].aboutText;
+            
+            // Update grid view elements if visible
+            if(document.getElementById('grid-view').style.display !== 'none') {
+                document.getElementById('prize-title').innerText = langData[lang].prizeTitle;
+                document.getElementById('modal-title').innerText = langData[lang].modalTitle;
+                document.getElementById('winner-title').innerText = langData[lang].winnerTitle;
+                const phoneLabel = document.querySelector('label[for="phone-number"]');
+                const screenshotLabel = document.querySelector('label[for="payment-screenshot"]');
+                if(phoneLabel) phoneLabel.innerText = langData[lang].phoneLabel;
+                if(screenshotLabel) {
+                    screenshotLabel.innerHTML = langData[lang].screenshotLabel + ' <span class="file-required">' + langData[lang].fileRequired + '</span>';
+                }
+            }
+            
             loadLeagueData();
         }
 
+        function scrollToTickets() {
+            document.getElementById('ticket-selection').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        let currentTierId = null;
+        let currentRound = null;
+        let selectedCell = null;
+        let countdownInterval = null;
+        let countdownSeconds = 300; // 5 minutes
+
         async function openTier(id) {
+            currentTierId = id;
             document.getElementById('home-view').style.display = 'none';
             document.getElementById('grid-view').style.display = 'block';
             const res = await fetch(`/api/status/${id}`);
             const data = await res.json();
+            currentRound = data.round;
+            
+            // Update prize header
+            // Handle third_prize - it might be INT or might need conversion
+            const thirdPrize = data.prizes?.third_prize || 0;
+            const thirdPrizeNum = typeof thirdPrize === 'number' ? thirdPrize : (parseInt(thirdPrize) || 0);
+            const prizeAmount = data.prizes ? ((data.prizes.first_prize || 0) + (data.prizes.second_prize || 0) + thirdPrizeNum) : 0;
+            document.getElementById('prize-amount').textContent = `${prizeAmount} ETB`;
+            document.getElementById('prize-title').textContent = langData[lang].prizeTitle;
+            document.getElementById('winner-title').textContent = langData[lang].winnerTitle;
+            
+            // Load winners
+            loadWinners(id);
+            
             const g = document.getElementById('grid-main');
             g.innerHTML = '';
             data.tickets.forEach(t => {
                 const d = document.createElement('div');
-                d.className = `cell ${t.status}`;
+                let statusClass = 'available';
+                if(t.status === 'sold') {
+                    statusClass = 'approved'; // Approved/Sold shows wood color
+                } else if(t.status === 'pending') {
+                    statusClass = 'pending'; // Pending shows yellow
+                }
+                
+                d.className = `cell ${statusClass}`;
                 d.innerText = t.number_val;
+                if(t.status === 'available') {
+                    d.onclick = () => selectCell(t.number_val, d);
+                } else {
+                    d.style.pointerEvents = 'none'; // Disable clicks for non-available
+                }
                 g.appendChild(d);
             });
         }
+
+        function selectCell(number, element) {
+            // Remove previous selection
+            if(selectedCell) {
+                selectedCell.classList.remove('selected');
+                if(selectedCell.classList.contains('available')) {
+                    selectedCell.classList.add('available');
+                }
+            }
+            
+            // Add selection to current cell
+            element.classList.remove('available');
+            element.classList.add('selected');
+            selectedCell = element;
+            
+            // Open payment modal
+            openPaymentModal(number);
+        }
+
+        function openPaymentModal(ticketNumber) {
+            document.getElementById('payment-modal').classList.add('active');
+            document.getElementById('phone-number').value = '';
+            document.getElementById('payment-screenshot').value = '';
+            
+            // Update labels
+            document.getElementById('modal-title').textContent = langData[lang].modalTitle;
+            document.getElementById('phone-label').textContent = langData[lang].phoneLabel;
+            document.getElementById('screenshot-label').innerHTML = langData[lang].screenshotLabel + ' <span class="file-required">' + langData[lang].fileRequired + '</span>';
+            document.getElementById('submit-btn').textContent = langData[lang].submitBtn;
+            
+            // Reset and start countdown
+            countdownSeconds = 300;
+            startCountdown();
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').classList.remove('active');
+            if(countdownInterval) {
+                clearInterval(countdownInterval);
+                countdownInterval = null;
+            }
+            // Reset selection
+            if(selectedCell) {
+                selectedCell.classList.remove('selected');
+                selectedCell.classList.add('available');
+                selectedCell = null;
+            }
+        }
+
+        function startCountdown() {
+            if(countdownInterval) clearInterval(countdownInterval);
+            
+            const timerEl = document.getElementById('countdown-timer');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            countdownInterval = setInterval(() => {
+                const minutes = Math.floor(countdownSeconds / 60);
+                const seconds = countdownSeconds % 60;
+                timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                
+                if(countdownSeconds <= 0) {
+                    clearInterval(countdownInterval);
+                    timerEl.textContent = 'Time Expired';
+                    submitBtn.disabled = true;
+                    setTimeout(() => {
+                        closePaymentModal();
+                    }, 2000);
+                }
+                countdownSeconds--;
+            }, 1000);
+        }
+
+        function copyAccount(account) {
+            navigator.clipboard.writeText(account).then(() => {
+                // Visual feedback
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.style.background = '#15803d';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                }, 2000);
+            }).catch(() => {
+                alert('Failed to copy. Account: ' + account);
+            });
+        }
+
+        async function submitPayment(event) {
+            event.preventDefault();
+            
+            const formData = new FormData();
+            const phone = document.getElementById('phone-number').value;
+            const screenshot = document.getElementById('payment-screenshot').files[0];
+            
+            if(!screenshot) {
+                alert('Please upload a payment screenshot');
+                return;
+            }
+            
+            formData.append('photo', screenshot);
+            formData.append('userId', tg.initDataUnsafe?.user?.id || '0');
+            formData.append('tierId', currentTierId);
+            formData.append('number', selectedCell?.textContent);
+            formData.append('phone', phone);
+            formData.append('round', currentRound);
+            
+            const submitBtn = document.getElementById('submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = langData[lang].submitting;
+            
+            try {
+                const res = await fetch('/api/upload-payment', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await res.json();
+                if(data.success) {
+                    alert('Payment submitted successfully! Please wait for approval.');
+                    closePaymentModal();
+                    // Refresh grid
+                    openTier(currentTierId);
+                } else {
+                    alert('Failed to submit payment. Please try again.');
+                }
+            } catch(error) {
+                alert('Error submitting payment: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = langData[lang].submitBtn;
+            }
+        }
+
+        async function loadWinners(tierId) {
+            try {
+                const res = await fetch(`/api/history/${tierId}`);
+                const data = await res.json();
+                const winnerList = document.getElementById('winner-list');
+                winnerList.innerHTML = '';
+                
+                if(data.length === 0) {
+                    winnerList.innerHTML = `<div style="text-align:center; color:#64748b; padding:10px;">${langData[lang].noWinners}</div>`;
+                    return;
+                }
+                
+                data.forEach(winner => {
+                    const item = document.createElement('div');
+                    item.className = 'winner-item';
+                    item.innerHTML = `
+                        <span class="winner-round">Round #${String(winner.round_no).padStart(4, '0')}</span>
+                        <span class="winner-number">🏆 #${winner.first_num}</span>
+                    `;
+                    winnerList.appendChild(item);
+                });
+            } catch(error) {
+                console.error('Error loading winners:', error);
+            }
+        }
+        
+        // Auto-refresh winners every 10 seconds
+        setInterval(() => {
+            if(currentTierId) {
+                loadWinners(currentTierId);
+            }
+        }, 10000);
 
         loadLeagueData();
     </script>
