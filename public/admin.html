@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | Siket Lotto</title>
+    <style>
+        :root { 
+            --orange: #ff7a2f; --gold: #FFD36A; --navy: #020617;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--navy);
+            color: white;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 20px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .header h1 {
+            color: var(--gold);
+            font-size: 24px;
+        }
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .filter-btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .filter-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .filter-btn.active {
+            background: var(--orange);
+            border-color: var(--orange);
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--gold);
+        }
+        .table-container {
+            overflow-x: auto;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        th {
+            background: rgba(255,255,255,0.05);
+            padding: 12px;
+            text-align: left;
+            color: #94a3b8;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        tr:hover {
+            background: rgba(255,255,255,0.02);
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        .status-pending { background: #eab308; color: black; }
+        .status-approved { background: #15803d; color: white; }
+        .status-rejected { background: #dc2626; color: white; }
+        .screenshot-link {
+            color: var(--orange);
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .screenshot-link:hover {
+            text-decoration: underline;
+        }
+        .tier-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .tier-gold { background: #FFD36A; color: black; }
+        .tier-silver { background: #e5e7eb; color: black; }
+        .tier-bronze { background: #cd7f32; color: white; }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+        .refresh-btn {
+            background: var(--orange);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .refresh-btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔐 Admin Dashboard</h1>
+        <button class="refresh-btn" onclick="loadDashboard()">🔄 Refresh</button>
+    </div>
+
+    <div class="filter-buttons">
+        <button class="filter-btn active" onclick="filterByStatus('all')">All</button>
+        <button class="filter-btn" onclick="filterByStatus('pending')">Pending</button>
+        <button class="filter-btn" onclick="filterByStatus('approved')">Approved</button>
+        <button class="filter-btn" onclick="filterByStatus('rejected')">Rejected</button>
+    </div>
+
+    <div class="stats" id="stats">
+        <div class="stat-card">
+            <div class="stat-label">Total Requests</div>
+            <div class="stat-value" id="stat-total">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Pending</div>
+            <div class="stat-value" id="stat-pending">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Approved</div>
+            <div class="stat-value" id="stat-approved">0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Rejected</div>
+            <div class="stat-value" id="stat-rejected">0</div>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <div id="loading" class="loading">Loading...</div>
+        <table id="dashboard-table" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Round #</th>
+                    <th>Start Time</th>
+                    <th>Tier</th>
+                    <th>Ticket #</th>
+                    <th>Full Name</th>
+                    <th>Phone</th>
+                    <th>Screenshot</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="table-body">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        let currentFilter = 'all';
+        let allData = [];
+
+        async function loadDashboard() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('dashboard-table').style.display = 'none';
+            
+            try {
+                const res = await fetch('/api/admin/dashboard');
+                allData = await res.json();
+                updateStats();
+                filterData();
+            } catch(error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('loading').innerHTML = 'Error loading data. Please check if the payment_requests table exists.';
+            }
+        }
+
+        function updateStats() {
+            const total = allData.length;
+            const pending = allData.filter(d => d.status === 'pending').length;
+            const approved = allData.filter(d => d.status === 'approved').length;
+            const rejected = allData.filter(d => d.status === 'rejected').length;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-pending').textContent = pending;
+            document.getElementById('stat-approved').textContent = approved;
+            document.getElementById('stat-rejected').textContent = rejected;
+        }
+
+        function filterByStatus(status) {
+            currentFilter = status;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            filterData();
+        }
+
+        function filterData() {
+            let filtered = allData;
+            if(currentFilter !== 'all') {
+                filtered = allData.filter(d => d.status === currentFilter);
+            }
+
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+
+            if(filtered.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:#94a3b8;">No data found</td></tr>';
+            } else {
+                filtered.forEach(item => {
+                    const row = document.createElement('tr');
+                    const startTime = new Date(item.start_time);
+                    const timeStr = startTime.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit', 
+                        hour12: false 
+                    });
+                    const dateStr = startTime.toLocaleDateString();
+                    
+                    const tierClass = item.tier_id == 3 ? 'tier-gold' : item.tier_id == 2 ? 'tier-silver' : 'tier-bronze';
+                    const tierName = item.tier_id == 3 ? '🥇 GOLD' : item.tier_id == 2 ? '🥈 SILVER' : '🥉 BRONZE';
+                    
+                    const screenshotUrl = item.screenshot_url.startsWith('http') 
+                        ? item.screenshot_url 
+                        : `/uploads/${item.screenshot_url.split('/').pop()}`;
+                    
+                    row.innerHTML = `
+                        <td>#${String(item.round_no).padStart(4, '0')}</td>
+                        <td>${dateStr} ${timeStr}</td>
+                        <td><span class="tier-badge ${tierClass}">${tierName}</span></td>
+                        <td>#${item.ticket_number}</td>
+                        <td>${item.full_name || 'N/A'}</td>
+                        <td>${item.phone || 'N/A'}</td>
+                        <td><a href="${screenshotUrl}" target="_blank" class="screenshot-link">View</a></td>
+                        <td><span class="status-badge status-${item.status}">${item.status.toUpperCase()}</span></td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard-table').style.display = 'table';
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadDashboard, 30000);
+
+        // Load on page load
+        loadDashboard();
+    </script>
+</body>
+</html>
