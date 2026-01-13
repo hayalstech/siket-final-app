@@ -43,6 +43,43 @@ app.get('/api/history/:tierId', async (req, res) => {
     } catch (err) { res.status(500).send(err.message); }
 });
 
+// --- API: Get All Winners for Statistics ---
+app.get('/api/winners/all', async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT tier_id, round_no, w1_num as first, w2_num as second, w3_num as third, created_at
+            FROM winners_history 
+            ORDER BY id DESC 
+            LIMIT 50
+        `);
+        res.json(result.rows);
+    } catch (err) { 
+        console.error('Error fetching all winners:', err);
+        res.status(500).send(err.message); 
+    }
+});
+
+// --- API: Get Statistics ---
+app.get('/api/statistics', async (req, res) => {
+    try {
+        const totalWinners = await pool.query("SELECT COUNT(*) as count FROM winners_history");
+        const totalRounds = await pool.query("SELECT COUNT(DISTINCT round_no) as count FROM winners_history");
+        const todayWinners = await pool.query(`
+            SELECT COUNT(*) as count FROM winners_history 
+            WHERE DATE(created_at) = CURRENT_DATE
+        `);
+        
+        res.json({
+            totalWinners: parseInt(totalWinners.rows[0].count) || 0,
+            totalRounds: parseInt(totalRounds.rows[0].count) || 0,
+            todayWinners: parseInt(todayWinners.rows[0].count) || 0
+        });
+    } catch (err) {
+        console.error('Error fetching statistics:', err);
+        res.status(500).send(err.message);
+    }
+});
+
 // --- API: Admin Dashboard ---
 app.get('/api/admin/dashboard', async (req, res) => {
     try {
@@ -329,6 +366,9 @@ async function runDrawLogic(tId, rnd) {
 
     // Send Admin Log
     await bot.api.sendMessage(process.env.ADMIN_ID, `🏆 **ROUND #${rnd} DRAW COMPLETE**\n1st: #${w[2].number_val}\n2nd: #${w[1].number_val}\n3rd: #${w[0].number_val}`);
+    
+    // Post winners instantly to Telegram group/channel
+    await postWinnersToGroup(tId, rnd, w[2].number_val, w[1].number_val, w[0].number_val);
 
     // Store winners in database for verification
     const winners = [
@@ -368,6 +408,41 @@ async function runDrawLogic(tId, rnd) {
         // Alert Admin
         await bot.api.sendMessage(process.env.ADMIN_ID, `🔄 **ROUND #${nextR} STARTED**\nTier ${tId} is now accepting tickets for Round #${nextR}`);
     }, 60000); // 60 seconds total
+}
+
+// Post winners to Telegram group/channel instantly
+async function postWinnersToGroup(tierId, roundNo, firstNum, secondNum, thirdNum) {
+    try {
+        const tierEmojis = { 1: '🥉', 2: '🥈', 3: '🥇' };
+        const tierNames = { 1: 'BRONZE', 2: 'SILVER', 3: 'GOLD' };
+        const tierNamesAm = { 1: 'ነሐስ', 2: 'ብር', 3: 'ወርቅ' };
+        
+        const emoji = tierEmojis[tierId] || '🏆';
+        const tierName = tierNames[tierId] || 'UNKNOWN';
+        const tierNameAm = tierNamesAm[tierId] || 'ያልታወቀ';
+        
+        // Format: @siketlotto or -1001234567890 (channel/group ID)
+        const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
+        
+        const message = `🎉 **${emoji} ${tierName} TIER - ROUND #${String(roundNo).padStart(4, '0')} WINNERS** 🎉\n\n` +
+            `🥇 **1st Place:** Ticket #${firstNum}\n` +
+            `🥈 **2nd Place:** Ticket #${secondNum}\n` +
+            `🥉 **3rd Place:** Ticket #${thirdNum}\n\n` +
+            `🎊 እንኳን ደስ አለዎት አሸናፊዎች! 🎊\n\n` +
+            `**${tierNameAm} ደረጃ - ዙር #${String(roundNo).padStart(4, '0')} አሸናፊዎች**\n\n` +
+            `🥇 **1ኛ ምድብ:** ትኬት #${firstNum}\n` +
+            `🥈 **2ኛ ምድብ:** ትኬት #${secondNum}\n` +
+            `🥉 **3ኛ ምድብ:** ትኬት #${thirdNum}\n\n` +
+            `━━━━━━━━━━━━━━━━━━━━\n` +
+            `🎯 **Next Round Starting Soon!**\n` +
+            `🎯 **የሚቀጥለው ዙር በቅርቡ ይጀምራል!**`;
+        
+        await bot.api.sendMessage(groupId, message, { parse_mode: 'Markdown' });
+        console.log(`✅ Posted winners to ${groupId} for Tier ${tierId}, Round ${roundNo}`);
+    } catch (error) {
+        console.error('Error posting winners to group:', error);
+        // Don't throw - this is not critical for the draw process
+    }
 }
 
 async function sendWinnerNotifications(winners) {
@@ -410,8 +485,38 @@ async function sendWinnerNotifications(winners) {
 
 bot.command("start", async (ctx) => {
     await getUser(ctx.from.id, ctx.from.username);
-    const kb = new InlineKeyboard().webApp("ትኬት ይቁረጡ | Buy Ticket", process.env.WEBAPP_URL).row().url("በመረጃ ማዕከል ይግዙ", "https://t.me/Contact_Siketlottery");
-    ctx.reply(`ሰላም ${ctx.from.first_name}! 👋\nእንኳን ወደ ስኬት ሎቶ በደህና መጡ!`, { reply_markup: kb });
+    
+    // Ensure WEBAPP_URL is properly formatted
+    let webAppUrl = process.env.WEBAPP_URL;
+    if (!webAppUrl) {
+        console.error('⚠️ WEBAPP_URL is not set in environment variables!');
+        await ctx.reply('❌ Configuration error: Web app URL not set. Please contact administrator.');
+        return;
+    }
+    
+    // Clean up URL: remove trailing slash, ensure https://
+    webAppUrl = webAppUrl.trim().replace(/\/$/, '');
+    if (!webAppUrl.startsWith('http://') && !webAppUrl.startsWith('https://')) {
+        webAppUrl = `https://${webAppUrl}`;
+    }
+    
+    // Telegram Web Apps work with the base URL - server should serve index.html by default
+    // If your server requires /index.html, uncomment the line below
+    // webAppUrl = `${webAppUrl}/index.html`;
+    
+    console.log(`🔗 Web App URL configured: ${webAppUrl}`);
+    
+    try {
+        const kb = new InlineKeyboard()
+            .webApp("ትኬት ይቁረጡ | Buy Ticket", webAppUrl)
+            .row()
+            .url("በመረጃ ማዕከል ይግዙ", "https://t.me/Contact_Siketlottery");
+        
+        await ctx.reply(`ሰላም ${ctx.from.first_name}! 👋\nእንኳን ወደ ስኬት ሎቶ በደህና መጡ!`, { reply_markup: kb });
+    } catch (error) {
+        console.error('Error creating web app button:', error);
+        await ctx.reply('❌ Error loading web app. Please try again later or contact support.');
+    }
 });
 
 // Keep Awake

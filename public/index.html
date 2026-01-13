@@ -178,8 +178,38 @@
 
         /* --- PSYCHOLOGICAL GRID --- */
         #grid-view { display: none; padding: 80px 15px 30px 15px; text-align: center; flex: 1; position: relative; }
+        
+        /* Back button in top-left corner */
+        .back-button {
+            position: fixed;
+            top: 70px;
+            left: 15px;
+            z-index: 2000;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--orange);
+            font-size: 28px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        .back-button:hover {
+            background: rgba(255, 122, 47, 0.9);
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(255, 122, 47, 0.6);
+        }
+        
         .prize-header {
-            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('images/soon.png');
+            background-image: linear-gradient(rgba(0,0,0,0.15), rgba(0,0,0,0.15)), url('images/soon.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -187,18 +217,36 @@
             margin-bottom: 20px;
             border-radius: 12px;
             text-align: center;
+            position: relative;
+        }
+        .prize-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            pointer-events: none;
         }
         .prize-header h3 {
             font-size: 18px;
             font-weight: 900;
             color: var(--accent);
             margin: 0;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
         .prize-amount {
             font-size: 24px;
             font-weight: 900;
             color: var(--accent);
             margin-top: 5px;
+            position: relative;
+            z-index: 1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
         }
         .color-legend {
             position: absolute;
@@ -453,6 +501,178 @@
         }
 
         @keyframes blink-status { 50% { opacity: 0.5; } }
+        
+        /* --- LIVE WINNERS SECTION --- */
+        .live-winners-section {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(255, 122, 47, 0.1));
+            padding: 30px 15px;
+            margin-top: 20px;
+            border-top: 2px solid var(--accent);
+            border-bottom: 2px solid var(--accent);
+        }
+        .live-winners-title {
+            font-size: 22px;
+            font-weight: 900;
+            color: var(--accent);
+            text-align: center;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .winners-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .winner-card {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 15px;
+            padding: 20px;
+            border: 2px solid var(--accent);
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .winner-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
+            animation: rotate 10s linear infinite;
+        }
+        @keyframes rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .winner-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
+            border-color: var(--orange);
+        }
+        .winner-tier {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+        .winner-round {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 15px;
+        }
+        .winner-numbers {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .winner-place {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+        .place-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+        }
+        .place-number {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--accent);
+            background: rgba(212, 175, 55, 0.2);
+            padding: 8px 15px;
+            border-radius: 10px;
+            min-width: 60px;
+        }
+        .place-number.first { color: #FFD700; }
+        .place-number.second { color: #C0C0C0; }
+        .place-number.third { color: #CD7F32; }
+        
+        /* --- STATISTICS SECTION --- */
+        .stats-section {
+            background: var(--bg-secondary);
+            padding: 40px 15px;
+            margin-top: 30px;
+        }
+        .stats-title {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--accent);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        .stat-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--accent);
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.2);
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 900;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* --- SOCIAL PROOF SECTION --- */
+        .social-proof {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
+            padding: 30px 15px;
+            text-align: center;
+        }
+        .social-proof-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+        .telegram-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #0088cc, #006699);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 136, 204, 0.3);
+        }
+        .telegram-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 136, 204, 0.5);
+        }
+        .telegram-link::before {
+            content: '📢 ';
+        }
     </style>
 </head>
 <body>
@@ -474,6 +694,53 @@
         <!-- Hero Section -->
         <section class="hero" onclick="scrollToTickets()" style="cursor: pointer;">
             <img src="images/background.png" class="hero-img" alt="Luxury Hero Banner">
+        </section>
+
+        <!-- Live Winners Section -->
+        <section class="live-winners-section">
+            <h2 class="live-winners-title lang-en">🏆 LIVE WINNERS 🏆</h2>
+            <h2 class="live-winners-title lang-am">🏆 የቀጥታ አሸናፊዎች 🏆</h2>
+            <div class="winners-grid" id="live-winners-grid">
+                <!-- Dynamically loaded -->
+            </div>
+        </section>
+
+        <!-- Statistics Section -->
+        <section class="stats-section">
+            <h2 class="stats-title lang-en">📊 Statistics</h2>
+            <h2 class="stats-title lang-am">📊 ስታትስቲክስ</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="total-winners">0</div>
+                    <div class="stat-label lang-en">Total Winners</div>
+                    <div class="stat-label lang-am">ጠቅላላ አሸናፊዎች</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-prize">0 ETB</div>
+                    <div class="stat-label lang-en">Total Prizes Paid</div>
+                    <div class="stat-label lang-am">ጠቅላላ የተከፈሉ ሽልማቶች</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="active-rounds">3</div>
+                    <div class="stat-label lang-en">Active Rounds</div>
+                    <div class="stat-label lang-am">ንቁ ዙሮች</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="tickets-sold">0</div>
+                    <div class="stat-label lang-en">Tickets Sold Today</div>
+                    <div class="stat-label lang-am">ዛሬ የተሸጡ ትኬቶች</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Social Proof Section -->
+        <section class="social-proof">
+            <h3 class="social-proof-title lang-en">📢 Follow Live Winners on Telegram</h3>
+            <h3 class="social-proof-title lang-am">📢 በቴሌግራም የቀጥታ አሸናፊዎችን ይከታተሉ</h3>
+            <p class="lang-en" style="color: #94a3b8; margin-bottom: 20px;">Get instant notifications when winners are announced!</p>
+            <p class="lang-am" style="color: #94a3b8; margin-bottom: 20px;">አሸናፊዎች ሲገለገሉ ወዲያውኑ ማሳወቂያዎችን ይቀበሉ!</p>
+            <a href="https://t.me/siketlotto" target="_blank" class="telegram-link lang-en">Join Winners Channel</a>
+            <a href="https://t.me/siketlotto" target="_blank" class="telegram-link lang-am">የአሸናፊዎች ሰርጥ ይቀላቀሉ</a>
         </section>
 
         <!-- Tickets Section -->
@@ -630,7 +897,8 @@
     </main>
 
     <div id="grid-view">
-        <button onclick="location.reload()" style="color:var(--orange); background:none; border:none; font-weight:bold; cursor:pointer; margin-bottom: 10px;">← BACK</button>
+        <!-- Back button in top-left corner -->
+        <button class="back-button" onclick="location.reload()" title="Go Back">←</button>
         
         <!-- Color Legend -->
         <div class="color-legend">
@@ -1175,7 +1443,206 @@
             }
         }, 10000);
 
+        // Load live winners from all tiers
+        async function loadLiveWinners() {
+            const winnersGrid = document.getElementById('live-winners-grid');
+            if (!winnersGrid) return;
+            
+            winnersGrid.innerHTML = '';
+            const tiers = [
+                { id: 3, name: 'GOLD', nameAm: 'ወርቅ', emoji: '🥇' },
+                { id: 2, name: 'SILVER', nameAm: 'ብር', emoji: '🥈' },
+                { id: 1, name: 'BRONZE', nameAm: 'ነሐስ', emoji: '🥉' }
+            ];
+            
+            for (const tier of tiers) {
+                try {
+                    // Get latest winner with all places
+                    const allWinnersRes = await fetch(`/api/winners/all`);
+                    const allWinners = await allWinnersRes.json();
+                    const tierWinners = allWinners.filter(w => w.tier_id === tier.id);
+                    
+                    if (tierWinners && tierWinners.length > 0) {
+                        const latest = tierWinners[0];
+                        const card = document.createElement('div');
+                        card.className = 'winner-card';
+                        
+                        const tierName = lang === 'en' ? tier.name : tier.nameAm;
+                        card.innerHTML = `
+                            <div class="winner-tier">${tier.emoji} ${tierName}</div>
+                            <div class="winner-round lang-en">Round #${String(latest.round_no).padStart(4, '0')}</div>
+                            <div class="winner-round lang-am">ዙር #${String(latest.round_no).padStart(4, '0')}</div>
+                            <div class="winner-numbers">
+                                ${latest.first ? `
+                                <div class="winner-place">
+                                    <div class="place-label lang-en">1st</div>
+                                    <div class="place-label lang-am">1ኛ</div>
+                                    <div class="place-number first">#${latest.first}</div>
+                                </div>
+                                ` : ''}
+                                ${latest.second ? `
+                                <div class="winner-place">
+                                    <div class="place-label lang-en">2nd</div>
+                                    <div class="place-label lang-am">2ኛ</div>
+                                    <div class="place-number second">#${latest.second}</div>
+                                </div>
+                                ` : ''}
+                                ${latest.third ? `
+                                <div class="winner-place">
+                                    <div class="place-label lang-en">3rd</div>
+                                    <div class="place-label lang-am">3ኛ</div>
+                                    <div class="place-number third">#${latest.third}</div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        `;
+                        winnersGrid.appendChild(card);
+                    } else {
+                        // Fallback to history API
+                        const res = await fetch(`/api/history/${tier.id}`);
+                        const history = await res.json();
+                        
+                        if (history && history.length > 0) {
+                            const latest = history[0];
+                            const card = document.createElement('div');
+                            card.className = 'winner-card';
+                            
+                            const tierName = lang === 'en' ? tier.name : tier.nameAm;
+                            card.innerHTML = `
+                                <div class="winner-tier">${tier.emoji} ${tierName}</div>
+                                <div class="winner-round lang-en">Round #${String(latest.round_no).padStart(4, '0')}</div>
+                                <div class="winner-round lang-am">ዙር #${String(latest.round_no).padStart(4, '0')}</div>
+                                <div class="winner-numbers">
+                                    <div class="winner-place">
+                                        <div class="place-label lang-en">1st</div>
+                                        <div class="place-label lang-am">1ኛ</div>
+                                        <div class="place-number first">#${latest.first_num}</div>
+                                    </div>
+                                </div>
+                            `;
+                            winnersGrid.appendChild(card);
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Error loading winners for tier ${tier.id}:`, e);
+                }
+            }
+            
+            // If no winners, show message
+            if (winnersGrid.children.length === 0) {
+                winnersGrid.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px;">
+                        <p class="lang-en">No winners yet. Be the first!</p>
+                        <p class="lang-am">እስካሁን አሸናፊ የለም። የመጀመሪያው ይሁኑ!</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Load statistics
+        async function loadStatistics() {
+            try {
+                // Try to use the statistics API first
+                try {
+                    const statsRes = await fetch('/api/statistics');
+                    const stats = await statsRes.json();
+                    
+                    const totalWinnersEl = document.getElementById('total-winners');
+                    const ticketsSoldEl = document.getElementById('tickets-sold');
+                    
+                    if (totalWinnersEl && stats.totalWinners !== undefined) {
+                        const current = parseInt(totalWinnersEl.textContent) || 0;
+                        if (current !== stats.totalWinners) {
+                            animateValue(totalWinnersEl, current, stats.totalWinners, 1000);
+                        } else {
+                            totalWinnersEl.textContent = stats.totalWinners;
+                        }
+                    }
+                    
+                    if (ticketsSoldEl) {
+                        // Calculate tickets sold from all tiers
+                        let ticketsSold = 0;
+                        for (let tierId = 1; tierId <= 3; tierId++) {
+                            try {
+                                const statusRes = await fetch(`/api/status/${tierId}`);
+                                const status = await statusRes.json();
+                                ticketsSold += status.tickets.filter(t => t.status === 'sold').length;
+                            } catch (e) {}
+                        }
+                        const current = parseInt(ticketsSoldEl.textContent) || 0;
+                        if (current !== ticketsSold) {
+                            animateValue(ticketsSoldEl, current, ticketsSold, 1000);
+                        } else {
+                            ticketsSoldEl.textContent = ticketsSold;
+                        }
+                    }
+                } catch (e) {
+                    // Fallback to manual calculation
+                    console.log('Using fallback statistics calculation');
+                }
+                
+                // Calculate total prize from all tiers
+                let totalPrize = 0;
+                for (let tierId = 1; tierId <= 3; tierId++) {
+                    try {
+                        const statusRes = await fetch(`/api/status/${tierId}`);
+                        const status = await statusRes.json();
+                        const historyRes = await fetch(`/api/history/${tierId}`);
+                        const history = await historyRes.json();
+                        
+                        if (status.prizes && history) {
+                            const tierPrize = (status.prizes.first_prize || 0) + 
+                                            (status.prizes.second_prize || 0) + 
+                                            (status.prizes.third_prize || 0);
+                            totalPrize += tierPrize * history.length;
+                        }
+                    } catch (e) {}
+                }
+                
+                const totalPrizeEl = document.getElementById('total-prize');
+                if (totalPrizeEl) {
+                    const currentText = totalPrizeEl.textContent.replace(/[^\d]/g, '');
+                    const current = parseInt(currentText) || 0;
+                    if (current !== totalPrize) {
+                        animateValue(totalPrizeEl, current, totalPrize, 1000, true);
+                    } else {
+                        totalPrizeEl.textContent = `${totalPrize.toLocaleString()} ETB`;
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading statistics:', e);
+            }
+        }
+        
+        // Animate number counting
+        function animateValue(element, start, end, duration, isCurrency = false) {
+            const range = end - start;
+            const increment = range / (duration / 16);
+            let current = start;
+            
+            const timer = setInterval(() => {
+                current += increment;
+                if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
+                    current = end;
+                    clearInterval(timer);
+                }
+                element.textContent = isCurrency 
+                    ? `${Math.floor(current).toLocaleString()} ETB`
+                    : Math.floor(current);
+            }, 16);
+        }
+        
+        // Initial load
         loadLeagueData();
+        loadLiveWinners();
+        loadStatistics();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            loadLiveWinners();
+            loadStatistics();
+            loadLeagueData();
+        }, 30000);
     </script>
 </body>
 </html>
