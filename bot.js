@@ -193,16 +193,18 @@ app.get('/api/draw/:tierId', async (req, res) => {
 
 // --- API: Upload Payment ---
 app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
-    const { userId, tierId, number, phone, round } = req.body;
+    const { userId, tierId, number, phone, round, fullName } = req.body;
     const tierName = tierId == 3 ? "🥇 GOLD" : tierId == 2 ? "🥈 SILVER" : "🥉 BRONZE";
     
-    // Get user info from Telegram
-    let fullName = 'Unknown User';
-    try {
-        const userInfo = await bot.api.getChat(userId);
-        fullName = userInfo.first_name + (userInfo.last_name ? ' ' + userInfo.last_name : '');
-    } catch(e) {
-        console.error('Error fetching user info:', e);
+    // Use fullName from form, fallback to Telegram if not provided
+    let userFullName = fullName || 'Unknown User';
+    if(!fullName) {
+        try {
+            const userInfo = await bot.api.getChat(userId);
+            userFullName = userInfo.first_name + (userInfo.last_name ? ' ' + userInfo.last_name : '');
+        } catch(e) {
+            console.error('Error fetching user info:', e);
+        }
     }
     
     const startTime = new Date();
@@ -216,7 +218,7 @@ app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
         await pool.query(`
             INSERT INTO payment_requests (tier_id, ticket_number, round_no, user_id, full_name, phone, screenshot_url, start_time, status)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
-        `, [tierId, number, round, userId, fullName, phone, req.file.path, startTime]);
+        `, [tierId, number, round, userId, userFullName, phone, req.file.path, startTime]);
     } catch(e) {
         console.error('Error storing payment request:', e);
         // Continue even if table doesn't exist yet - admin can create it
@@ -227,7 +229,7 @@ app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
         .text("❌ Reject (ሰርዝ)", `reject_${tierId}_${number}_${userId}_${round}`);
 
     await bot.api.sendPhoto(process.env.ADMIN_ID, new InputFile(req.file.path), {
-        caption: `🔔 **አዲስ ክፍያ**\n\n🔹 **ደረጃ:** ${tierName}\n🔹 **ቁጥር:** #${number}\n🔹 **ዙር:** #${round}\n🔹 **ስልክ:** ${phone}\n🔹 **ስም:** ${fullName}\n🔹 **ጊዜ:** ${startTimeStr}`,
+        caption: `🔔 **አዲስ ክፍያ**\n\n🔹 **ደረጃ:** ${tierName}\n🔹 **ቁጥር:** #${number}\n🔹 **ዙር:** #${round}\n🔹 **ስልክ:** ${phone}\n🔹 **ስም:** ${userFullName}\n🔹 **ጊዜ:** ${startTimeStr}`,
         reply_markup: keyboard
     });
     res.json({ success: true });

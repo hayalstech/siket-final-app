@@ -207,8 +207,7 @@
         .available { background: #1d4ed8; color: white; }
         .selected { background: #eab308; color: black; }
         .pending { background: #eab308; color: black; }
-        .approved { background: #A1662F; color: white; pointer-events: none; }
-        .sold { background: #15803d; opacity: 0.3; pointer-events: none; }
+        .sold { background: #A1662F; color: white; pointer-events: none; }
         
         /* --- PAYMENT MODAL --- */
         .payment-modal {
@@ -463,9 +462,9 @@
                 <button class="btn-buy" onclick="document.getElementById('ticket-selection').scrollIntoView({behavior: 'smooth'})" style="font-size: 14px; padding: 10px 24px;">ትኬት ይቁረጡ</button>
             </div>
             <div class="comp-grid">
-                <div class="ticket-card" onclick="window.location.href='draw.html?tier=3'"><img src="images/golden.png" alt="Gold"><div class="buy-overlay"><button class="btn-buy">Buy Gold</button></div></div>
-                <div class="ticket-card" onclick="openTier(2)"><img src="images/silver.png" alt="Silver"><div class="buy-overlay"><button class="btn-buy">Buy Silver</button></div></div>
-                <div class="ticket-card" onclick="openTier(1)"><img src="images/bronze.png" alt="Bronze"><div class="buy-overlay"><button class="btn-buy">Buy Bronze</button></div></div>
+                <div class="ticket-card" onclick="openTier(3)"><img src="images/golden.png" alt="Gold"><div class="buy-overlay"><button class="btn-buy" id="buy-gold-btn">Buy Gold</button></div></div>
+                <div class="ticket-card" onclick="openTier(2)"><img src="images/silver.png" alt="Silver"><div class="buy-overlay"><button class="btn-buy" id="buy-silver-btn">Buy Silver</button></div></div>
+                <div class="ticket-card" onclick="openTier(1)"><img src="images/bronze.png" alt="Bronze"><div class="buy-overlay"><button class="btn-buy" id="buy-bronze-btn">Buy Bronze</button></div></div>
             </div>
         </section>
 
@@ -642,6 +641,10 @@
             
             <form id="payment-form" onsubmit="submitPayment(event)">
                 <div class="form-group">
+                    <label for="full-name" id="full-name-label">Full Name</label>
+                    <input type="text" id="full-name" name="fullName" required placeholder="Your Full Name">
+                </div>
+                <div class="form-group">
                     <label for="phone-number" id="phone-label">Phone Number</label>
                     <input type="tel" id="phone-number" name="phone" required placeholder="09XXXXXXXX">
                 </div>
@@ -658,6 +661,43 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
         let lang = 'am';
+        
+        // Load theme from localStorage
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        document.getElementById('theme-btn').textContent = savedTheme === 'dark' ? '🌙' : '☀️';
+        
+        // Load language from localStorage if available
+        const savedLang = localStorage.getItem('language');
+        if(savedLang) {
+            lang = savedLang;
+            document.getElementById('lang-btn').innerText = lang === 'am' ? 'EN' : 'አማርኛ';
+        }
+        
+        // Initialize translations on page load
+        function initializeTranslations() {
+            if(document.getElementById('sec-t')) document.getElementById('sec-t').innerText = langData[lang].hottestCompetitions;
+            if(document.getElementById('buy-ticket-btn')) document.getElementById('buy-ticket-btn').innerText = langData[lang].buyTicket;
+            if(document.getElementById('buy-gold-btn')) document.getElementById('buy-gold-btn').innerText = langData[lang].buyGold;
+            if(document.getElementById('buy-silver-btn')) document.getElementById('buy-silver-btn').innerText = langData[lang].buySilver;
+            if(document.getElementById('buy-bronze-btn')) document.getElementById('buy-bronze-btn').innerText = langData[lang].buyBronze;
+            if(document.getElementById('nav-title')) document.getElementById('nav-title').innerText = langData[lang].navTitle;
+            if(document.getElementById('page-title')) document.getElementById('page-title').innerText = langData[lang].navTitle;
+            if(document.getElementById('nav-about')) document.getElementById('nav-about').innerText = langData[lang].navAbout;
+            if(document.getElementById('contact-btn')) document.getElementById('contact-btn').innerText = langData[lang].commentBtn;
+            if(document.getElementById('league-t')) document.getElementById('league-t').innerText = langData[lang].leagueT;
+            if(document.getElementById('th-type')) document.getElementById('th-type').innerText = langData[lang].thT;
+            if(document.getElementById('th-round')) document.getElementById('th-round').innerText = langData[lang].thR;
+            if(document.getElementById('th-status')) document.getElementById('th-status').innerText = langData[lang].thS;
+            if(document.getElementById('th-price')) document.getElementById('th-price').innerText = langData[lang].thP;
+        }
+        
+        // Run initialization when DOM is ready
+        if(document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeTranslations);
+        } else {
+            initializeTranslations();
+        }
 
         const langData = {
             am: { 
@@ -679,13 +719,31 @@
                 askMeBtn: "💬 ጠይቀኝ",
                 prizeTitle: "አጓጓጊ",
                 modalTitle: "ክፍያ ማረጋገጥ",
+                fullNameLabel: "ሙሉ ስም",
                 phoneLabel: "ስልክ ቁጥር",
                 screenshotLabel: "የክፍያ ስክሪንሾት",
                 fileRequired: "*ያስፈልጋል",
                 submitBtn: "ክፍያ አስገባ",
                 submitting: "በመላክ ላይ...",
                 winnerTitle: "የቅርብ ጊዜ አሸናፊዎች",
-                noWinners: "እስካሁን አሸናፊ የለም"
+                noWinners: "እስካሁን አሸናፊ የለም",
+                heroTitle: "ስኬት ስኬት። የእርስዎ የገንዘብ ነፃነት ጉዞ።",
+                playNow: "አሁኑኑ ይጫወቱ",
+                hottestCompetitions: "አሸናፊ የሚያደረጉዋችሁ እጣዎች",
+                buyTicket: "ትኬት ይቁረጡ",
+                buyGold: "የወርቅ ዕጣ ይግዙ",
+                buySilver: "የብር ዕጣ ይግዙ",
+                buyBronze: "የነሐስ ዕጣ ይግዙ",
+                diamondComingSoon: "ዳይመንድ - በቅርቡ ይቀርባል",
+                platinumComingSoon: "ፕላቲነም - በቅርቡ ይቀርባል",
+                contact: "ያግኙን",
+                transparencyText: "ግልጽነት፡ እጣዎች ከ3ኛ እስከ 1ኛ ደረጃ ለሁሉም በሚታይ መልኩ ይወጣሉ።",
+                payoutsText: "ፈጣን ክፍያ፡ የሽልማት ገንዘብዎ በቴሌብር ወይም በንግድ ባንክ ወዲያውኑ ይላክልዎታል።",
+                frequencyText: "ተከታታይነት፡ ፈጣን ጨዋታና ብዙ እድል እንዲኖር በአንድ ዙር 100 ቲኬቶች ብቻ።",
+                payoutPolicyText: "የክፍያ ሁኔታ፡ የሽልማት ገንዘብዎን በተለያዩ ባንኮች መቀበል ይችላሉ።",
+                tippingPolicyText: "የቲኬት አጠቃቀም፡ በመረጃ ማዕከል በኩል መጠቀም ምርጫዎ ነው።",
+                drawTimingText: "የዕጣ ጊዜ፡ ሁሉም ቲኬቶች እንደተሸጡ የ5 ደቂቃ ቆጠራ ይጀምራል።",
+                restrictionsText: "ክልከላዎች፡ ተጫዋቾች ዕድሜያቸው 18 እና ከዚያ በላይ መሆን አለበት። በኃላፊነት ይጫወቱ።"
             },
             en: { 
                 thT: "Game Type", thR: "Round", thS: "Status", thP: "Price", 
@@ -707,13 +765,31 @@
                 askMeBtn: "💬 Ask Me",
                 prizeTitle: "Exciting",
                 modalTitle: "Payment Verification",
+                fullNameLabel: "Full Name",
                 phoneLabel: "Phone Number",
                 screenshotLabel: "Payment Screenshot",
                 fileRequired: "*Required",
                 submitBtn: "Submit Payment",
                 submitting: "Submitting...",
                 winnerTitle: "Recent Winners",
-                noWinners: "No winners yet"
+                noWinners: "No winners yet",
+                heroTitle: "SIKET SUCCESS. YOUR JOURNEY TO FINANCIAL FREEDOM.",
+                playNow: "PLAY NOW",
+                hottestCompetitions: "Hottest Competitions",
+                buyTicket: "Buy Ticket",
+                buyGold: "Buy Gold",
+                buySilver: "Buy Silver",
+                buyBronze: "Buy Bronze",
+                diamondComingSoon: "DIAMOND - Coming Soon",
+                platinumComingSoon: "PLATINUM - Coming Soon",
+                contact: "Contact",
+                transparencyText: "Transparency: Drawings run from 3rd to 1st prize for all to see.",
+                payoutsText: "Fast Payouts: Prize money sent via Telebirr/CBE instantly.",
+                frequencyText: "Frequency: Only 100 tickets per round for faster games and wins.",
+                payoutPolicyText: "Payout Policy: Receive prize money on different banks.",
+                tippingPolicyText: "Ticket Policy: Contact Center is optional.",
+                drawTimingText: "Draw Timing: 5-minute countdown starts after all tickets sold.",
+                restrictionsText: "Restrictions: Players must be 18+. Play Responsibly."
             }
         };
 
@@ -746,8 +822,17 @@
             }
         }
 
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', newTheme);
+            document.getElementById('theme-btn').textContent = newTheme === 'dark' ? '🌙' : '☀️';
+            localStorage.setItem('theme', newTheme);
+        }
+        
         function toggleLang() {
             lang = lang === 'am' ? 'en' : 'am';
+            localStorage.setItem('language', lang);
             document.getElementById('lang-btn').innerText = lang === 'am' ? 'EN' : 'አማርኛ';
             document.getElementById('th-type').innerText = langData[lang].thT;
             document.getElementById('th-round').innerText = langData[lang].thR;
@@ -761,6 +846,11 @@
             document.getElementById('nav-title').innerText = langData[lang].navTitle;
             document.getElementById('page-title').innerText = langData[lang].navTitle;
             document.getElementById('about-title').innerText = langData[lang].aboutTitle;
+            if(document.getElementById('sec-t')) document.getElementById('sec-t').innerText = langData[lang].hottestCompetitions;
+            if(document.getElementById('buy-ticket-btn')) document.getElementById('buy-ticket-btn').innerText = langData[lang].buyTicket;
+            if(document.getElementById('buy-gold-btn')) document.getElementById('buy-gold-btn').innerText = langData[lang].buyGold;
+            if(document.getElementById('buy-silver-btn')) document.getElementById('buy-silver-btn').innerText = langData[lang].buySilver;
+            if(document.getElementById('buy-bronze-btn')) document.getElementById('buy-bronze-btn').innerText = langData[lang].buyBronze;
             if(document.getElementById('prize-structure-title')) {
                 document.getElementById('prize-structure-title').innerText = langData[lang].prizeStructureTitle;
                 document.getElementById('principles-title').innerText = langData[lang].principlesTitle;
@@ -782,8 +872,10 @@
                 document.getElementById('prize-title').innerText = langData[lang].prizeTitle;
                 document.getElementById('modal-title').innerText = langData[lang].modalTitle;
                 document.getElementById('winner-title').innerText = langData[lang].winnerTitle;
+                const fullNameLabel = document.querySelector('label[for="full-name"]');
                 const phoneLabel = document.querySelector('label[for="phone-number"]');
                 const screenshotLabel = document.querySelector('label[for="payment-screenshot"]');
+                if(fullNameLabel) fullNameLabel.innerText = langData[lang].fullNameLabel;
                 if(phoneLabel) phoneLabel.innerText = langData[lang].phoneLabel;
                 if(screenshotLabel) {
                     screenshotLabel.innerHTML = langData[lang].screenshotLabel + ' <span class="file-required">' + langData[lang].fileRequired + '</span>';
@@ -811,6 +903,16 @@
             const data = await res.json();
             currentRound = data.round;
             
+            // Check if draw is active (100 sold) - if so, redirect Gold tier to animation
+            if(id === 3) {
+                const sold = data.tickets.filter(tk => tk.status === 'sold').length;
+                if(sold === 100) {
+                    // Draw is active, redirect to animation
+                    window.location.href = 'draw.html?tier=3';
+                    return;
+                }
+            }
+            
             // Update prize header
             // Handle third_prize - it might be INT or might need conversion
             const thirdPrize = data.prizes?.third_prize || 0;
@@ -829,7 +931,7 @@
                 const d = document.createElement('div');
                 let statusClass = 'available';
                 if(t.status === 'sold') {
-                    statusClass = 'approved'; // Approved/Sold shows wood color
+                    statusClass = 'sold'; // Sold shows wood color
                 } else if(t.status === 'pending') {
                     statusClass = 'pending'; // Pending shows yellow
                 }
@@ -870,9 +972,11 @@
             
             // Update labels
             document.getElementById('modal-title').textContent = langData[lang].modalTitle;
+            document.getElementById('full-name-label').textContent = langData[lang].fullNameLabel;
             document.getElementById('phone-label').textContent = langData[lang].phoneLabel;
             document.getElementById('screenshot-label').innerHTML = langData[lang].screenshotLabel + ' <span class="file-required">' + langData[lang].fileRequired + '</span>';
             document.getElementById('submit-btn').textContent = langData[lang].submitBtn;
+            document.getElementById('full-name').value = '';
             
             // Reset and start countdown
             countdownSeconds = 300;
@@ -936,11 +1040,17 @@
             event.preventDefault();
             
             const formData = new FormData();
+            const fullName = document.getElementById('full-name').value;
             const phone = document.getElementById('phone-number').value;
             const screenshot = document.getElementById('payment-screenshot').files[0];
             
+            if(!fullName) {
+                alert(lang === 'am' ? 'እባክዎ ሙሉ ስምዎን ያስገቡ' : 'Please enter your full name');
+                return;
+            }
+            
             if(!screenshot) {
-                alert('Please upload a payment screenshot');
+                alert(lang === 'am' ? 'እባክዎ የክፍያ ስክሪንሾት ይስቀሉ' : 'Please upload a payment screenshot');
                 return;
             }
             
@@ -948,6 +1058,7 @@
             formData.append('userId', tg.initDataUnsafe?.user?.id || '0');
             formData.append('tierId', currentTierId);
             formData.append('number', selectedCell?.textContent);
+            formData.append('fullName', fullName);
             formData.append('phone', phone);
             formData.append('round', currentRound);
             
