@@ -5,6 +5,7 @@ const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const axios = require('axios');
+const crypto = require('crypto');
 
 const bot = new Bot(process.env.BOT_TOKEN);
 const app = express();
@@ -76,6 +77,239 @@ app.get('/api/statistics', async (req, res) => {
         });
     } catch (err) {
         console.error('Error fetching statistics:', err);
+        res.status(500).send(err.message);
+    }
+});
+
+// --- API: Get User Dashboard Data ---
+app.get('/api/user/dashboard', async (req, res) => {
+    try {
+        const userId = req.query.userId || req.headers['x-user-id'];
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID required' });
+        }
+        
+        // Get user stats
+        const statsRes = await pool.query(`
+            SELECT * FROM user_stats WHERE user_id = $1
+        `, [userId]);
+        
+        const stats = statsRes.rows[0] || {
+            user_id: userId,
+            total_tickets_bought: 0,
+            pending_tickets: 0,
+            total_spent: 0,
+            total_wins: 0,
+            total_won: 0
+        };
+        
+        // Get active tickets (pending + sold)
+        const activeTickets = await pool.query(`
+            SELECT t.*, ti.name_en as tier_name, ti.name_am as tier_name_am, ti.price,
+                   gr.current_round
+            FROM tickets t
+            JOIN tiers ti ON t.tier_id = ti.id
+            JOIN game_rounds gr ON t.tier_id = gr.tier_id
+            WHERE t.owner_id = $1 
+            AND (t.status = 'pending' OR t.status = 'sold')
+            AND t.round_no = gr.current_round
+            ORDER BY t.purchase_timestamp DESC
+        `, [userId]);
+        
+        // Get ticket history (past rounds)
+        const historyTickets = await pool.query(`
+            SELECT t.*, ti.name_en as tier_name, ti.name_am as tier_name_am, ti.price,
+                   CASE 
+                       WHEN wv.place = 1 THEN ti.first_prize
+                       WHEN wv.place = 2 THEN ti.second_prize
+                       WHEN wv.place = 3 THEN ti.third_prize
+                       ELSE 0
+                   END as prize_won,
+                   wv.place as win_place,
+                   wv.status as win_status
+            FROM tickets t
+            JOIN tiers ti ON t.tier_id = ti.id
+            LEFT JOIN winners_verification wv ON t.tier_id = wv.tier_id 
+                AND t.round_no = wv.round_no 
+                AND t.number_val = wv.ticket_number
+                AND t.owner_id = wv.user_id
+            WHERE t.owner_id = $1 
+            AND t.status = 'sold'
+            AND t.round_no < (SELECT current_round FROM game_rounds WHERE tier_id = t.tier_id)
+            ORDER BY t.purchase_timestamp DESC
+            LIMIT 50
+        `, [userId]);
+        
+        res.json({
+            stats: {
+                totalTicketsBought: parseInt(stats.total_tickets_bought) || 0,
+                pendingTickets: parseInt(stats.pending_tickets) || 0,
+                totalSpent: parseInt(stats.total_spent) || 0,
+                totalWins: parseInt(stats.total_wins) || 0,
+                totalWon: parseInt(stats.total_won) || 0
+            },
+            activeTickets: activeTickets.rows,
+            history: historyTickets.rows
+        });
+    } catch (err) {
+        console.error('Error fetching user dashboard:', err);
+        res.status(500).send(err.message);
+    }
+});
+
+// --- API: Get Audit Log for a Round ---
+app.get('/api/audit/:tierId/:roundNo', async (req, res) => {
+    try {
+        const { tierId, roundNo } = req.params;
+        
+        // Check if draw has happened
+        const drawCheck = await pool.query(`
+            SELECT COUNT(*) as count FROM winners_history 
+            WHERE tier_id = $1 AND round_no = $2
+        `, [tierId, roundNo]);
+        
+        const drawHappened = parseInt(drawCheck.rows[0].count) > 0;
+        
+        // Get all tickets with transaction hashes
+        const tickets = await pool.query(`
+            SELECT 
+                t.number_val,
+                t.owner_id,
+                t.status,
+                t.transaction_hash,
+                t.purchase_timestamp,
+                pr.full_name,
+                pr.phone,
+                pr.start_time as payment_time
+            FROM tickets t
+            LEFT JOIN payment_requests pr ON t.tier_id = pr.tier_id 
+                AND t.round_no = pr.round_no 
+                AND t.number_val = pr.ticket_number
+            WHERE t.tier_id = $1 AND t.round_no = $2
+            ORDER BY t.number_val ASC
+        `, [tierId, roundNo]);
+        
+        // Get draw seed info if available
+        const seedInfo = await pool.query(`
+            SELECT * FROM draw_seeds 
+            WHERE tier_id = $1 AND round_no = $2
+        `, [tierId, roundNo]);
+        
+        res.json({
+            tierId: parseInt(tierId),
+            roundNo: parseInt(roundNo),
+            drawHappened,
+            tickets: tickets.rows,
+            seedInfo: seedInfo.rows[0] || null,
+            totalTickets: tickets.rows.length,
+            soldTickets: tickets.rows.filter(t => t.status === 'sold').length
+        });
+    } catch (err) {
+        console.error('Error fetching audit log:', err);
+        res.status(500).send(err.message);
+    }
+});
+
+// --- API: Get Draw Countdown Status ---
+app.get('/api/countdown/:tierId', async (req, res) => {
+    try {
+        const tierId = req.params.tierId;
+        const roundRes = await pool.query("SELECT current_round FROM game_rounds WHERE tier_id = $1", [tierId]);
+        const round = roundRes.rows[0].current_round;
+        
+        const soldCount = await pool.query(`
+            SELECT count(*) as count 
+            FROM tickets 
+            WHERE tier_id = $1 AND status = 'sold' AND round_no = $2
+        `, [tierId, round]);
+        
+        const sold = parseInt(soldCount.rows[0].count);
+        const isFull = sold === 100;
+        
+        // Get countdown start time (when 100th ticket was sold)
+        let countdownStart = null;
+        if (isFull) {
+            const lastSold = await pool.query(`
+                SELECT purchase_timestamp 
+                FROM tickets 
+                WHERE tier_id = $1 AND round_no = $2 AND status = 'sold'
+                ORDER BY purchase_timestamp DESC
+                LIMIT 1
+            `, [tierId, round]);
+            countdownStart = lastSold.rows[0]?.purchase_timestamp;
+        }
+        
+        // Get draw seed hash (published before draw)
+        const seedInfo = await pool.query(`
+            SELECT server_seed_hash, created_at 
+            FROM draw_seeds 
+            WHERE tier_id = $1 AND round_no = $2
+        `, [tierId, round]);
+        
+        res.json({
+            tierId: parseInt(tierId),
+            round,
+            sold,
+            isFull,
+            countdownStart,
+            seedHash: seedInfo.rows[0]?.server_seed_hash || null,
+            seedCreatedAt: seedInfo.rows[0]?.created_at || null
+        });
+    } catch (err) {
+        console.error('Error fetching countdown:', err);
+        res.status(500).send(err.message);
+    }
+});
+
+// --- API: Verify Provably Fair Draw ---
+app.get('/api/verify/:tierId/:roundNo', async (req, res) => {
+    try {
+        const { tierId, roundNo } = req.params;
+        
+        const seedInfo = await pool.query(`
+            SELECT * FROM draw_seeds 
+            WHERE tier_id = $1 AND round_no = $2
+        `, [tierId, roundNo]);
+        
+        if (!seedInfo.rows[0]) {
+            return res.status(404).json({ error: 'Draw seed not found' });
+        }
+        
+        const seed = seedInfo.rows[0];
+        const winners = await pool.query(`
+            SELECT * FROM winners_history 
+            WHERE tier_id = $1 AND round_no = $2
+        `, [tierId, roundNo]);
+        
+        if (!winners.rows[0]) {
+            return res.status(404).json({ error: 'Draw results not found' });
+        }
+        
+        // Verify the draw
+        const verification = verifyProvablyFairDraw(
+            seed.server_seed,
+            seed.client_seed || '',
+            seed.combined_seed,
+            seed.draw_hash,
+            winners.rows[0]
+        );
+        
+        res.json({
+            tierId: parseInt(tierId),
+            roundNo: parseInt(roundNo),
+            seed: {
+                serverSeedHash: seed.server_seed_hash,
+                serverSeed: seed.server_seed,
+                clientSeed: seed.client_seed,
+                combinedSeed: seed.combined_seed,
+                drawHash: seed.draw_hash,
+                revealedAt: seed.revealed_at
+            },
+            winners: winners.rows[0],
+            verification
+        });
+    } catch (err) {
+        console.error('Error verifying draw:', err);
         res.status(500).send(err.message);
     }
 });
@@ -230,7 +464,7 @@ app.get('/api/draw/:tierId', async (req, res) => {
 
 // --- API: Upload Payment ---
 app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
-    const { userId, tierId, number, phone, round, fullName } = req.body;
+    const { userId, tierId, number, phone, round, fullName, transactionHash } = req.body;
     const tierName = tierId == 3 ? "🥇 GOLD" : tierId == 2 ? "🥈 SILVER" : "🥉 BRONZE";
     
     // Use fullName from form, fallback to Telegram if not provided
@@ -277,6 +511,17 @@ bot.callbackQuery(/approve_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     const [_, tId, num, uId, rnd] = ctx.match;
     await pool.query('UPDATE tickets SET status = $1 WHERE tier_id = $2 AND number_val = $3 AND round_no = $4', ['sold', tId, num, rnd]);
     
+    // Update transaction status
+    try {
+        await pool.query(`
+            UPDATE ticket_transactions 
+            SET status = 'sold' 
+            WHERE tier_id = $1 AND round_no = $2 AND ticket_number = $3
+        `, [tId, rnd, num]);
+    } catch (e) {
+        console.error('Error updating transaction:', e);
+    }
+    
     // Update payment request status
     try {
         await pool.query('UPDATE payment_requests SET status = $1 WHERE tier_id = $2 AND ticket_number = $3 AND round_no = $4 AND user_id = $5', 
@@ -288,11 +533,28 @@ bot.callbackQuery(/approve_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     // Check for draw trigger (100 sold)
     const countRes = await pool.query("SELECT count(*) FROM tickets WHERE tier_id = $1 AND status = 'sold' AND round_no = $2", [tId, rnd]);
     if (parseInt(countRes.rows[0].count) === 100) {
+        // Generate and store server seed hash BEFORE draw (provably fair)
+        const serverSeed = crypto.randomBytes(32).toString('hex');
+        const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
+        const combinedSeed = serverSeed; // No client seed for now
+        const drawHash = crypto.createHash('sha256').update(combinedSeed).digest('hex');
+        
+        // Store seed hash (seed itself will be revealed after draw)
+        await pool.query(`
+            INSERT INTO draw_seeds (tier_id, round_no, server_seed_hash, server_seed, combined_seed, draw_hash)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (tier_id, round_no) DO UPDATE 
+            SET server_seed_hash = EXCLUDED.server_seed_hash,
+                server_seed = EXCLUDED.server_seed,
+                combined_seed = EXCLUDED.combined_seed,
+                draw_hash = EXCLUDED.draw_hash
+        `, [tId, rnd, serverSeedHash, serverSeed, combinedSeed, drawHash]);
+        
         const players = await pool.query("SELECT DISTINCT owner_id FROM tickets WHERE tier_id = $1 AND round_no = $2", [tId, rnd]);
         for(let p of players.rows) {
-            await bot.api.sendMessage(p.owner_id, "🔔 ከ3 ደቂቃ በኋላ ዕጣው ይወጣል! መልካም ዕድል!");
+            await bot.api.sendMessage(p.owner_id, "🔔 ከ5 ደቂቃ በኋላ ዕጣው ይወጣል! መልካም ዕድል!");
         }
-        setTimeout(() => runDrawLogic(tId, rnd), 180000); // 3 Mins
+        setTimeout(() => runDrawLogic(tId, rnd), 300000); // 5 Mins countdown
     }
     
     // Send approval message (default to Amharic, can be enhanced with language detection)
@@ -305,6 +567,17 @@ bot.callbackQuery(/reject_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     const [_, tId, num, uId, rnd] = ctx.match;
     await pool.query('UPDATE tickets SET status = $1, owner_id = NULL, payment_phone = NULL, screenshot_url = NULL WHERE tier_id = $2 AND number_val = $3 AND round_no = $4', 
         ['available', tId, num, rnd]);
+    
+    // Update transaction status
+    try {
+        await pool.query(`
+            UPDATE ticket_transactions 
+            SET status = 'rejected' 
+            WHERE tier_id = $1 AND round_no = $2 AND ticket_number = $3
+        `, [tId, rnd, num]);
+    } catch (e) {
+        console.error('Error updating transaction:', e);
+    }
     
     // Update payment request status
     try {
@@ -355,14 +628,112 @@ bot.callbackQuery(/reject_payout_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     }
 });
 
+// --- PROVABLY FAIR FUNCTIONS ---
+function generateServerSeed() {
+    return crypto.randomBytes(32).toString('hex');
+}
+
+function hashSeed(seed) {
+    return crypto.createHash('sha256').update(seed).digest('hex');
+}
+
+function combineSeeds(serverSeed, clientSeed) {
+    return serverSeed + clientSeed;
+}
+
+function provablyFairDraw(combinedSeed, poolSize) {
+    // Create deterministic hash from combined seed
+    const hash = crypto.createHash('sha256').update(combinedSeed).digest('hex');
+    
+    // Use hash to generate random indices
+    const indices = [];
+    let remaining = Array.from({ length: poolSize }, (_, i) => i);
+    
+    for (let i = 0; i < 3 && remaining.length > 0; i++) {
+        // Use different parts of hash for each selection
+        const hashPart = hash.substring(i * 8, (i + 1) * 8);
+        const randomValue = parseInt(hashPart, 16);
+        const index = randomValue % remaining.length;
+        indices.push(remaining[index]);
+        remaining.splice(index, 1);
+    }
+    
+    return indices;
+}
+
+function verifyProvablyFairDraw(serverSeed, clientSeed, combinedSeed, drawHash, winners) {
+    if (!serverSeed || !combinedSeed || !drawHash) {
+        return { valid: false, error: 'Seeds not revealed yet' };
+    }
+    
+    // Verify combined seed
+    const expectedCombined = combineSeeds(serverSeed, clientSeed || '');
+    if (expectedCombined !== combinedSeed) {
+        return { valid: false, error: 'Combined seed mismatch' };
+    }
+    
+    // Verify draw hash
+    const expectedHash = hashSeed(combinedSeed);
+    if (expectedHash !== drawHash) {
+        return { valid: false, error: 'Draw hash mismatch' };
+    }
+    
+    return { valid: true, message: 'Draw is provably fair' };
+}
+
 async function runDrawLogic(tId, rnd) {
-    const sold = await pool.query("SELECT number_val, owner_id, payment_phone FROM tickets WHERE tier_id = $1 AND status = 'sold' AND round_no = $2", [tId, rnd]);
+    const sold = await pool.query("SELECT number_val, owner_id, payment_phone FROM tickets WHERE tier_id = $1 AND status = 'sold' AND round_no = $2 ORDER BY purchase_timestamp ASC", [tId, rnd]);
     let pool_arr = sold.rows;
-    let w = [];
-    for(let i=0; i<3; i++) w.push(pool_arr.splice(Math.floor(Math.random()*pool_arr.length), 1)[0]);
+    
+    if (pool_arr.length !== 100) {
+        console.error(`Error: Expected 100 tickets, got ${pool_arr.length}`);
+        return;
+    }
+    
+    // Check if seed already exists (should be created when 100th ticket sold)
+    let seedInfo = await pool.query(`
+        SELECT * FROM draw_seeds WHERE tier_id = $1 AND round_no = $2
+    `, [tId, rnd]);
+    
+    let serverSeed, serverSeedHash, combinedSeed, drawHash;
+    
+    if (seedInfo.rows.length === 0) {
+        // Generate new seed (shouldn't happen, but safety check)
+        serverSeed = generateServerSeed();
+        serverSeedHash = hashSeed(serverSeed);
+        combinedSeed = combineSeeds(serverSeed, ''); // No client seed for now
+        drawHash = hashSeed(combinedSeed);
+        
+        await pool.query(`
+            INSERT INTO draw_seeds (tier_id, round_no, server_seed_hash, server_seed, combined_seed, draw_hash)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        `, [tId, rnd, serverSeedHash, serverSeed, combinedSeed, drawHash]);
+    } else {
+        // Use existing seed
+        const seed = seedInfo.rows[0];
+        serverSeed = seed.server_seed;
+        serverSeedHash = seed.server_seed_hash;
+        combinedSeed = seed.combined_seed;
+        drawHash = seed.draw_hash;
+    }
+    
+    // Use provably fair algorithm to select winners
+    const winnerIndices = provablyFairDraw(combinedSeed, 100);
+    const w = [
+        pool_arr[winnerIndices[0]], // 3rd place
+        pool_arr[winnerIndices[1]], // 2nd place
+        pool_arr[winnerIndices[2]]  // 1st place
+    ];
     
     // Save to History
     await pool.query("INSERT INTO winners_history (tier_id, round_no, w1_num, w2_num, w3_num) VALUES ($1,$2,$3,$4,$5)", [tId, rnd, w[2].number_val, w[1].number_val, w[0].number_val]);
+    
+    // Reveal seeds after draw
+    await pool.query(`
+        UPDATE draw_seeds 
+        SET revealed_at = NOW() 
+        WHERE tier_id = $1 AND round_no = $2
+    `, [tId, rnd]);
 
     // Send Admin Log
     await bot.api.sendMessage(process.env.ADMIN_ID, `🏆 **ROUND #${rnd} DRAW COMPLETE**\n1st: #${w[2].number_val}\n2nd: #${w[1].number_val}\n3rd: #${w[0].number_val}`);

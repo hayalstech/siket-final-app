@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Dashboard | የእኔ ዳሽቦርድ</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Ethiopic:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0B0E14;
+            --bg-secondary: #020617;
+            --accent: #D4AF37;
+            --text-primary: #FFFFFF;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', 'Noto Sans Ethiopic', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+            margin: 30px 0 15px 0;
+        }
+        .ticket-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .ticket-card {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            border-left: 3px solid var(--accent);
+        }
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .ticket-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .ticket-status {
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(148, 163, 184, 0.2);
+        }
+        .ticket-status.pending { background: rgba(234, 179, 8, 0.2); }
+        .ticket-status.sold { background: rgba(212, 175, 55, 0.2); }
+        .ticket-status.won { background: rgba(34, 197, 94, 0.2); }
+        .ticket-info {
+            font-size: 12px;
+            color: #94a3b8;
+        }
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: var(--accent);
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    
+    <div class="header">
+        <h1 class="lang-en">My Dashboard</h1>
+        <h1 class="lang-am">የእኔ ዳሽቦርድ</h1>
+    </div>
+    
+    <div id="stats-section">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="total-tickets">0</div>
+                <div class="stat-label lang-en">Total Tickets</div>
+                <div class="stat-label lang-am">ጠቅላላ ትኬቶች</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="pending-tickets">0</div>
+                <div class="stat-label lang-en">Pending</div>
+                <div class="stat-label lang-am">በመጠባበቅ ላይ</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-spent">0 ETB</div>
+                <div class="stat-label lang-en">Total Spent</div>
+                <div class="stat-label lang-am">ጠቅላላ የተወጣ</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-won">0 ETB</div>
+                <div class="stat-label lang-en">Total Won</div>
+                <div class="stat-label lang-am">ጠቅላላ የተሸነፈ</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="section-title lang-en">Active Tickets</div>
+    <div class="section-title lang-am">ንቁ ትኬቶች</div>
+    <div id="active-tickets" class="ticket-list">
+        <div style="text-align: center; color: #94a3b8; padding: 20px;">Loading...</div>
+    </div>
+    
+    <div class="section-title lang-en">Ticket History</div>
+    <div class="section-title lang-am">የትኬት ታሪክ</div>
+    <div id="history-tickets" class="ticket-list">
+        <div style="text-align: center; color: #94a3b8; padding: 20px;">Loading...</div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        const userId = tg.initDataUnsafe?.user?.id || '0';
+        
+        async function loadDashboard() {
+            try {
+                const res = await fetch(`/api/user/dashboard?userId=${userId}`);
+                const data = await res.json();
+                
+                // Update stats
+                document.getElementById('total-tickets').textContent = data.stats.totalTicketsBought;
+                document.getElementById('pending-tickets').textContent = data.stats.pendingTickets;
+                document.getElementById('total-spent').textContent = `${data.stats.totalSpent} ETB`;
+                document.getElementById('total-won').textContent = `${data.stats.totalWon} ETB`;
+                
+                // Active tickets
+                if (data.activeTickets.length === 0) {
+                    document.getElementById('active-tickets').innerHTML = `
+                        <div style="text-align: center; color: #94a3b8; padding: 20px;">
+                            <span class="lang-en">No active tickets</span>
+                            <span class="lang-am">ንቁ ትኬት የለም</span>
+                        </div>
+                    `;
+                } else {
+                    let html = '';
+                    data.activeTickets.forEach(ticket => {
+                        html += `
+                            <div class="ticket-card">
+                                <div class="ticket-header">
+                                    <div class="ticket-number">#${String(ticket.number_val).padStart(2, '0')}</div>
+                                    <div class="ticket-status ${ticket.status}">
+                                        ${ticket.status === 'pending' ? '⏳ Pending' : '✓ Sold'}
+                                    </div>
+                                </div>
+                                <div class="ticket-info">
+                                    ${ticket.tier_name} | Round #${String(ticket.round_no).padStart(4, '0')}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('active-tickets').innerHTML = html;
+                }
+                
+                // History
+                if (data.history.length === 0) {
+                    document.getElementById('history-tickets').innerHTML = `
+                        <div style="text-align: center; color: #94a3b8; padding: 20px;">
+                            <span class="lang-en">No ticket history</span>
+                            <span class="lang-am">የትኬት ታሪክ የለም</span>
+                        </div>
+                    `;
+                } else {
+                    let html = '';
+                    data.history.forEach(ticket => {
+                        const wonBadge = ticket.win_place ? 
+                            `<div class="ticket-status won">🏆 ${ticket.win_place === 1 ? '1st' : ticket.win_place === 2 ? '2nd' : '3rd'} Place</div>` : '';
+                        html += `
+                            <div class="ticket-card">
+                                <div class="ticket-header">
+                                    <div class="ticket-number">#${String(ticket.number_val).padStart(2, '0')}</div>
+                                    ${wonBadge}
+                                </div>
+                                <div class="ticket-info">
+                                    ${ticket.tier_name} | Round #${String(ticket.round_no).padStart(4, '0')}
+                                    ${ticket.prize_won > 0 ? ` | Won: ${ticket.prize_won} ETB` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('history-tickets').innerHTML = html;
+                }
+            } catch (e) {
+                document.getElementById('active-tickets').innerHTML = `
+                    <div style="text-align: center; color: #f97316; padding: 20px;">
+                        Error: ${e.message}
+                    </div>
+                `;
+            }
+        }
+        
+        loadDashboard();
+    </script>
+</body>
+</html>

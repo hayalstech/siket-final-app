@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Draw Countdown | የዕጣ ቆይታ</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Ethiopic:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0B0E14;
+            --accent: #D4AF37;
+            --text-primary: #FFFFFF;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', 'Noto Sans Ethiopic', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        .tier-badge {
+            font-size: 24px;
+            font-weight: 900;
+            color: var(--accent);
+            margin-bottom: 20px;
+        }
+        .countdown-display {
+            font-size: 72px;
+            font-weight: 900;
+            color: var(--accent);
+            font-family: 'Courier New', monospace;
+            margin: 30px 0;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+        .status-text {
+            font-size: 18px;
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+        .seed-info {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .seed-label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .seed-hash {
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            color: var(--accent);
+            word-break: break-all;
+        }
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: var(--accent);
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    
+    <div class="container">
+        <div class="tier-badge" id="tier-name">Loading...</div>
+        <div class="countdown-display" id="countdown">00:00</div>
+        <div class="status-text lang-en" id="status-en">Preparing for draw...</div>
+        <div class="status-text lang-am" id="status-am">ዕጣውን ለመውጣት እየተዘጋጀ ነው...</div>
+        
+        <div class="seed-info" id="seed-info" style="display: none;">
+            <div class="seed-label lang-en">Server Seed Hash (Published Before Draw)</div>
+            <div class="seed-label lang-am">የሰርቨር ዘርድ ሃሽ (ከዕጣው በፊት የተሰራጨ)</div>
+            <div class="seed-hash" id="seed-hash"></div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const tierId = urlParams.get('tier') || '1';
+        const tierNames = { '1': '🥉 BRONZE', '2': '🥈 SILVER', '3': '🥇 GOLD' };
+        const tierNamesAm = { '1': '🥉 ነሐስ', '2': '🥈 ብር', '3': '🥇 ወርቅ' };
+        
+        document.getElementById('tier-name').textContent = tierNames[tierId] || 'UNKNOWN';
+        
+        let countdownInterval = null;
+        let targetTime = null;
+        
+        async function updateCountdown() {
+            try {
+                const res = await fetch(`/api/countdown/${tierId}`);
+                const data = await res.json();
+                
+                if (!data.isFull) {
+                    document.getElementById('countdown').textContent = `${data.sold}/100`;
+                    document.getElementById('status-en').textContent = `Waiting for all tickets to sell...`;
+                    document.getElementById('status-am').textContent = `ሁሉም ትኬቶች እንዲሸጡ በመጠባበቅ ላይ...`;
+                    return;
+                }
+                
+                if (data.countdownStart) {
+                    targetTime = new Date(data.countdownStart).getTime() + (5 * 60 * 1000); // 5 minutes
+                }
+                
+                if (data.seedHash) {
+                    document.getElementById('seed-info').style.display = 'block';
+                    document.getElementById('seed-hash').textContent = data.seedHash;
+                }
+                
+                if (targetTime) {
+                    const now = Date.now();
+                    const diff = targetTime - now;
+                    
+                    if (diff <= 0) {
+                        // Countdown finished, redirect to draw
+                        window.location.href = `draw.html?tier=${tierId}`;
+                        return;
+                    }
+                    
+                    const minutes = Math.floor(diff / 60000);
+                    const seconds = Math.floor((diff % 60000) / 1000);
+                    document.getElementById('countdown').textContent = 
+                        `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    
+                    document.getElementById('status-en').textContent = `Draw starting soon...`;
+                    document.getElementById('status-am').textContent = `ዕጣው በቅርቡ ይጀምራል...`;
+                }
+            } catch (e) {
+                console.error('Error updating countdown:', e);
+            }
+        }
+        
+        updateCountdown();
+        countdownInterval = setInterval(updateCountdown, 1000);
+    </script>
+</body>
+</html>

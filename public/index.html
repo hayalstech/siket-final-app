@@ -274,9 +274,92 @@
         .grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; margin: 15px 0; }
         .cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; border-radius: 3px; border: 1px solid rgba(255,255,255,0.05); cursor: pointer; transition: all 0.2s;}
         .available { background: #1d4ed8; color: white; }
-        .selected { background: #eab308; color: black; }
+        .selected { background: #eab308; color: black; box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.6); }
         .pending { background: #eab308; color: black; }
         .sold { background: #A1662F; color: white; pointer-events: none; }
+        
+        /* --- BET SLIP (MULTI-SELECTION) --- */
+        .betslip-container {
+            margin-top: 15px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 12px;
+            padding: 12px 12px 16px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .betslip-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .betslip-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .betslip-count {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        .betslip-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 120px;
+            overflow-y: auto;
+        }
+        .betslip-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            font-size: 11px;
+        }
+        .betslip-number {
+            font-weight: 700;
+            color: var(--accent);
+            min-width: 32px;
+            text-align: center;
+        }
+        .betslip-remove {
+            background: none;
+            border: none;
+            color: #f97316;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 0 2px;
+        }
+        .betslip-pay-btn {
+            margin-top: 10px;
+            width: 100%;
+            background: var(--accent);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 999px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+        .betslip-pay-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        .betslip-pay-btn:not(:disabled):hover {
+            box-shadow: 0 4px 14px rgba(212, 175, 55, 0.5);
+            transform: translateY(-1px);
+        }
         
         /* --- PAYMENT MODAL --- */
         .payment-modal {
@@ -683,6 +766,8 @@
             <h1 id="nav-title" class="lang-am">ስኬት ሎቶ</h1>
         </div>
         <div class="header-logo">
+            <a href="dashboard.html" class="nav-link lang-en">My Tickets</a>
+            <a href="dashboard.html" class="nav-link lang-am">የእኔ ትኬቶች</a>
             <a href="#about-us" class="nav-link" id="nav-about">About Us</a>
             <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle Dark/Light Mode">🌙</button>
             <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
@@ -759,6 +844,12 @@
         <!-- Lotteries Status Section -->
         <section class="league-container">
             <h2 class="comp-title" id="league-t">የዕጣዎች ሁኔታ</h2>
+            <div style="text-align: center; margin-bottom: 15px;">
+                <a href="dashboard.html" style="display: inline-block; background: var(--accent); color: var(--text-primary); padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 13px;">
+                    <span class="lang-en">📊 My Dashboard</span>
+                    <span class="lang-am">📊 የእኔ ዳሽቦርድ</span>
+                </a>
+            </div>
             <table class="league-table">
                 <thead>
                     <tr>
@@ -850,6 +941,17 @@
                 <h3 class="about-subtitle lang-en" id="rules-title-en">Rules & Notice</h3>
                 <h3 class="about-subtitle lang-am" id="rules-title-am">ደንቦች እና ማሳሰቢያ</h3>
                 
+                <div style="margin: 20px 0; text-align: center;">
+                    <a href="audit.html?tier=3&round=1" style="display: inline-block; background: rgba(212, 175, 55, 0.2); color: var(--accent); padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 13px; margin: 5px;">
+                        <span class="lang-en">🔍 View Audit Log</span>
+                        <span class="lang-am">🔍 ምርመራ መዝገብ ይመልከቱ</span>
+                    </a>
+                    <a href="dashboard.html" style="display: inline-block; background: rgba(212, 175, 55, 0.2); color: var(--accent); padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 13px; margin: 5px;">
+                        <span class="lang-en">📊 My Dashboard</span>
+                        <span class="lang-am">📊 የእኔ ዳሽቦርድ</span>
+                    </a>
+                </div>
+                
                 <div class="rule-item">
                     <strong class="lang-en">Payout Policy:</strong>
                     <strong class="lang-am">የክፍያ ሁኔታ:</strong>
@@ -932,6 +1034,24 @@
         <div class="winner-feed">
             <div class="winner-feed-title" id="winner-title">Recent Winners</div>
             <div id="winner-list"></div>
+        </div>
+
+        <!-- Bet Slip (multi-ticket selection) -->
+        <div class="betslip-container">
+            <div class="betslip-header">
+                <div>
+                    <div class="betslip-title lang-en">Selected Tickets</div>
+                    <div class="betslip-title lang-am">የተመረጡ ትኬቶች</div>
+                </div>
+                <div class="betslip-count" id="betslip-count">0</div>
+            </div>
+            <div class="betslip-list" id="betslip-list">
+                <!-- Filled dynamically -->
+            </div>
+            <button id="betslip-pay-btn" class="betslip-pay-btn" disabled>
+                <span class="lang-en">Pay for Selected Ticket</span>
+                <span class="lang-am">ለተመረጡ ትኬቶች ክፍያ ያድርጉ</span>
+            </button>
         </div>
     </div>
     
@@ -1214,12 +1334,16 @@
 
         let currentTierId = null;
         let currentRound = null;
-        let selectedCell = null;
+        let selectedCell = null; // currently active payment cell
+        let selectedNumbersMap = new Map(); // number -> cell element for bet slip
+        let activePaymentNumber = null;
         let countdownInterval = null;
         let countdownSeconds = 300; // 5 minutes
 
         async function openTier(id) {
             currentTierId = id;
+            selectedNumbersMap.clear();
+            updateBetSlip();
             document.getElementById('home-view').style.display = 'none';
             document.getElementById('grid-view').style.display = 'block';
             const res = await fetch(`/api/status/${id}`);
@@ -1260,7 +1384,7 @@
                 d.className = `cell ${statusClass}`;
                 d.innerText = t.number_val;
                 if(t.status === 'available') {
-                    d.onclick = () => selectCell(t.number_val, d);
+                    d.onclick = () => toggleSelectCell(t.number_val, d);
                 } else {
                     d.style.pointerEvents = 'none'; // Disable clicks for non-available
                 }
@@ -1268,22 +1392,116 @@
             });
         }
 
-        function selectCell(number, element) {
-            // Remove previous selection
-            if(selectedCell) {
-                selectedCell.classList.remove('selected');
-                if(selectedCell.classList.contains('available')) {
-                    selectedCell.classList.add('available');
+        // Toggle selection for bet slip (multi-ticket)
+        function toggleSelectCell(number, element) {
+            const numKey = String(number);
+            
+            if (selectedNumbersMap.has(numKey)) {
+                // Deselect
+                selectedNumbersMap.delete(numKey);
+                element.classList.remove('selected');
+                if (!element.classList.contains('sold') && !element.classList.contains('pending')) {
+                    element.classList.add('available');
                 }
+            } else {
+                // Select
+                selectedNumbersMap.set(numKey, element);
+                element.classList.remove('available');
+                element.classList.add('selected');
             }
             
-            // Add selection to current cell
-            element.classList.remove('available');
-            element.classList.add('selected');
-            selectedCell = element;
+            updateBetSlip();
+        }
+
+        // Render bet slip UI
+        function updateBetSlip() {
+            const listEl = document.getElementById('betslip-list');
+            const countEl = document.getElementById('betslip-count');
+            const payBtn = document.getElementById('betslip-pay-btn');
+            if (!listEl || !countEl || !payBtn) return;
             
-            // Open payment modal
-            openPaymentModal(number);
+            const entries = Array.from(selectedNumbersMap.keys()).sort((a, b) => Number(a) - Number(b));
+            countEl.textContent = `${entries.length}`;
+            
+            listEl.innerHTML = '';
+            entries.forEach(num => {
+                const item = document.createElement('div');
+                item.className = 'betslip-item';
+                item.innerHTML = `
+                    <span class="betslip-number">#${String(num).padStart(2, '0')}</span>
+                    <button class="betslip-remove" aria-label="Remove">&times;</button>
+                `;
+                const removeBtn = item.querySelector('.betslip-remove');
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const cell = selectedNumbersMap.get(num);
+                    if (cell) {
+                        cell.classList.remove('selected');
+                        if (!cell.classList.contains('sold') && !cell.classList.contains('pending')) {
+                            cell.classList.add('available');
+                        }
+                    }
+                    selectedNumbersMap.delete(num);
+                    if (activePaymentNumber === num) {
+                        activePaymentNumber = null;
+                    }
+                    updateBetSlip();
+                };
+                item.onclick = () => {
+                    // choose this number as active for payment
+                    activePaymentNumber = num;
+                    highlightActiveBetSlipItem(num);
+                    payBtn.disabled = false;
+                };
+                listEl.appendChild(item);
+            });
+            
+            if (entries.length === 0) {
+                listEl.innerHTML = `
+                    <span style="font-size: 11px; color: #64748b;">
+                        <span class="lang-en">Tap numbers on the grid to add them to your bet slip.</span>
+                        <span class="lang-am">ቁጥሮችን በግሪዱ ላይ በመጫን ወደ ቤት ስሊፕ ይጨምሩ።</span>
+                    </span>
+                `;
+                payBtn.disabled = true;
+                activePaymentNumber = null;
+            } else if (!activePaymentNumber || !selectedNumbersMap.has(activePaymentNumber)) {
+                activePaymentNumber = entries[0];
+                highlightActiveBetSlipItem(activePaymentNumber);
+                payBtn.disabled = false;
+            }
+        }
+
+        function highlightActiveBetSlipItem(num) {
+            const listEl = document.getElementById('betslip-list');
+            if (!listEl) return;
+            const items = listEl.querySelectorAll('.betslip-item');
+            items.forEach(item => {
+                item.style.outline = 'none';
+                item.style.boxShadow = 'none';
+            });
+            const entries = Array.from(selectedNumbersMap.keys()).sort((a, b) => Number(a) - Number(b));
+            entries.forEach((n, index) => {
+                if (String(n) === String(num)) {
+                    const target = items[index];
+                    if (target) {
+                        target.style.outline = '1px solid var(--accent)';
+                        target.style.boxShadow = '0 0 0 1px rgba(212, 175, 55, 0.6)';
+                    }
+                }
+            });
+        }
+
+        // Pay button handler - opens modal for active selected number
+        const betslipPayBtn = document.getElementById('betslip-pay-btn');
+        if (betslipPayBtn) {
+            betslipPayBtn.addEventListener('click', () => {
+                if (!activePaymentNumber) return;
+                const cell = selectedNumbersMap.get(String(activePaymentNumber));
+                if (!cell) return;
+                selectedCell = cell;
+                openPaymentModal(activePaymentNumber);
+            });
         }
 
         function openPaymentModal(ticketNumber) {
@@ -1310,12 +1528,8 @@
                 clearInterval(countdownInterval);
                 countdownInterval = null;
             }
-            // Reset selection
-            if(selectedCell) {
-                selectedCell.classList.remove('selected');
-                selectedCell.classList.add('available');
-                selectedCell = null;
-            }
+            // Do not clear bet slip selections here; user can pay later
+            selectedCell = null;
         }
 
         function startCountdown() {
@@ -1357,6 +1571,14 @@
             });
         }
 
+        // SHA256 hash function (browser-compatible)
+        async function sha256(message) {
+            const msgBuffer = new TextEncoder().encode(message);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
         async function submitPayment(event) {
             event.preventDefault();
             
@@ -1375,13 +1597,21 @@
                 return;
             }
             
+            // Generate transaction hash for audit trail (provably fair)
+            const timestamp = new Date().toISOString();
+            const userId = tg.initDataUnsafe?.user?.id || '0';
+            const payingNumber = activePaymentNumber || selectedCell?.textContent;
+            const transactionData = `${currentTierId}_${currentRound}_${payingNumber}_${userId}_${timestamp}`;
+            const transactionHash = await sha256(transactionData);
+            
             formData.append('photo', screenshot);
-            formData.append('userId', tg.initDataUnsafe?.user?.id || '0');
+            formData.append('userId', userId);
             formData.append('tierId', currentTierId);
-            formData.append('number', selectedCell?.textContent);
+            formData.append('number', payingNumber);
             formData.append('fullName', fullName);
             formData.append('phone', phone);
             formData.append('round', currentRound);
+            formData.append('transactionHash', transactionHash);
             
             const submitBtn = document.getElementById('submit-btn');
             submitBtn.disabled = true;

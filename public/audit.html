@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audit Log | የምርመራ መዝገብ</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Ethiopic:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0B0E14;
+            --bg-secondary: #020617;
+            --accent: #D4AF37;
+            --text-primary: #FFFFFF;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', 'Noto Sans Ethiopic', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            font-size: 24px;
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+        .round-info {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .seed-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid var(--accent);
+        }
+        .seed-label {
+            font-size: 11px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .seed-value {
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            color: var(--accent);
+            word-break: break-all;
+        }
+        .tickets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+            gap: 8px;
+            margin-top: 20px;
+        }
+        .ticket-item {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .ticket-item.sold {
+            border-color: var(--accent);
+        }
+        .ticket-number {
+            font-weight: bold;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+        .ticket-hash {
+            font-size: 8px;
+            font-family: 'Courier New', monospace;
+            color: #64748b;
+            word-break: break-all;
+        }
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: var(--accent);
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-btn">← Back</a>
+    
+    <div class="header">
+        <h1 class="lang-en">Public Audit Log</h1>
+        <h1 class="lang-am">የህዝብ ምርመራ መዝገብ</h1>
+    </div>
+    
+    <div id="content">
+        <div style="text-align: center; color: #94a3b8;">Loading...</div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const tierId = urlParams.get('tier') || '1';
+        const roundNo = urlParams.get('round') || '1';
+        
+        const tierNames = { '1': '🥉 BRONZE', '2': '🥈 SILVER', '3': '🥇 GOLD' };
+        const tierNamesAm = { '1': '🥉 ነሐስ', '2': '🥈 ብር', '3': '🥇 ወርቅ' };
+        
+        async function loadAuditLog() {
+            try {
+                const res = await fetch(`/api/audit/${tierId}/${roundNo}`);
+                const data = await res.json();
+                
+                let html = `
+                    <div class="round-info">
+                        <div style="font-size: 20px; font-weight: bold; color: var(--accent); margin-bottom: 10px;">
+                            ${tierNames[tierId]} - Round #${String(data.roundNo).padStart(4, '0')}
+                        </div>
+                        <div style="font-size: 14px; color: #94a3b8;">
+                            <span class="lang-en">Total Tickets: ${data.totalTickets} | Sold: ${data.soldTickets}</span>
+                            <span class="lang-am">ጠቅላላ ትኬቶች: ${data.totalTickets} | ተሸጧል: ${data.soldTickets}</span>
+                        </div>
+                    </div>
+                `;
+                
+                if (data.seedInfo && data.seedInfo.server_seed_hash) {
+                    html += `
+                        <div class="seed-section">
+                            <div class="seed-label lang-en">Server Seed Hash (Published Before Draw)</div>
+                            <div class="seed-label lang-am">የሰርቨር ዘርድ ሃሽ (ከዕጣው በፊት የተሰራጨ)</div>
+                            <div class="seed-value">${data.seedInfo.server_seed_hash}</div>
+                            ${data.seedInfo.server_seed ? `
+                                <div style="margin-top: 10px;">
+                                    <div class="seed-label lang-en">Server Seed (Revealed After Draw)</div>
+                                    <div class="seed-label lang-am">የሰርቨር ዘርድ (ከዕጣው በኋላ የተገለጸ)</div>
+                                    <div class="seed-value">${data.seedInfo.server_seed}</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                
+                html += '<div class="tickets-grid">';
+                data.tickets.forEach(ticket => {
+                    html += `
+                        <div class="ticket-item ${ticket.status === 'sold' ? 'sold' : ''}">
+                            <div class="ticket-number">#${String(ticket.number_val).padStart(2, '0')}</div>
+                            <div style="font-size: 9px; color: #94a3b8; margin-bottom: 4px;">
+                                ${ticket.status === 'sold' ? '✓ Sold' : ticket.status === 'pending' ? '⏳ Pending' : '○ Available'}
+                            </div>
+                            ${ticket.transaction_hash ? `
+                                <div class="ticket-hash" title="${ticket.transaction_hash}">
+                                    ${ticket.transaction_hash.substring(0, 8)}...
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                html += '</div>';
+                
+                document.getElementById('content').innerHTML = html;
+            } catch (e) {
+                document.getElementById('content').innerHTML = `
+                    <div style="text-align: center; color: #f97316;">
+                        Error loading audit log: ${e.message}
+                    </div>
+                `;
+            }
+        }
+        
+        loadAuditLog();
+    </script>
+</body>
+</html>
