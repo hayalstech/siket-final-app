@@ -117,6 +117,12 @@
             color: white;
             z-index: 100;
         }
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            .winner-number { font-size: 42px; }
+            .winner-display { left: 10px; right: 10px; transform: none; min-width: auto; padding: 20px; }
+            .overlay-text { right: 10px; left: 10px; top: auto; bottom: 10px; }
+        }
     </style>
 </head>
 <body>
@@ -126,7 +132,7 @@
     </div>
 
     <div class="round-info" id="round-info">Round #0000</div>
-    <div class="overlay-text" id="overlay-text">Next round starts after this draw ends</div>
+    <a href="index.html" class="overlay-text" id="overlay-text">← Back</a>
     
     <div id="canvas-container"></div>
     
@@ -151,10 +157,10 @@
             currentTierId = parseInt(urlParams.get('tier'));
         }
         
-        // Update overlay text based on language
+        // Update overlay/back text based on language
         const overlayTexts = {
-            am: 'ዕጣው ከተጠናቀቀ በኋላ የሚቀጥለው ዙር ይጀምራል',
-            en: 'Next round starts after this draw ends'
+            am: '← ወደ መግቢያ',
+            en: '← Back'
         };
         document.getElementById('overlay-text').textContent = overlayTexts[lang];
         
@@ -367,6 +373,13 @@
                 
                 document.getElementById('round-info').textContent = `Round #${String(data.currentRound).padStart(4, '0')}`;
                 
+                // If draw is ready but not yet produced results, redirect to countdown
+                if (data.isDrawReady && !data.lastDraw) {
+                    // Let users see the official countdown/seed page
+                    window.location.href = `countdown.html?tier=${currentTierId}`;
+                    return;
+                }
+
                 if (data.lastDraw) {
                     winners = {
                         first: data.lastDraw.first,
@@ -377,8 +390,8 @@
                     // Hide loading screen
                     document.getElementById('loading-screen').style.display = 'none';
                     
-                    // Start draw sequence
-                    setTimeout(() => startDrawSequence(), 2000);
+                    // Start draw sequence shortly
+                    setTimeout(() => startDrawSequence(), 1200);
                 } else {
                     document.getElementById('loading-screen').innerHTML = `
                         <div class="spinner"></div>
@@ -453,6 +466,7 @@
                 if (pulseCount++ > 10) {
                     clearInterval(pulseInterval);
                     ball.material.color.setHex(originalColor);
+                    ball.scale.set(1,1,1);
                     return;
                 }
                 
