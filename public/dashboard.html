@@ -155,13 +155,25 @@
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
+        const lang = (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.language_code || '').startsWith('am') ? 'am' : 'en';
+        function applyLanguage() {
+            document.querySelectorAll('.lang-en').forEach(el => el.style.display = lang === 'en' ? '' : 'none');
+            document.querySelectorAll('.lang-am').forEach(el => el.style.display = lang === 'am' ? '' : 'none');
+        }
+        applyLanguage();
         
         const userId = tg.initDataUnsafe?.user?.id || '0';
         
         async function loadDashboard() {
             try {
                 const res = await fetch(`/api/user/dashboard?userId=${userId}`);
-                const data = await res.json();
+                let data;
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text);
+                } else {
+                    data = await res.json();
+                }
                 
                 // Update stats
                 document.getElementById('total-tickets').textContent = data.stats.totalTicketsBought;
@@ -183,7 +195,7 @@
                         html += `
                             <div class="ticket-card">
                                 <div class="ticket-header">
-                                    <div class="ticket-number">#${String(ticket.number_val).padStart(2, '0')}</div>
+                                    <div class="ticket-number">🎟 ${String(ticket.number_val).padStart(2, '0')}</div>
                                     <div class="ticket-status ${ticket.status}">
                                         ${ticket.status === 'pending' ? '⏳ Pending' : '✓ Sold'}
                                     </div>
@@ -201,8 +213,8 @@
                 if (data.history.length === 0) {
                     document.getElementById('history-tickets').innerHTML = `
                         <div style="text-align: center; color: #94a3b8; padding: 20px;">
-                            <span class="lang-en">No ticket history</span>
-                            <span class="lang-am">የትኬት ታሪክ የለም</span>
+                            <span class="lang-en">No ticket history yet</span>
+                            <span class="lang-am">የትኬት ታሪክ አልተገኘም</span>
                         </div>
                     `;
                 } else {
@@ -213,7 +225,7 @@
                         html += `
                             <div class="ticket-card">
                                 <div class="ticket-header">
-                                    <div class="ticket-number">#${String(ticket.number_val).padStart(2, '0')}</div>
+                                    <div class="ticket-number">🎟 ${String(ticket.number_val).padStart(2, '0')}</div>
                                     ${wonBadge}
                                 </div>
                                 <div class="ticket-info">

@@ -10,6 +10,7 @@ const crypto = require('crypto');
 const bot = new Bot(process.env.BOT_TOKEN);
 const app = express();
 const upload = multer({ dest: 'uploads/' });
+const pendingProofs = new Map();
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 app.use(express.json());
@@ -153,7 +154,7 @@ app.get('/api/user/dashboard', async (req, res) => {
         });
     } catch (err) {
         console.error('Error fetching user dashboard:', err);
-        res.status(500).send(err.message);
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -464,8 +465,31 @@ app.get('/api/draw/:tierId', async (req, res) => {
 
 // --- API: Upload Payment ---
 app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
-    const { userId, tierId, number, phone, round, fullName, transactionHash } = req.body;
+    const { userId, tierId, number, phone, round, fullName, transactionHash, numbers } = req.body;
     const tierName = tierId == 3 ? "🥇 GOLD" : tierId == 2 ? "🥈 SILVER" : "🥉 BRONZE";
+    
+    let ticketNumbers = [];
+    if (numbers) {
+        try {
+            const parsed = JSON.parse(numbers);
+            if (Array.isArray(parsed)) {
+                ticketNumbers = parsed
+                    .map(n => parseInt(n))
+                    .filter(n => !Number.isNaN(n));
+            }
+        } catch (e) {
+            console.error('Error parsing numbers in upload-payment:', e);
+        }
+    }
+    if (ticketNumbers.length === 0 && number) {
+        const single = parseInt(number);
+        if (!Number.isNaN(single)) {
+            ticketNumbers = [single];
+        }
+    }
+    if (ticketNumbers.length === 0) {
+        return res.status(400).json({ error: 'No valid ticket numbers provided' });
+    }
     
     // Use fullName from form, fallback to Telegram if not provided
     let userFullName = fullName || 'Unknown User';
@@ -480,33 +504,242 @@ app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
     
     const startTime = new Date();
     const startTimeStr = startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    
-    await pool.query('UPDATE tickets SET status = $1, owner_id = $2, payment_phone = $3, screenshot_url = $4 WHERE tier_id = $5 AND number_val = $6 AND round_no = $7', 
-        ['pending', userId, phone, req.file.path, tierId, number, round]);
 
-    // Store payment request permanently in admin dashboard table
+    let tierPrice = 0;
     try {
-        await pool.query(`
-            INSERT INTO payment_requests (tier_id, ticket_number, round_no, user_id, full_name, phone, screenshot_url, start_time, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
-        `, [tierId, number, round, userId, userFullName, phone, req.file.path, startTime]);
-    } catch(e) {
-        console.error('Error storing payment request:', e);
-        // Continue even if table doesn't exist yet - admin can create it
+        const priceRes = await pool.query('SELECT price FROM tiers WHERE id = $1', [tierId]);
+        if (priceRes.rows[0] && priceRes.rows[0].price != null) {
+            tierPrice = parseInt(priceRes.rows[0].price, 10) || 0;
+        }
+    } catch (e) {
+        console.error('Error fetching tier price:', e);
+    }
+    
+    try {
+        const updatePromises = ticketNumbers.map(num => 
+            pool.query(
+                'UPDATE tickets SET status = $1, owner_id = $2, payment_phone = $3, screenshot_url = $4, transaction_hash = $5, purchase_timestamp = NOW() WHERE tier_id = $6 AND number_val = $7 AND round_no = $8', 
+                ['pending', userId, phone, req.file.path, transactionHash || null, tierId, num, round]
+            )
+        );
+        await Promise.all(updatePromises);
+    } catch (e) {
+        console.error('Error updating tickets for payment:', e);
     }
 
-    const keyboard = new InlineKeyboard()
-        .text("✅ Approve (አጽድቅ)", `approve_${tierId}_${number}_${userId}_${round}`)
-        .text("❌ Reject (ሰርዝ)", `reject_${tierId}_${number}_${userId}_${round}`);
+    // Store transaction records for audit trail
+    if (transactionHash) {
+        try {
+            const txPromises = ticketNumbers.map(num =>
+                pool.query(`
+                    INSERT INTO ticket_transactions (tier_id, round_no, ticket_number, user_id, transaction_hash, status)
+                    VALUES ($1, $2, $3, $4, $5, 'pending')
+                    ON CONFLICT (tier_id, round_no, ticket_number) DO UPDATE 
+                    SET transaction_hash = EXCLUDED.transaction_hash,
+                        status = 'pending'
+                `, [tierId, round, num, userId, transactionHash])
+            );
+            await Promise.all(txPromises);
+        } catch (e) {
+            console.error('Error storing ticket transactions:', e);
+        }
+    }
 
-    await bot.api.sendPhoto(process.env.ADMIN_ID, new InputFile(req.file.path), {
-        caption: `🔔 **አዲስ ክፍያ**\n\n🔹 **ደረጃ:** ${tierName}\n🔹 **ቁጥር:** #${number}\n🔹 **ዙር:** #${round}\n🔹 **ስልክ:** ${phone}\n🔹 **ስም:** ${userFullName}\n🔹 **ጊዜ:** ${startTimeStr}`,
-        reply_markup: keyboard
-    });
+    // Store payment requests permanently in admin dashboard table (one per ticket)
+    try {
+        const paymentPromises = ticketNumbers.map(num =>
+            pool.query(`
+                INSERT INTO payment_requests (tier_id, ticket_number, round_no, user_id, full_name, phone, screenshot_url, start_time, status)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
+            `, [tierId, num, round, userId, userFullName, phone, req.file.path, startTime])
+        );
+        await Promise.all(paymentPromises);
+    } catch(e) {
+        console.error('Error storing payment request:', e);
+    }
+
+    try {
+        const numbersLabel = ticketNumbers
+            .map(n => `🎟 ${String(n).padStart(2, '0')}`)
+            .join(', ');
+        const shortHash = (transactionHash || '').toString().slice(0, 16) || 'nohash';
+        const count = ticketNumbers.length;
+        const expectedTotal = tierPrice * count;
+
+        const keyboard = new InlineKeyboard()
+            .text("✅ Approve All", `approve_group_${tierId}_${round}_${userId}_${shortHash}`)
+            .text("❌ Reject All", `reject_group_${tierId}_${round}_${userId}_${shortHash}`);
+
+        await bot.api.sendPhoto(process.env.ADMIN_ID, new InputFile(req.file.path), {
+            caption: `🔔 **አዲስ ክፍያ**\n\n` +
+                `🔹 **ደረጃ:** ${tierName}\n` +
+                `🔹 **ትኬቶች:** ${numbersLabel}\n` +
+                `🔹 **ብዛት:** ${count}\n` +
+                `🔹 **የሚጠበቀው ድምር / Expected Total:** ${expectedTotal} ETB\n` +
+                `🔹 **ዙር:** #${round}\n` +
+                `🔹 **ስልክ:** ${phone}\n` +
+                `🔹 **ስም:** ${userFullName}\n` +
+                `🔹 **ጊዜ:** ${startTimeStr}`,
+            reply_markup: keyboard
+        });
+    } catch (e) {
+        console.error('Error sending admin payment photo:', e);
+    }
+
     res.json({ success: true });
 });
 
 // --- ADMIN CALLBACKS ---
+// Group approval for multi-ticket payments
+bot.callbackQuery(/approve_group_(\d+)_(\d+)_(\d+)_([0-9a-fA-F]+)/, async (ctx) => {
+    const [_, tId, rnd, uId, shortHash] = ctx.match;
+    try {
+        const txRes = await pool.query(`
+            SELECT ticket_number 
+            FROM ticket_transactions 
+            WHERE tier_id = $1 AND round_no = $2 AND user_id = $3
+              AND transaction_hash LIKE $4 || '%'
+        `, [tId, rnd, uId, shortHash]);
+        const nums = txRes.rows.map(r => r.ticket_number);
+        if (nums.length === 0) {
+            await ctx.answerCallbackQuery({ text: 'No tickets found for this payment', show_alert: true });
+            return;
+        }
+
+        await pool.query(
+            'UPDATE tickets SET status = $1 WHERE tier_id = $2 AND round_no = $3 AND number_val = ANY($4::int[])',
+            ['sold', tId, rnd, nums]
+        );
+
+        try {
+            await pool.query(`
+                UPDATE ticket_transactions
+                SET status = 'sold'
+                WHERE tier_id = $1 AND round_no = $2 AND ticket_number = ANY($3::int[])
+            `, [tId, rnd, nums]);
+        } catch (e) {
+            console.error('Error updating group transactions:', e);
+        }
+
+        try {
+            await pool.query(`
+                UPDATE payment_requests 
+                SET status = 'approved'
+                WHERE tier_id = $1 AND round_no = $2 AND ticket_number = ANY($3::int[]) AND user_id = $4
+            `, [tId, rnd, nums, uId]);
+        } catch (e) {
+            console.error('Error updating group payment requests:', e);
+        }
+
+        const countRes = await pool.query(
+            "SELECT count(*) FROM tickets WHERE tier_id = $1 AND status = 'sold' AND round_no = $2",
+            [tId, rnd]
+        );
+        if (parseInt(countRes.rows[0].count) === 100) {
+            const serverSeed = crypto.randomBytes(32).toString('hex');
+            const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
+            const combinedSeed = serverSeed;
+            const drawHash = crypto.createHash('sha256').update(combinedSeed).digest('hex');
+            
+            await pool.query(`
+                INSERT INTO draw_seeds (tier_id, round_no, server_seed_hash, server_seed, combined_seed, draw_hash)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (tier_id, round_no) DO UPDATE 
+                SET server_seed_hash = EXCLUDED.server_seed_hash,
+                    server_seed = EXCLUDED.server_seed,
+                    combined_seed = EXCLUDED.combined_seed,
+                    draw_hash = EXCLUDED.draw_hash
+            `, [tId, rnd, serverSeedHash, serverSeed, combinedSeed, drawHash]);
+            
+            const players = await pool.query(
+                "SELECT DISTINCT owner_id FROM tickets WHERE tier_id = $1 AND round_no = $2",
+                [tId, rnd]
+            );
+            for (let p of players.rows) {
+                await bot.api.sendMessage(p.owner_id, "🔔 ከ5 ደቂቃ በኋላ ዕጣው ይወጣል! መልካም ዕድል!");
+            }
+            setTimeout(() => runDrawLogic(tId, rnd), 300000);
+        }
+
+        const originalCaption = ctx.callbackQuery && ctx.callbackQuery.message && ctx.callbackQuery.message.caption
+            ? ctx.callbackQuery.message.caption
+            : '';
+        const statusLine = `✅ Approved ${nums.length} tickets`;
+        const newCaption = originalCaption
+            ? `${originalCaption}\n\n${statusLine}`
+            : statusLine;
+        await ctx.editMessageCaption({ caption: newCaption });
+
+        await bot.api.sendMessage(
+            uId,
+            `✅ ክፍያዎ ተፈቅዷል! የትኬት ቁጥሮች: [${nums.map(n => `🎟 ${n}`).join(', ')}]። መልካም ዕድል!`
+        );
+    } catch (e) {
+        console.error('Group approval error:', e);
+        await ctx.answerCallbackQuery({ text: 'Error during approval', show_alert: true });
+    }
+});
+
+bot.callbackQuery(/reject_group_(\d+)_(\d+)_(\d+)_([0-9a-fA-F]+)/, async (ctx) => {
+    const [_, tId, rnd, uId, shortHash] = ctx.match;
+    try {
+        const txRes = await pool.query(`
+            SELECT ticket_number 
+            FROM ticket_transactions 
+            WHERE tier_id = $1 AND round_no = $2 AND user_id = $3
+              AND transaction_hash LIKE $4 || '%'
+        `, [tId, rnd, uId, shortHash]);
+        const nums = txRes.rows.map(r => r.ticket_number);
+        if (nums.length === 0) {
+            await ctx.answerCallbackQuery({ text: 'No tickets found for this payment', show_alert: true });
+            return;
+        }
+
+        await pool.query(
+            'UPDATE tickets SET status = $1, owner_id = NULL, payment_phone = NULL, screenshot_url = NULL WHERE tier_id = $2 AND round_no = $3 AND number_val = ANY($4::int[])',
+            ['available', tId, rnd, nums]
+        );
+
+        try {
+            await pool.query(`
+                UPDATE ticket_transactions 
+                SET status = 'rejected' 
+                WHERE tier_id = $1 AND round_no = $2 AND ticket_number = ANY($3::int[])
+            `, [tId, rnd, nums]);
+        } catch (e) {
+            console.error('Error updating group transactions (reject):', e);
+        }
+
+        try {
+            await pool.query(`
+                UPDATE payment_requests 
+                SET status = 'rejected'
+                WHERE tier_id = $1 AND round_no = $2 AND ticket_number = ANY($3::int[]) AND user_id = $4
+            `, [tId, rnd, nums, uId]);
+        } catch (e) {
+            console.error('Error updating group payment requests (reject):', e);
+        }
+
+        const originalCaption = ctx.callbackQuery && ctx.callbackQuery.message && ctx.callbackQuery.message.caption
+            ? ctx.callbackQuery.message.caption
+            : '';
+        const statusLine = `❌ Rejected ${nums.length} tickets`;
+        const newCaption = originalCaption
+            ? `${originalCaption}\n\n${statusLine}`
+            : statusLine;
+        await ctx.editMessageCaption({ caption: newCaption });
+
+        await bot.api.sendMessage(
+            uId,
+            `❌ ክፍያዎ ተቀባይነት አላገኘም ለትኬቶች: [${nums.map(n => `🎟 ${n}`).join(', ')}]። እባክዎ እንደገና ይመለሱ።`
+        );
+    } catch (e) {
+        console.error('Group rejection error:', e);
+        await ctx.answerCallbackQuery({ text: 'Error during rejection', show_alert: true });
+    }
+});
+
+// Single-ticket callbacks (backward compatibility)
 bot.callbackQuery(/approve_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     const [_, tId, num, uId, rnd] = ctx.match;
     await pool.query('UPDATE tickets SET status = $1 WHERE tier_id = $2 AND number_val = $3 AND round_no = $4', ['sold', tId, num, rnd]);
@@ -559,7 +792,14 @@ bot.callbackQuery(/approve_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     
     // Send approval message (default to Amharic, can be enhanced with language detection)
     await bot.api.sendMessage(uId, `✅ ክፍያዎ ተፈቅዷል! የትኬት ቁጥር: [${num}]። መልካም ዕድል!`);
-    await ctx.editMessageCaption({ caption: `✅ Approved Tier ${tId} | #${num}` });
+    const originalCaptionApprove = ctx.callbackQuery && ctx.callbackQuery.message && ctx.callbackQuery.message.caption
+        ? ctx.callbackQuery.message.caption
+        : '';
+    const approveStatusLine = `✅ Approved Tier ${tId} | #${num}`;
+    const approveNewCaption = originalCaptionApprove
+        ? `${originalCaptionApprove}\n\n${approveStatusLine}`
+        : approveStatusLine;
+    await ctx.editMessageCaption({ caption: approveNewCaption });
 });
 
 // Reject callback
@@ -588,7 +828,14 @@ bot.callbackQuery(/reject_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     }
     
     await bot.api.sendMessage(uId, `❌ ክፍያዎ ተቀባይነት አላገኘም። እባክዎ እንደገና ይሞክሩ።`);
-    await ctx.editMessageCaption({ caption: `❌ Rejected Tier ${tId} | #${num}` });
+    const originalCaptionReject = ctx.callbackQuery && ctx.callbackQuery.message && ctx.callbackQuery.message.caption
+        ? ctx.callbackQuery.message.caption
+        : '';
+    const rejectStatusLine = `❌ Rejected Tier ${tId} | #${num}`;
+    const rejectNewCaption = originalCaptionReject
+        ? `${originalCaptionReject}\n\n${rejectStatusLine}`
+        : rejectStatusLine;
+    await ctx.editMessageCaption({ caption: rejectNewCaption });
 });
 
 // Payout confirmation callbacks
@@ -736,10 +983,11 @@ async function runDrawLogic(tId, rnd) {
     `, [tId, rnd]);
 
     // Send Admin Log
-    await bot.api.sendMessage(process.env.ADMIN_ID, `🏆 **ROUND #${rnd} DRAW COMPLETE**\n1st: #${w[2].number_val}\n2nd: #${w[1].number_val}\n3rd: #${w[0].number_val}`);
+        await bot.api.sendMessage(process.env.ADMIN_ID, `🏆 **ROUND #${rnd} DRAW COMPLETE**\n1st: 🎟 ${w[2].number_val}\n2nd: 🎟 ${w[1].number_val}\n3rd: 🎟 ${w[0].number_val}`);
     
     // Post winners instantly to Telegram group/channel
     await postWinnersToGroup(tId, rnd, w[2].number_val, w[1].number_val, w[0].number_val);
+    await requestWinnerProofs(tId, rnd);
 
     // Store winners in database for verification
     const winners = [
@@ -796,14 +1044,14 @@ async function postWinnersToGroup(tierId, roundNo, firstNum, secondNum, thirdNum
         const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
         
         const message = `🎉 **${emoji} ${tierName} TIER - ROUND #${String(roundNo).padStart(4, '0')} WINNERS** 🎉\n\n` +
-            `🥇 **1st Place:** Ticket #${firstNum}\n` +
-            `🥈 **2nd Place:** Ticket #${secondNum}\n` +
-            `🥉 **3rd Place:** Ticket #${thirdNum}\n\n` +
+            `🥇 **1st Place:** Ticket 🎟 ${firstNum}\n` +
+            `🥈 **2nd Place:** Ticket 🎟 ${secondNum}\n` +
+            `🥉 **3rd Place:** Ticket 🎟 ${thirdNum}\n\n` +
             `🎊 እንኳን ደስ አለዎት አሸናፊዎች! 🎊\n\n` +
             `**${tierNameAm} ደረጃ - ዙር #${String(roundNo).padStart(4, '0')} አሸናፊዎች**\n\n` +
-            `🥇 **1ኛ ምድብ:** ትኬት #${firstNum}\n` +
-            `🥈 **2ኛ ምድብ:** ትኬት #${secondNum}\n` +
-            `🥉 **3ኛ ምድብ:** ትኬት #${thirdNum}\n\n` +
+            `🥇 **1ኛ ምድብ:** ትኬት 🎟 ${firstNum}\n` +
+            `🥈 **2ኛ ምድብ:** ትኬት 🎟 ${secondNum}\n` +
+            `🥉 **3ኛ ምድብ:** ትኬት 🎟 ${thirdNum}\n\n` +
             `━━━━━━━━━━━━━━━━━━━━\n` +
             `🎯 **Next Round Starting Soon!**\n` +
             `🎯 **የሚቀጥለው ዙር በቅርቡ ይጀምራል!**`;
@@ -815,6 +1063,77 @@ async function postWinnersToGroup(tierId, roundNo, firstNum, secondNum, thirdNum
         // Don't throw - this is not critical for the draw process
     }
 }
+
+async function requestWinnerProofs(tierId, roundNo) {
+    try {
+        const keyboard = new InlineKeyboard()
+            .text("📸 Upload 1st Proof", `upload_proof_${tierId}_${roundNo}_1`)
+            .row()
+            .text("📸 Upload 2nd Proof", `upload_proof_${tierId}_${roundNo}_2`)
+            .row()
+            .text("📸 Upload 3rd Proof", `upload_proof_${tierId}_${roundNo}_3`);
+        await bot.api.sendMessage(process.env.ADMIN_ID, `🏆 Winners announced for Tier ${tierId} | Round #${roundNo}\nPlease upload proof images for 1st, 2nd, and 3rd places.`, { reply_markup: keyboard });
+    } catch (e) {
+        console.error('Error requesting proofs from admin:', e);
+    }
+}
+
+bot.callbackQuery(/upload_proof_(\d+)_(\d+)_(1|2|3)/, async (ctx) => {
+    const [_, tId, rnd, placeStr] = ctx.match;
+    const place = parseInt(placeStr, 10);
+    try {
+        const res = await pool.query(`
+            SELECT w1_num, w2_num, w3_num FROM winners_history
+            WHERE tier_id = $1 AND round_no = $2
+            ORDER BY id DESC LIMIT 1
+        `, [tId, rnd]);
+        if (!res.rows[0]) {
+            await ctx.answerCallbackQuery({ text: 'No winners found for this round', show_alert: true });
+            return;
+        }
+        const w = res.rows[0];
+        const num = place === 1 ? w.w1_num : place === 2 ? w.w2_num : w.w3_num;
+        pendingProofs.set(String(ctx.from.id), { tierId: parseInt(tId, 10), roundNo: parseInt(rnd, 10), place, ticketNumber: num });
+        const placeText = place === 1 ? '1st' : place === 2 ? '2nd' : '3rd';
+        await ctx.answerCallbackQuery({ text: `Send the image for ${placeText} place now`, show_alert: false });
+        await ctx.reply(`Please send the proof image for ${placeText} place | Ticket 🎟 ${num}`);
+    } catch (e) {
+        console.error('Upload proof init error:', e);
+        await ctx.answerCallbackQuery({ text: 'Error preparing upload', show_alert: true });
+    }
+});
+
+bot.on('message:photo', async (ctx) => {
+    try {
+        const adminId = String(process.env.ADMIN_ID || '');
+        if (String(ctx.from.id) !== adminId) return;
+        const pending = pendingProofs.get(adminId);
+        if (!pending) return;
+        const photos = ctx.message.photo || [];
+        if (photos.length === 0) return;
+        const fileId = photos[photos.length - 1].file_id;
+        const tierEmojis = { 1: '🥉', 2: '🥈', 3: '🥇' };
+        const tierNames = { 1: 'BRONZE', 2: 'SILVER', 3: 'GOLD' };
+        const tierNamesAm = { 1: 'ነሐስ', 2: 'ብር', 3: 'ወርቅ' };
+        const placeText = pending.place === 1 ? '1st Place' : pending.place === 2 ? '2nd Place' : '3rd Place';
+        const placeTextAm = pending.place === 1 ? '1ኛ ምድብ' : pending.place === 2 ? '2ኛ ምድብ' : '3ኛ ምድብ';
+        const emoji = tierEmojis[pending.tierId] || '🏆';
+        const tName = tierNames[pending.tierId] || 'TIER';
+        const tNameAm = tierNamesAm[pending.tierId] || 'ደረጃ';
+        const caption =
+            `🏆 ${emoji} ${tName} | Round #${String(pending.roundNo).padStart(4, '0')} | ${placeText}\n` +
+            `🎟 Ticket: ${pending.ticketNumber}\n\n` +
+            `🏆 ${tNameAm} | ዙር #${String(pending.roundNo).padStart(4, '0')} | ${placeTextAm}\n` +
+            `🎟 ትኬት: ${pending.ticketNumber}`;
+        const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
+        await bot.api.sendPhoto(groupId, fileId, { caption });
+        await ctx.reply('✅ Proof posted to winners channel.');
+        pendingProofs.delete(adminId);
+    } catch (e) {
+        console.error('Error posting proof image:', e);
+        await ctx.reply('❌ Failed to post proof. Please try again.');
+    }
+});
 
 async function sendWinnerNotifications(winners) {
     const tierNames = { 1: 'Bronze', 2: 'Silver', 3: 'Gold' };
@@ -831,13 +1150,13 @@ async function sendWinnerNotifications(winners) {
             // English notification
             const messageEn = `🎉 Congratulations! You have secured a win in the Siket Lottery. To facilitate your prize transfer, please submit your Full Name and your preferred Telebirr or CBE account number. Note: You may utilize any valid account for this transfer. Notice: You are not obligated to tip customer service workers; tipping is strictly based on your willingness. If you are forced to tip, please report it via the comment section on our website.\n\n` +
                 `**Place:** ${placeText} Place\n` +
-                `**Ticket Number:** #${winner.number}\n` +
+                `**Ticket Number:** 🎟 ${winner.number}\n` +
                 `**Tier:** ${tierName}`;
             
             // Amharic notification
             const messageAm = `🎉 እንኳን ደስ አለዎት! የሲኬት ሎተሪ አሸናፊ ሆነዋል። ሽልማትዎን ለማስተላለፍ እንዲረዳን እባክዎ ሙሉ ስምዎን እና የሚመርጡትን የቴሌብር ወይም የሲቢኢ አካውንት ቁጥር ይላኩልን። ማሳሰቢያ፦ ለማንኛውም ትክክለኛ አካውንት ሽልማቱን ማስተላለፍ ይቻላል። ማሳሰቢያ፦ ለደንበኛ አገልግሎት ሰራተኞች ጉርሻ (ቲፕ) የመስጠት ግዴታ የለብዎትም፤ ጉርሻ መስጠት በፍላጎትዎ ላይ ብቻ የተመሰረተ ነው። ሰራተኞች ጉርሻ እንዲሰጡ ካስገደዱዎት እባክዎ በድረ-ገጹ የቅሬታ/አስተያየት መስጫ ላይ ሪፖርት ያድርጉ።\n\n` +
                 `**ምድብ:** ${winner.place === 1 ? '1ኛ' : winner.place === 2 ? '2ኛ' : '3ኛ'} ምድብ\n` +
-                `**የትኬት ቁጥር:** #${winner.number}\n` +
+                `**የትኬት ቁጥር:** 🎟 ${winner.number}\n` +
                 `**ደረጃ:** ${tierName}`;
             
             const keyboard = new InlineKeyboard()
@@ -873,7 +1192,7 @@ bot.command("start", async (ctx) => {
     
     // Telegram Web Apps work with the base URL - server should serve index.html by default
     // If your server requires /index.html, uncomment the line below
-    // webAppUrl = `${webAppUrl}/index.html`;
+    webAppUrl = `${webAppUrl}/index.html`;
     
     console.log(`🔗 Web App URL configured: ${webAppUrl}`);
     

@@ -187,8 +187,54 @@
     </div>
 
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
+        // Initialize Telegram WebApp
+        const tg = window.Telegram?.WebApp;
+        let isTelegramEnvironment = false;
+        
+        if (tg) {
+            isTelegramEnvironment = true;
+            tg.ready();
+            tg.expand();
+            tg.enableClosingConfirmation();
+            
+            // Apply Telegram theme
+            document.documentElement.style.setProperty('--tg-theme-bg-color', tg.backgroundColor);
+            document.documentElement.style.setProperty('--tg-theme-text-color', tg.textColor);
+            document.documentElement.style.setProperty('--tg-theme-hint-color', tg.hintColor);
+            document.documentElement.style.setProperty('--tg-theme-link-color', tg.linkColor);
+            document.documentElement.style.setProperty('--tg-theme-button-color', tg.buttonColor);
+            document.documentElement.style.setProperty('--tg-theme-button-text-color', tg.buttonTextColor);
+        }
+        
+        // Haptic feedback utility
+        function triggerHaptic(type = 'light') {
+            if (tg?.HapticFeedback) {
+                switch(type) {
+                    case 'light':
+                        tg.HapticFeedback.impactOccurred('light');
+                        break;
+                    case 'medium':
+                        tg.HapticFeedback.impactOccurred('medium');
+                        break;
+                    case 'success':
+                        tg.HapticFeedback.notificationOccurred('success');
+                        break;
+                    case 'error':
+                        tg.HapticFeedback.notificationOccurred('error');
+                        break;
+                }
+            }
+        }
+        
+        // Show alert in Telegram style
+        function showAlert(message, callback) {
+            if (tg?.showAlert) {
+                tg.showAlert(message, callback);
+            } else {
+                alert(message);
+                if (callback) callback();
+            }
+        }
 
         // Get parameters from URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -210,7 +256,7 @@
         };
 
         document.getElementById('place-text').textContent = placeTexts[place] || 'Winner!';
-        document.getElementById('ticket-number').textContent = `#${ticketNumber || '00'}`;
+        document.getElementById('ticket-number').textContent = `🎟 ${ticketNumber || '00'}`;
 
         // Check if already verified
         async function checkStatus() {
@@ -236,45 +282,59 @@
         }
 
         // Handle form submission
+        // Enhanced verification submission with Telegram security
         document.getElementById('verification-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const submitBtn = document.getElementById('submit-btn');
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Submitting...';
-
-            const formData = {
-                tierId: parseInt(tierId),
-                roundNo: parseInt(roundNo),
-                ticketNumber: parseInt(ticketNumber),
-                userId: tg.initDataUnsafe?.user?.id || 0,
-                place: parseInt(place),
-                fullName: document.getElementById('full-name').value,
-                paymentMethod: document.getElementById('payment-method').value,
-                accountNumber: document.getElementById('account-number').value
-            };
-
+            const originalText = submitBtn.textContent;
+            
             try {
-                const res = await fetch('/api/winner/verify', {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Submitting...';
+                
+                // Validate Telegram user
+                let userId = null;
+                if (isTelegramEnvironment && tg?.initDataUnsafe?.user?.id) {
+                    userId = tg.initDataUnsafe.user.id;
+                } else {
+                    userId = parseInt(document.getElementById('user-id').value) || 0;
+                }
+                
+                const response = await fetch('/api/winner/verify', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(formData)
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        tierId: parseInt(tierId),
+                        roundNo: parseInt(roundNo),
+                        ticketNumber: parseInt(ticketNumber),
+                        userId: userId,
+                        fullName: document.getElementById('full-name').value,
+                        paymentMethod: document.getElementById('payment-method').value,
+                        accountNumber: document.getElementById('account-number').value,
+                        place: parseInt(place),
+                        initData: isTelegramEnvironment ? tg.initData : null
+                    })
                 });
-
-                const data = await res.json();
+                
+                const data = await response.json();
                 
                 if (data.success) {
+                    triggerHaptic('success');
                     document.getElementById('verification-form').style.display = 'none';
                     document.getElementById('success-message').classList.add('active');
                     document.getElementById('error-message').classList.remove('active');
                 } else {
-                    throw new Error('Submission failed');
+                    throw new Error(data.error || 'Submission failed');
                 }
             } catch (error) {
                 console.error('Submission error:', error);
+                triggerHaptic('error');
                 document.getElementById('error-message').classList.add('active');
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit Verification | ማረጋገጥ አስገባ';
+                submitBtn.textContent = originalText;
             }
         });
 
