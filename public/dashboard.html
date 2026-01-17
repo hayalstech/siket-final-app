@@ -162,11 +162,15 @@
         }
         applyLanguage();
         
-        const userId = tg.initDataUnsafe?.user?.id || '0';
-        
         async function loadDashboard() {
             try {
-                const res = await fetch(`/api/user/dashboard?userId=${userId}`);
+                const headers = {};
+                if (tg && tg.initData) {
+                    headers['Authorization'] = `tma ${tg.initData}`;
+                }
+                const res = await fetch(`/api/user/dashboard`, {
+                    headers
+                });
                 let data;
                 if (!res.ok) {
                     const text = await res.text();

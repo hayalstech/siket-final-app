@@ -6,6 +6,7 @@ const multer = require('multer');
 const fs = require('fs');
 const axios = require('axios');
 const crypto = require('crypto');
+const path = require('path');
 
 const bot = new Bot(process.env.BOT_TOKEN);
 const app = express();
@@ -14,8 +15,81 @@ const pendingProofs = new Map();
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 app.use(express.json());
-app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
+
+const TELEGRAM_BOT_TOKEN = process.env.BOT_TOKEN;
+const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY;
+
+function getInitDataRaw(req) {
+    const auth = req.headers['authorization'];
+    if (auth && typeof auth === 'string' && auth.startsWith('tma ')) {
+        return auth.slice(4).trim();
+    }
+    if (req.body && req.body.initData) {
+        return req.body.initData;
+    }
+    if (req.query && req.query.initData) {
+        return req.query.initData;
+    }
+    return null;
+}
+
+function verifyTelegramInitData(initDataRaw) {
+    if (!initDataRaw || !TELEGRAM_BOT_TOKEN) return null;
+    try {
+        const decoded = decodeURIComponent(initDataRaw);
+        const params = new URLSearchParams(decoded);
+        const hash = params.get('hash');
+        if (!hash) return null;
+        params.delete('hash');
+        const pairs = [];
+        for (const [key, value] of params.entries()) {
+            pairs.push(`${key}=${value}`);
+        }
+        pairs.sort();
+        const dataCheckString = pairs.join('\n');
+        const secret = crypto.createHmac('sha256', 'WebAppData').update(TELEGRAM_BOT_TOKEN).digest();
+        const computedHash = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
+        if (computedHash !== hash) return null;
+        const userJson = params.get('user');
+        let user = null;
+        if (userJson) {
+            try {
+                user = JSON.parse(userJson);
+            } catch (e) {
+                user = null;
+            }
+        }
+        return {
+            hash,
+            user,
+            authDate: params.get('auth_date')
+        };
+    } catch (e) {
+        console.error('Init data validation error:', e);
+        return null;
+    }
+}
+
+function isAdminAuthorized(req) {
+    if (!ADMIN_SECRET_KEY) return false;
+    const headerKey = req.headers['x-admin-key'];
+    const queryKey = req.query && req.query.key;
+    if (headerKey && headerKey === ADMIN_SECRET_KEY) return true;
+    if (queryKey && queryKey === ADMIN_SECRET_KEY) return true;
+    return false;
+}
+
+function requireAdmin(req, res, next) {
+    if (!isAdminAuthorized(req)) {
+        return res.status(403).send('Forbidden');
+    }
+    next();
+}
+
+app.get('/admin.html', requireAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
 
 // --- API: Get Tier Status & Tickets ---
 app.get('/api/status/:tierId', async (req, res) => {
@@ -85,10 +159,12 @@ app.get('/api/statistics', async (req, res) => {
 // --- API: Get User Dashboard Data ---
 app.get('/api/user/dashboard', async (req, res) => {
     try {
-        const userId = req.query.userId || req.headers['x-user-id'];
-        if (!userId) {
-            return res.status(400).json({ error: 'User ID required' });
+        const initDataRaw = getInitDataRaw(req);
+        const telegramAuth = verifyTelegramInitData(initDataRaw);
+        if (!telegramAuth || !telegramAuth.user || !telegramAuth.user.id) {
+            return res.status(403).json({ error: 'Invalid Telegram authentication data' });
         }
+        const userId = telegramAuth.user.id;
         
         // Get user stats
         const statsRes = await pool.query(`
@@ -316,7 +392,7 @@ app.get('/api/verify/:tierId/:roundNo', async (req, res) => {
 });
 
 // --- API: Admin Dashboard ---
-app.get('/api/admin/dashboard', async (req, res) => {
+app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT 
@@ -343,7 +419,7 @@ app.get('/api/admin/dashboard', async (req, res) => {
 });
 
 // --- API: Admin Dashboard by Status ---
-app.get('/api/admin/dashboard/:status', async (req, res) => {
+app.get('/api/admin/dashboard/:status', requireAdmin, async (req, res) => {
     try {
         const status = req.params.status;
         const result = await pool.query(`
@@ -374,7 +450,13 @@ app.get('/api/admin/dashboard/:status', async (req, res) => {
 // --- API: Submit Winner Verification ---
 app.post('/api/winner/verify', async (req, res) => {
     try {
-        const { tierId, roundNo, ticketNumber, userId, fullName, paymentMethod, accountNumber } = req.body;
+        const { tierId, roundNo, ticketNumber, fullName, paymentMethod, accountNumber } = req.body;
+        const initDataRaw = getInitDataRaw(req);
+        const telegramAuth = verifyTelegramInitData(initDataRaw);
+        if (!telegramAuth || !telegramAuth.user || !telegramAuth.user.id) {
+            return res.status(403).json({ error: 'Invalid Telegram authentication data' });
+        }
+        const userId = telegramAuth.user.id;
         
         // Update verification status
         await pool.query(`
@@ -465,7 +547,13 @@ app.get('/api/draw/:tierId', async (req, res) => {
 
 // --- API: Upload Payment ---
 app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
-    const { userId, tierId, number, phone, round, fullName, transactionHash, numbers } = req.body;
+    const { tierId, number, phone, round, fullName, transactionHash, numbers } = req.body;
+    const initDataRaw = getInitDataRaw(req);
+    const telegramAuth = verifyTelegramInitData(initDataRaw);
+    if (!telegramAuth || !telegramAuth.user || !telegramAuth.user.id) {
+        return res.status(403).json({ error: 'Invalid Telegram authentication data' });
+    }
+    const userId = telegramAuth.user.id;
     const tierName = tierId == 3 ? "🥇 GOLD" : tierId == 2 ? "🥈 SILVER" : "🥉 BRONZE";
     
     let ticketNumbers = [];

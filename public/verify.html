@@ -301,12 +301,7 @@
                     userId = parseInt(document.getElementById('user-id').value) || 0;
                 }
                 
-                const response = await fetch('/api/winner/verify', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
+                const payload = {
                         tierId: parseInt(tierId),
                         roundNo: parseInt(roundNo),
                         ticketNumber: parseInt(ticketNumber),
@@ -316,7 +311,17 @@
                         accountNumber: document.getElementById('account-number').value,
                         place: parseInt(place),
                         initData: isTelegramEnvironment ? tg.initData : null
-                    })
+                    };
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                if (isTelegramEnvironment && tg?.initData) {
+                    headers['Authorization'] = `tma ${tg.initData}`;
+                }
+                const response = await fetch('/api/winner/verify', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(payload)
                 });
                 
                 const data = await response.json();

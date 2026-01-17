@@ -2140,6 +2140,9 @@
             formData.append('fullName', fullName);
             formData.append('transactionHash', transactionHash);
             formData.append('numbers', JSON.stringify(allSelected));
+            if (isTelegramEnvironment && tg?.initData) {
+                formData.append('initData', tg.initData);
+            }
 
             submitBtn.disabled = true;
             submitBtn.textContent = lang === 'am' ? 'በመላክ ላይ...' : 'Submitting...';
