@@ -59,7 +59,7 @@
         }
         .winner-title {
             font-size: 18px;
-            color: #94a3b8;
+            color: #e5e7eb;
             margin-bottom: 10px;
             text-transform: uppercase;
             letter-spacing: 2px;
@@ -75,6 +75,39 @@
             font-size: 24px;
             color: #ff7a2f;
             font-weight: bold;
+        }
+        .stage-banner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.82);
+            padding: 12px 22px;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 211, 106, 0.8);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 110;
+            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.7);
+        }
+        .stage-chip {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.18em;
+            color: #ff7a2f;
+        }
+        .stage-text {
+            font-size: 14px;
+            color: #e5e7eb;
+            white-space: nowrap;
+        }
+        .stage-text-active {
+            animation: stagePulse 0.7s ease-out;
+        }
+        @keyframes stagePulse {
+            0% { opacity: 0; transform: translateY(6px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
         .loading-screen {
             position: absolute;
@@ -123,6 +156,8 @@
             .winner-number { font-size: 42px; }
             .winner-display { left: 10px; right: 10px; transform: none; min-width: auto; padding: 20px; }
             .overlay-text { right: 10px; left: 10px; top: auto; bottom: 10px; }
+            .stage-banner { top: auto; bottom: 90px; left: 50%; transform: translateX(-50%); padding: 10px 16px; }
+            .stage-text { font-size: 12px; white-space: normal; }
         }
     </style>
 </head>
@@ -134,6 +169,11 @@
 
     <div class="round-info" id="round-info">Round #0000</div>
     <a href="index.html" class="overlay-text" id="overlay-text">← Back</a>
+    
+    <div class="stage-banner" id="stage-banner">
+        <div class="stage-chip">LIVE DRAW</div>
+        <div class="stage-text" id="stage-text">Preparing draw...</div>
+    </div>
     
     <div id="canvas-container"></div>
     
@@ -151,6 +191,7 @@
         let drawSequence = 0; // 0 = 3rd, 1 = 2nd, 2 = 1st
         let isAnimating = false;
         let lang = localStorage.getItem('language') || 'am';
+        let drumSpinSpeed = 0.01;
 
         // Get tier ID from URL parameter
         const urlParams = new URLSearchParams(window.location.search);
@@ -171,6 +212,29 @@
             en: 'Winner!'
         };
         document.getElementById('winner-place-text').textContent = winnerTexts[lang];
+        const stageTexts = {
+            am: {
+                preparing: 'ዕጣ እየተዘጋጀ ነው...',
+                drawingThird: '3ኛ ምድብ ለመመረጥ በመጠባበቅ ላይ...',
+                drawingSecond: '2ኛ ምድብ በመመረጥ ላይ...',
+                drawingFirst: '1ኛ ምድብ ለመመረጥ በመጠባበቅ ላይ...'
+            },
+            en: {
+                preparing: 'Shuffling balls for the live draw...',
+                drawingThird: 'Revealing 3rd place winner...',
+                drawingSecond: 'Revealing 2nd place winner...',
+                drawingFirst: 'Revealing 1st place winner...'
+            }
+        };
+        function setStageText(text) {
+            const el = document.getElementById('stage-text');
+            if (!el) return;
+            el.classList.remove('stage-text-active');
+            el.textContent = text;
+            void el.offsetWidth;
+            el.classList.add('stage-text-active');
+        }
+        setStageText(stageTexts[lang].preparing);
 
         // Initialize Three.js
         function init() {
@@ -329,7 +393,7 @@
 
             // Rotate drum
             if (drum) {
-                drum.rotation.y += 0.01;
+                drum.rotation.y += drumSpinSpeed;
             }
 
             // Animate balls with physics
@@ -419,14 +483,21 @@
                 en: { third: '3rd Place', second: '2nd Place', first: '1st Place' }
             };
             
+            setStageText(stageTexts[lang].preparing);
+            drumSpinSpeed = 0.02;
+            energizeBalls(1.4);
+            
             const sequence = [
-                { place: placeTexts[lang].third, placeKey: 'third', number: winners.third, delay: 0 },
-                { place: placeTexts[lang].second, placeKey: 'second', number: winners.second, delay: 5000 },
-                { place: placeTexts[lang].first, placeKey: 'first', number: winners.first, delay: 10000 }
+                { place: placeTexts[lang].third, placeKey: 'third', number: winners.third, delay: 3000, spinSpeed: 0.02, stageKey: 'drawingThird' },
+                { place: placeTexts[lang].second, placeKey: 'second', number: winners.second, delay: 9000, spinSpeed: 0.018, stageKey: 'drawingSecond' },
+                { place: placeTexts[lang].first, placeKey: 'first', number: winners.first, delay: 15000, spinSpeed: 0.015, stageKey: 'drawingFirst' }
             ];
 
             sequence.forEach((item, index) => {
                 setTimeout(() => {
+                    drumSpinSpeed = item.spinSpeed;
+                    energizeBalls(1.2);
+                    setStageText(stageTexts[lang][item.stageKey]);
                     revealWinner(item.place, item.number);
                     
                     // Highlight winning ball
@@ -482,6 +553,11 @@
                 const scale = 1 + Math.sin(pulseCount * 0.5) * 0.3;
                 ball.scale.set(scale, scale, scale);
             }, 200);
+        }
+        function energizeBalls(multiplier) {
+            balls.forEach(ball => {
+                ball.userData.velocity.multiplyScalar(multiplier);
+            });
         }
 
         function resetRound() {

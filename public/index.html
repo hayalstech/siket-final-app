@@ -1,47 +1,71 @@
 <!DOCTYPE html>
-<html lang="am">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title id="page-title">Siket Lotto</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-                am: { 
-                thT: "ዓይነት", thR: "ዙር", thS: "ሁኔታ", thP: "ዋጋ", 
-                leagueT: "የዕጣዎች ሁኔታ", statusSold: "ተሽጧል", statusDraw: "ዕጣ በመውጣት ላይ", statusDone: "ተጠናቋል",
-                soonT: "በቅርቡ ይጠብቁ!", soonB: "አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!",
-                navAbout: "ስለእኛ", commentBtn: "አስተያየት",
-                navTitle: "ስኬት ሎቶ",
-                aboutTitle: "ስለ ሲኬት ሎተሪ",
-                prizeStructureTitle: "የሽልማት ዝርዝር",
-                principlesTitle: "መመሪያዎቻችን",
-                rulesTitle: "ደንቦች እና ማሳሰቢያ",
-                transparencyText: "ከ3ኛ እስከ 1ኛ ሽልማት ድረስ የሚደረጉ የቀጥታ ዕጣዎች ፍትሃዊነትን ያረጋግጣሉ።",
-                payoutsText: "የሽልማት ክፍያዎች ብቻ በቴሌብር እና CBE ብር ይከፈላሉ።",
-                frequencyText: "በእያንዳንዱ ዙር 100 ትኬቶች ብቻ ለፈጣን ጨዋታዎች እና ተጨማሪ ድሎች።",
-                payoutPolicyText: "የሽልማት ገንዘብ በቴሌብር ወይም CBE ብር ብቻ ይቀበላሉ።",
-        /* Telegram Native Theme Variables */
-        :root { 
-            --orange: #ff7a2f; --green: #15803d; --yellow: #eab308;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Siket Lotto</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- TRANSLATIONS -->
+  <script>
+    const i18n = {
+      am: {
+        thT: "ዓይነት",
+        thR: "ዙር",
+        thS: "ሁኔታ",
+        thP: "ዋጋ",
+        leagueT: "የዕጣዎች ሁኔታ",
+        statusSold: "ተሽጧል",
+        statusDraw: "ዕጣ በመውጣት ላይ",
+        statusDone: "ተጠናቋል",
+        soonT: "በቅርቡ ይጠብቁ!",
+        soonB: "አዳዲስ አስደሳች የሎተሪ ዕጣዎችን...",
+        navAbout: "ስለእኛ",
+        commentBtn: "አስተያየት",
+        navTitle: "ስኬት ሎተሪ",
+        aboutTitle: "ስለ ስኬት ሎተሪ",
+        prizeStructureTitle: "የሽልማት ዝርዝር",
+        principlesTitle: "መመሪያዎቻችን",
+        rulesTitle: "ደንቦች እና ማሳሰቢያ",
+        transparencyText: "ከ3ኛ እስከ 1ኛ ሽልማት ድረስ የሚደረጉ የቀጥታ ዕጣዎች ፍትሃዊነትን ያረጋግጣሉ።",
+        payoutsText: "የሽልማት ክፍያዎች ብቻ በቴሌብር እና CBE ብር ይከፈላሉ።",
+        frequencyText: "በእያንዳንዱ ዙር 100 ትኬቶች ብቻ ለፈጣን ጨዋታዎች እና ተጨማሪ ድሎች።",
+        payoutPolicyText: "የሽልማት ገንዘብ በቴሌብር ወይም CBE ብር ብቻ ይቀበላሉ።"
+      }
+    };
+  </script>
+
+  <!-- STYLES -->
+  <style>
+    :root {
+      --orange: #ff7a2f;
+      --green: #15803d;
+      --yellow: #eab308;
+      --accent: #D4AF37;
+      --navy: #020617;
+    }
             
-            /* Default fallback values - will be overridden by Telegram theme */
-            --tg-theme-bg-color: #0B0E14;
-            --tg-theme-text-color: #FFFFFF;
-            --tg-theme-hint-color: #999999;
-            --tg-theme-link-color: #2481cc;
-            --tg-theme-button-color: #007AFF;
-            --tg-theme-button-text-color: #FFFFFF;
-            --tg-theme-secondary-bg-color: #020617;
-            
-            /* App-specific variables that inherit from Telegram theme */
-            --bg-primary: var(--tg-theme-bg-color, #0B0E14);
-            --bg-secondary: var(--tg-theme-secondary-bg-color, #020617);
-            --accent: #D4AF37;
-            --text-primary: var(--tg-theme-text-color, #FFFFFF);
-            --text-secondary: var(--tg-theme-hint-color, #999999);
-            --link-color: var(--tg-theme-link-color, #2481cc);
-            --button-bg: var(--tg-theme-button-color, #007AFF);
-            --button-text: var(--tg-theme-button-text-color, #FFFFFF);
-        }
+           :root {
+  /* Default fallback values - will be overridden by Telegram theme */
+  --tg-theme-bg-color: #0B0E14;
+  --tg-theme-text-color: #FFFFFF;
+  --tg-theme-hint-color: #999999;
+  --tg-theme-link-color: #2481cc;
+  --tg-theme-button-color: #007AFF;
+  --tg-theme-button-text-color: #FFFFFF;
+  --tg-theme-secondary-bg-color: #020617;
+
+  /* App-specific variables that inherit from Telegram theme */
+  --bg-primary: var(--tg-theme-bg-color, #0B0E14);
+  --bg-secondary: var(--tg-theme-secondary-bg-color, #020617);
+  --accent: #D4AF37;
+  --text-primary: var(--tg-theme-text-color, #FFFFFF);
+  --text-secondary: var(--tg-theme-hint-color, #999999);
+  --link-color: var(--tg-theme-link-color, #2481cc);
+  --button-bg: var(--tg-theme-button-color, #007AFF);
+  --button-text: var(--tg-theme-button-text-color, #FFFFFF);
+}
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         html, body { 
@@ -81,150 +105,289 @@
         [data-lang="am"] .lang-en { display: none; }
         [data-lang="am"] .lang-am { display: block; }
 
+        /* THEME OVERRIDES */
+        :root[data-theme="dark"] {
+            --bg-primary: #020617;
+            --bg-secondary: #020617;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --tg-theme-secondary-bg-color: #020617;
+        }
 
-        .bilingual .lang-en, .bilingual .lang-am { display: inline !important; }
-
+        :root[data-theme="light"] {
+            --bg-primary: #f3f4f6;
+            --bg-secondary: #e5e7eb;
+            --text-primary: #111827;
+            --text-secondary: #4b5563;
+            --tg-theme-secondary-bg-color: #e5e7eb;
+        }
 
 
 
         /* --- HEADER --- */
         header {
             position: fixed; top: 0; width: 100%; z-index: 1000;
-            background: var(--bg-primary); -webkit-backdrop-filter: blur(15px); backdrop-filter: blur(15px);
-            padding: 12px 20px; display: flex; justify-content: space-between; align-items: center;
+            background: linear-gradient(to right, rgba(0,0,0,0.75), rgba(0,0,0,0.55)),
+                        url('images/header.png') center/cover no-repeat,
+                        var(--bg-primary);
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+            padding: 18px 20px; display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
             transition: background 0.3s, border-color 0.3s;
             /* Account for safe area */
-            padding-top: calc(12px + env(safe-area-inset-top));
+            padding-top: calc(18px + env(safe-area-inset-top));
         }
         .header-logo { display: flex; align-items: center; gap: 10px; }
         .header-logo img { height: 30px; }
-        .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 700; color: var(--text-primary); transition: color 0.3s; }
+        .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 800; color: #f9fafb; text-shadow: 0 1px 3px rgba(0,0,0,0.9); }
+        .header-logo-text { display: flex; flex-direction: column; }
+        .header-subtitle { font-size: 11px; margin: 2px 0 0 0; font-weight: 600; color: #e5e7eb; text-shadow: 0 1px 2px rgba(0,0,0,0.85); }
 
         .nav-link {
-            color: var(--text-primary); text-decoration: none; padding: 6px 12px; 
+            color: #f9fafb; text-decoration: none; padding: 6px 12px; 
             border-radius: 20px; font-size: 11px; font-weight: bold;
             transition: all 0.3s ease;
         }
-        .nav-link:hover { background: var(--tg-theme-secondary-bg-color, rgba(255,255,255,0.1)); }
+        .nav-link:hover { background: rgba(0,0,0,0.3); }
         .contact-btn { 
-            background: var(--accent); color: var(--text-primary); text-decoration: none; padding: 6px 12px; 
+            background: var(--accent); color: #111827; text-decoration: none; padding: 6px 12px; 
             border-radius: 20px; font-size: 11px; font-weight: bold;
             animation: pulse-glow 2s infinite; border: 1px solid var(--tg-theme-hint-color, rgba(255,255,255,0.2));
             transition: background 0.3s;
         }
         .theme-toggle {
-            background: transparent;
-            border: 1px solid var(--tg-theme-hint-color, rgba(255,255,255,0.2));
-            color: var(--text-primary);
+            background: rgba(0,0,0,0.45);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: #f9fafb;
             border-radius: 50%; width: 35px; height: 35px; cursor: pointer;
             font-size: 16px; display: flex; align-items: center; justify-content: center;
             transition: all 0.3s;
             margin-right: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6);
         }
         .theme-toggle:hover {
-            background: var(--tg-theme-secondary-bg-color, rgba(255,255,255,0.1));
+            background: rgba(0,0,0,0.7);
         }
         @keyframes pulse-glow { 0% { transform: scale(1); } 70% { transform: scale(1.05); box-shadow: 0 0 10px var(--accent); } 100% { transform: scale(1); } }
 
         /* --- HERO --- */
-        .hero { position: relative; width: 100%; background: #000; line-height: 0; overflow: hidden; margin-top: 55px;}
-        .hero-img { width: 100%; height: auto; object-fit: contain; }
+        .hero { position: relative; width: 100%; background: radial-gradient(circle at top, rgba(212,175,55,0.16), #020617); line-height: 0; overflow: hidden; margin-top: 0; padding: 0; }
+        .hero-img { width: 100%; height: auto; opacity: 0.95; transition: transform 0.6s ease, opacity 0.6s ease; }
+        .hero-trust {
+            position: absolute;
+            left: 8%;
+            top: 32%;
+            transform: translateY(-50%);
+            z-index: 2;
+            color: #f9fafb;
+            animation: hero-trust-entrance 1.1s ease-out forwards;
+        }
+        .hero-trust-title {
+            font-size: 26px;
+            font-weight: 900;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            text-shadow: 0 4px 18px rgba(0,0,0,0.9);
+        }
+        .hero-trust-sub {
+            margin-top: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #e5e7eb;
+            text-shadow: 0 3px 10px rgba(0,0,0,0.8);
+        }
+        @keyframes hero-trust-entrance {
+            0% { opacity: 0; transform: translateY(-40%) translateX(-10px); }
+            60% { opacity: 1; transform: translateY(-52%) translateX(0); }
+            100% { opacity: 1; transform: translateY(-50%) translateX(0); }
+        }
+        .hero-highlight {
+            position: absolute;
+            left: 6%;
+            top: 72%;
+            transform: translateY(-50%);
+            z-index: 2;
+        }
+        .hero-highlight-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(15,23,42,0.88);
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid rgba(250,204,21,0.9);
+            color: #f9fafb;
+            font-size: 13px;
+            font-weight: 600;
+            animation: hero-pill-float 3.2s ease-in-out infinite;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+        }
+        .hero-highlight-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: #22c55e;
+            box-shadow: 0 0 10px rgba(34,197,94,0.9);
+        }
+        .hero-highlight-text {
+            white-space: nowrap;
+        }
+        @keyframes hero-pill-float {
+            0%, 100% { transform: translateY(0); opacity: 0.96; }
+            50% { transform: translateY(-6px); opacity: 1; }
+        }
+        @media (max-width: 600px) {
+            .hero-highlight {
+                left: 50%;
+                top: auto;
+                bottom: 18px;
+                transform: translateX(-50%);
+            }
+            .hero-highlight-text {
+                white-space: normal;
+            }
+        }
         .hero-overlay { 
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             cursor: pointer; z-index: 10; background: transparent;
         }
+        .hero:hover .hero-img { transform: scale(1.04); opacity: 1; }
 
         /* --- DESIRE BANNER --- */
         .desire-banner {
             width: 100%;
-            padding: 0;
             margin: 0;
             background-image: url('images/desire.png');
-            /* ensure the whole image is visible by giving more vertical space */
-            background-size: contain;
-            background-position: top center;
+            background-size: cover;
+            background-position: center;
             background-repeat: no-repeat;
-            min-height: 520px;
-            padding: 24px 15px 0 15px;
+            padding: 32px 18px 28px 18px;
             display: flex;
-            align-items: flex-start; /* move content to top */
+            flex-direction: column;
+            align-items: center;
             justify-content: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .desire-banner::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(15,23,42,0.85), rgba(15,23,42,0.4), rgba(15,23,42,0.9));
         }
         .desire-text {
-            font-size: 20px;
+            position: relative;
+            z-index: 1;
+            font-size: 22px;
             font-weight: 900;
             color: var(--accent);
             text-align: center;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-
-
-            
+            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            max-width: 320px;
+            margin: 6px auto;
         }
-
-        /* Make the English banner text more prominent and readable */
         .desire-text.lang-en { color: var(--gold); }
 
-        /* --- TICKET CARDS (1.5 Ratio) --- */
-        .comp-section { padding: 30px 15px; background: var(--bg-primary); text-align: center; transition: background 0.3s; }
+        /* --- TICKET CARDS --- */
+        .comp-section { padding: 36px 16px; background: radial-gradient(circle at top, rgba(15,23,42,0.8), var(--bg-primary)); text-align: center; transition: background 0.3s, color 0.3s; }
         .comp-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; color: var(--accent); transition: color 0.3s; }
 
 
         .comp-grid { display: flex; flex-direction: column; gap: 10px; align-items: center; }
         .ticket-card { 
-            width: 100%; max-width: 920px; aspect-ratio: 2.2 / 1; border-radius: 6px; overflow: hidden; position: relative;
-            border: 2px solid rgba(255,255,255,0.12); background: #000; cursor: pointer;
-            box-shadow: 0 12px 35px rgba(0,0,0,0.6);
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            width: 100%; max-width: 920px; aspect-ratio: 2.2 / 1; border-radius: 16px; overflow: hidden; position: relative;
+            border: 1px solid rgba(148,163,184,0.5); background: radial-gradient(circle at top left, rgba(15,23,42,0.9), #020617); cursor: pointer;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.65);
+            transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
         }
-
-
-        .ticket-card img { width: 100%; height: 100%; object-fit: cover; }
+        .ticket-card img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.03); transition: transform 0.4s ease, opacity 0.4s ease; opacity: 0.96; }
         .buy-overlay { position: absolute; bottom: 15px; right: 15px; }
         .btn-buy { 
-            background: var(--orange); 
-            color: white; 
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            color: #ffffff; 
             border: none; 
-            padding: 10px 22px; 
-            border-radius: 25px; 
-            font-weight: bold; 
+            padding: 10px 24px; 
+            border-radius: 999px; 
+            font-weight: 800; 
             font-size: 14px; 
             cursor: pointer;
             animation: pulse-glow 2s infinite;
-            border: 1px solid rgba(255,255,255,0.12);
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            border: 1px solid rgba(0,0,0,0.3);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
         }
-        .btn-buy:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.45); }
+        .btn-buy:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 12px 30px rgba(0,0,0,0.7);
+            filter: brightness(1.05);
+        }
 
-        /* Specific colors for tier buy buttons */
-        #buy-gold-btn { background: linear-gradient(90deg, var(--gold), #f2c94c); color: #1a1a1a; }
-        #buy-silver-btn { background: linear-gradient(90deg, var(--silver), #dcdcdc); color: #1a1a1a; }
-        #buy-bronze-btn { background: linear-gradient(90deg, var(--bronze), #b36a2a); color: #ffffff; }
+        .ticket-card:hover {
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: 0 18px 45px rgba(0,0,0,0.85);
+            border-color: rgba(250,204,21,0.8);
+        }
+        .ticket-card:hover img {
+            transform: scale(1.06);
+            opacity: 1;
+        }
+
+        #buy-gold-btn { 
+            background: linear-gradient(135deg, #facc15, #eab308); 
+            color: #1f2937;
+        }
+        #buy-silver-btn { 
+            background: linear-gradient(135deg, #4b5563, #d1d5db); 
+            color: #f9fafb;
+        }
+        #buy-bronze-btn { 
+            background: linear-gradient(135deg, #b45309, #92400e); 
+            color: #fef3c7;
+        }
 
         /* --- LOTTERIES STATUS TABLE --- */
-        .league-container { background: var(--bg-secondary); padding: 30px 15px; border-top: 1px solid rgba(255,255,255,0.1); transition: background 0.3s, border-color 0.3s; }
+        .league-container { background: linear-gradient(to bottom, rgba(15,23,42,1), rgba(15,23,42,0.96)); padding: 34px 16px; border-top: 1px solid rgba(255,255,255,0.06); transition: background 0.3s, border-color 0.3s; }
         [data-theme="light"] .league-container {
             border-top: 1px solid rgba(0,0,0,0.1);
+            background: #e5e7eb;
         }
-        .league-table { width: 100%; border-collapse: collapse; background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden; font-size: 12px; }
+        .league-table { width: 100%; border-collapse: collapse; background: rgba(0,0,0,0.2); border-radius: 12px; overflow: hidden; font-size: 12px; transition: background 0.3s; }
         .league-table th { background: rgba(255,255,255,0.05); text-align: left; padding: 12px; color: #94a3b8; text-transform: uppercase; font-size: 10px; }
         .league-table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); vertical-align: middle; }
         .status-badge { padding: 4px 8px; border-radius: 4px; font-weight: bold; font-size: 10px; display: inline-flex; align-items: center; gap: 4px; }
         .status-sold { background: rgba(255, 255, 255, 0.1); color: white; }
         .status-drawing { background: var(--accent); color: white; animation: blink-status 1s infinite; }
         .status-done { background: var(--bronze); color: white; }
+        .toast {
+            position: fixed;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: var(--text-primary);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 3000;
+            display: none;
+        }
+        .toast.success { border-color: var(--green); }
+        .toast.error { border-color: #dc2626; }
+        .toast.active { display: block; }
 
         /* --- COMING SOON SECTION (NEW) --- */
         .soon-section {
-            background-image: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('images/soon.png');
+            background-image: linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.85)), url('images/soon.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            padding: 30px 15px;
+            padding: 34px 16px 40px 16px;
             text-align: center;
             position: relative;
             z-index: 1;
-            min-height: 300px;
+            min-height: 320px;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -234,16 +397,22 @@
         .soon-text { font-size: 14px; color: #cbd5e1; line-height: 1.5; }
         .tier-grid { display: flex; flex-direction: column; gap: 20px; align-items: center; margin-top: 20px; }
         .tier-card { 
-            width: 100%; max-width: 920px; aspect-ratio: 2.2 / 1; border-radius: 6px; 
-            overflow: hidden; position: relative; border: 2px solid rgba(255,255,255,0.12); 
-            background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.55);
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            width: 100%; max-width: 920px; aspect-ratio: 2.2 / 1; border-radius: 16px; 
+            overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.25); 
+            background: rgba(15,23,42,0.9); display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 14px 36px rgba(0,0,0,0.7);
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
         }
-        .tier-card.coming-soon { background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); }
+        .tier-card.coming-soon { background: radial-gradient(circle at top, rgba(250,204,21,0.15), rgba(15,23,42,0.95)); }
         .tier-card .coming-soon-text { 
             font-size: 20px; font-weight: 900; color: var(--accent); 
             text-align: center; padding: 20px;
+        }
+
+        .tier-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+            border-color: rgba(250,204,21,0.9);
         }
 
         /* --- PSYCHOLOGICAL GRID --- */
@@ -608,14 +777,31 @@
         }
 
         /* --- ABOUT US SECTION --- */
-        .about-section { padding: 30px 15px; background: var(--navy); text-align: left; }
+        .about-section { padding: 34px 16px 40px 16px; background: radial-gradient(circle at top, rgba(15,23,42,0.95), #020617); text-align: left; transition: background 0.3s, color 0.3s; }
+        [data-theme="light"] .about-section {
+            background: #f9fafb;
+            color: #111827;
+        }
         .about-title { font-size: 20px; font-weight: 800; margin-bottom: 25px; color: var(--accent); text-align: center; transition: color 0.3s; }
-        .about-content { max-width: 700px; margin: 0 auto; }
+        .about-content { max-width: 760px; margin: 0 auto; }
         .about-subtitle { font-size: 16px; font-weight: 700; margin: 25px 0 15px 0; color: var(--accent); transition: color 0.3s; }
-        .prize-tier { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 3px solid var(--gold); }
+        .prize-tier { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 3px solid var(--gold); transition: background 0.3s, color 0.3s; }
         .tier-name { font-size: 15px; font-weight: 700; color: var(--accent); margin-bottom: 8px; transition: color 0.3s; }
-        .prize-details { font-size: 14px; color: #cbd5e1; margin: 0; }
-        .principle-item, .rule-item { font-size: 14px; color: #cbd5e1; line-height: 1.8; margin-bottom: 12px; padding-left: 10px; border-left: 2px solid rgba(255,255,255,0.1); }
+        .prize-details { font-size: 14px; color: #cbd5e1; margin: 0; transition: color 0.3s; }
+        .principle-item, .rule-item { font-size: 14px; color: #cbd5e1; line-height: 1.8; margin-bottom: 12px; padding-left: 10px; border-left: 2px solid rgba(255,255,255,0.1); transition: color 0.3s, border-color 0.3s; }
+        [data-theme="light"] .prize-tier {
+            background: #111827;
+        }
+        [data-theme="light"] .prize-details,
+        [data-theme="light"] .principle-item,
+        [data-theme="light"] .rule-item {
+            color: #e5e7eb;
+            border-left-color: rgba(15,23,42,0.3);
+        }
+        [data-theme="light"] .principle-item,
+        [data-theme="light"] .rule-item {
+            background: #111827;
+        }
         .principle-item strong, .rule-item strong { color: var(--accent); transition: color 0.3s; }
         .ask-me-btn {
             display: inline-block;
@@ -643,8 +829,8 @@
             box-shadow: 0 5px 15px rgba(161, 102, 47, 0.4);
         }
         .comment-btn { 
-            background: var(--accent); color: white; text-decoration: none; padding: 10px 20px; 
-            border-radius: 25px; font-size: 14px; font-weight: bold; display: inline-block;
+            background: var(--accent); color: white; text-decoration: none; padding: 10px 22px; 
+            border-radius: 999px; font-size: 14px; font-weight: bold; display: inline-block;
             margin-bottom: 30px; animation: pulse-glow 2s infinite; border: 1px solid rgba(255,255,255,0.2);
         }
 
@@ -656,8 +842,17 @@
         }
         [data-theme="light"] footer {
             border-top: 1px solid rgba(0,0,0,0.1);
+            background: #e5e7eb;
         }
-        .disclaimer-card { background: var(--glass); padding: 20px; border-radius: 15px; border: 1px solid rgba(255,255,255,0.1); text-align: left; }
+        .disclaimer-card {
+            background: var(--glass);
+            padding: 20px 24px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            max-width: 900px;
+            margin: 0 auto;
+        }
         .disc-text { font-size: 11px; color: #64748b; line-height: 1.6; transition: color 0.3s; }
         [data-theme="light"] .disc-text {
             color: #6b7280;
@@ -667,11 +862,82 @@
         
         /* --- LIVE WINNERS SECTION --- */
         .live-winners-section {
-            background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(255, 122, 47, 0.1));
-            padding: 30px 15px;
-            margin-top: 20px;
-            border-top: 2px solid var(--accent);
-            border-bottom: 2px solid var(--accent);
+            padding: 0 16px;
+            margin-top: 0;
+            border-top: 1px solid rgba(250,204,21,0.7);
+            border-bottom: 1px solid rgba(250,204,21,0.4);
+            background-color: #ffffff;
+            color: #000000;
+        }
+        [data-theme="dark"] .live-winners-section {
+            background-color: #ffffff;
+            color: #000000;
+        }
+
+        .live-winners-layout {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .live-winners-header {
+            text-align: center;
+        }
+
+        .live-winners-media {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .live-winners-image img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        @media (min-width: 768px) {
+            .live-winners-media {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .live-winners-cta {
+            text-align: center;
+        }
+
+        .social-proof-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #000000;
+            text-align: center;
+            margin: 0 0 12px 0;
+        }
+        .live-winners-text {
+            color: #000000;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+        .telegram-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #0088cc, #006699);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 136, 204, 0.3);
+        }
+        .telegram-link:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0, 136, 204, 0.5);
+        }
+        .telegram-link::before {
+            content: '📢 ';
         }
         .live-winners-title {
             font-size: 22px;
@@ -690,35 +956,21 @@
             margin: 0 auto;
         }
         .winner-card {
-            background: rgba(0, 0, 0, 0.45);
-            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.55);
+            border-radius: 16px;
             padding: 20px;
-            border: 2px solid var(--accent);
+            border: 1px solid rgba(250,204,21,0.6);
             text-align: center;
-            transition: transform 0.18s ease, box-shadow 0.18s ease;
+            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+            box-shadow: 0 14px 36px rgba(0,0,0,0.6);
             font-weight: 700;
-        }
-        .winner-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
-            animation: rotate 10s linear infinite;
-        }
-        @keyframes rotate {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
         }
         .winner-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
-            border-color: var(--orange);
+            box-shadow: 0 18px 40px rgba(212, 175, 55, 0.4);
+            border-color: rgba(250,204,21,0.9);
         }
         .winner-tier {
             font-size: 16px;
@@ -730,6 +982,9 @@
             font-size: 12px;
             color: #94a3b8;
             margin-bottom: 15px;
+        }
+        [data-theme="light"] .winner-round {
+            color: #1f2937;
         }
         .winner-numbers {
             display: flex;
@@ -763,8 +1018,8 @@
         
         /* --- STATISTICS SECTION --- */
         .stats-section {
-            background: var(--bg-secondary);
-            padding: 40px 15px;
+            background: radial-gradient(circle at top, rgba(15,23,42,0.9), var(--bg-secondary));
+            padding: 36px 16px 40px 16px;
             margin-top: 30px;
         }
         .stats-title {
@@ -806,38 +1061,6 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
-        
-        /* --- SOCIAL PROOF SECTION --- */
-        .social-proof {
-            background: linear-gradient(135deg, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
-            padding: 30px 15px;
-            text-align: center;
-        }
-        .social-proof-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--accent);
-            margin-bottom: 20px;
-        }
-        .telegram-link {
-            display: inline-block;
-            background: linear-gradient(135deg, #0088cc, #006699);
-            color: white;
-            padding: 15px 30px;
-            border-radius: 25px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            box-shadow: 0 5px 15px rgba(0, 136, 204, 0.3);
-        }
-        .telegram-link:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 136, 204, 0.5);
-        }
-        .telegram-link::before {
-            content: '📢 ';
-        }
     </style>
 </head>
 <body>
@@ -845,7 +1068,10 @@
     <header>
         <div class="header-logo">
             <img src="images/logo.png" alt="Siket Logo">
-            <h1 id="nav-title" class="lang-am">ስኬት ሎቶ</h1>
+            <div class="header-logo-text">
+                <h1 id="nav-title" style="font-weight: 900; letter-spacing: 1px;">ስኬት ሎተሪ</h1>
+                <div id="nav-subtitle" class="header-subtitle">በኃላፊነት ይጫወቱ</div>
+            </div>
         </div>
         <div class="header-logo">
             <a href="dashboard.html" class="nav-link lang-en">My Tickets</a>
@@ -856,48 +1082,69 @@
             <a href="https://t.me/Contact_Siketlottery" class="contact-btn" id="contact-btn">ያግኙን</a>
         </div>
     </header>
+    <div id="toast" class="toast"></div>
 
     <main id="home-view">
         <!-- Hero Section -->
         <section class="hero" onclick="scrollToTickets()" style="cursor: pointer;">
-            <img src="images/background.png" class="hero-img" alt="Luxury Hero Banner">
+            <img src="images/background.jpg" class="hero-img" alt="Luxury Hero Banner">
+            <div class="hero-trust">
+                <div class="hero-trust-title">
+                    <span class="lang-en">Trusted Digital Lottery</span>
+                    <span class="lang-am">የታመነ ዲጂታል ሎተሪ</span>
+                </div>
+                <div class="hero-trust-sub">
+                    <span class="lang-en">Secure draws, transparent winners, instant payouts</span>
+                    <span class="lang-am">ደህና የተጠበቀ እጣ፣ ግልጽ አሸናፊዎች፣ ፈጣን ክፍያ</span>
+                </div>
+            </div>
+            <div class="hero-highlight">
+                <div class="hero-highlight-pill">
+                    <div class="hero-highlight-dot"></div>
+                    <div class="hero-highlight-text">
+                        <span class="lang-en">Instant payouts via Telebirr & CBE Birr</span>
+                        <span class="lang-am">ፈጣን ክፍያ በቴሌብር እና CBE ብር</span>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <!-- Live Winners Section -->
         <section class="live-winners-section">
-            <h2 class="live-winners-title lang-en">🏆 LIVE WINNERS 🏆</h2>
-            <h2 class="live-winners-title lang-am">🏆 የቀጥታ አሸናፊዎች 🏆</h2>
-            <div class="winners-grid" id="live-winners-grid">
-                <!-- Dynamically loaded -->
+            <div class="live-winners-layout">
+                <div class="live-winners-header">
+                    <h2 class="live-winners-title lang-en">🏆 LIVE WINNERS 🏆</h2>
+                    <h2 class="live-winners-title lang-am">🏆 የቀጥታ አሸናፊዎች 🏆</h2>
+                    <div class="winners-grid" id="live-winners-grid">
+                        <!-- Dynamically loaded -->
+                    </div>
+                </div>
+                <div class="live-winners-media">
+                    <div class="live-winners-image">
+                        <img src="images/won.jpg" alt="Winners highlight 1">
+                    </div>
+                    <div class="live-winners-image">
+                        <img src="images/won2.jpg" alt="Winners highlight 2">
+                    </div>
+                </div>
+                <div class="live-winners-cta">
+                    <h3 class="social-proof-title lang-en">📢 Follow Live Winners on Telegram</h3>
+                    <h3 class="social-proof-title lang-am">📢 አሸናፊዎች ሲታወቁ ወዲያውኑ መልዕክት እንዲደርስዎ</h3>
+                    <p class="live-winners-text lang-en">Get instant notifications when winners are announced!</p>
+                    <p class="live-winners-text lang-am">አሸናፊዎች ሲታወቁ ወዲያውኑ መልዕክት እንዲደርስዎ የአሸናፊዎችን ቴሌግራም ይቀላቀሉ!</p>
+                    <a href="https://t.me/siketlotto" target="_blank" rel="noopener noreferrer" class="telegram-link lang-en">Join Winners Channel</a>
+                    <a href="https://t.me/siketlotto" target="_blank" rel="noopener noreferrer" class="telegram-link lang-am">የአሸናፊዎችን ቴሌግራም ይቀላቀሉ!</a>
+                </div>
             </div>
-        </section>
-
-        <!-- Desire Banner -->
-        <section class="desire-banner">
-            <h2 class="desire-text lang-en">Your Lucky Number Is Waiting.</h2>
-
-
-            <h2 class="desire-text lang-am">የእርስዎ እድለኛ ቁጥር እየጠበቀዎት ነው።</h2>
-        </section>
-
-        <!-- Social Proof Section -->
-        <section class="social-proof">
-            <h3 class="social-proof-title lang-en">📢 Follow Live Winners on Telegram</h3>
-            <h3 class="social-proof-title lang-am">📢 በቴሌግራም የቀጥታ አሸናፊዎችን ይከታተሉ</h3>
-            <p class="lang-en" style="color: #94a3b8; margin-bottom: 20px;">Get instant notifications when winners are announced!</p>
-            <p class="lang-am" style="color: #94a3b8; margin-bottom: 20px;">አሸናፊዎች ሲገለገሉ ወዲያውኑ ማሳወቂያዎችን ይቀበሉ!</p>
-            <a href="https://t.me/siketlotto" target="_blank" rel="noopener noreferrer" class="telegram-link lang-en">Join Winners Channel</a>
-            <a href="https://t.me/siketlotto" target="_blank" rel="noopener noreferrer" class="telegram-link lang-am">የአሸናፊዎች ሰርጥ ይቀላቀሉ</a>
         </section>
 
         <!-- Tickets Section -->
         <section class="comp-section" id="ticket-selection">
             <h2 class="comp-title" id="sec-t">አሸናፊ የሚያደረጉዋችሁ እጣዎች</h2>
             <div style="margin-bottom: 20px;">
-                <button class="btn-buy bilingual" onclick="document.getElementById('ticket-selection').scrollIntoView({behavior: 'smooth'})" style="font-size: 14px; padding: 10px 24px;">
-                    <span class="lang-en">Buy Ticket</span> | <span class="lang-am">ትኬት ይቁረጡ</span>
-
-
+                <button class="btn-buy" onclick="openTier(3)" style="font-size: 14px; padding: 10px 24px;">
+                    <span class="lang-en">Buy Ticket</span>
+                    <span class="lang-am">ትኬት ይቁረጡ</span>
                 </button>
             </div>
             <div class="comp-grid">
@@ -953,7 +1200,7 @@
         <!-- About Us Section -->
         <section class="about-section" id="about-us">
             <h2 class="about-title lang-en" id="about-title-en">About Siket Lottery</h2>
-            <h2 class="about-title lang-am" id="about-title-am">ስለ ሲኬት ሎተሪ</h2>
+            <h2 class="about-title lang-am" id="about-title-am">ስለ ስኬት ሎተሪ</h2>
             
             <div class="about-content">
                 <h3 class="about-subtitle lang-en" id="prize-structure-title-en">Official Prize Structure</h3>
@@ -979,76 +1226,6 @@
                     <p class="prize-details lang-en">Total Prize Money is 7,000 ETB + 2 Free Tickets</p>
                     <p class="prize-details lang-am">የጠቅላላ የሽልማት ገንዘብ: 7,000 ብር  + 2 ነጻ ቲኬቶች</p>
                 </div>
-                
-                <h3 class="about-subtitle lang-en" id="principles-title-en">Our Core Principles</h3>
-                <h3 class="about-subtitle lang-am" id="principles-title-am">መመሪያዎቻችን</h3>
-                
-                <div class="principle-item">
-                    <strong class="lang-en">Transparency:</strong>
-                    <strong class="lang-am">ግልጽነት:</strong>
-                    <span class="lang-en" id="transparency-text-en">Cinematic live draws from 3rd to 1st prize ensure fairness.</span>
-                    <span class="lang-am" id="transparency-text-am">እጣዎች ከ3ኛ እስከ 1ኛ ደረጃ ለሁሉም በሚታይ መልኩ ይወጣሉ፡፡</span>
-                </div>
-                
-                <div class="principle-item">
-                    <strong class="lang-en">Fast Payouts:</strong>
-                    <strong class="lang-am">ፈጣን ክፍያ:</strong>
-                    <span class="lang-en" id="payouts-text-en">Winners receive prizes via Telebirr/Cbebirr instantly after the round ends.</span>
-                    <span class="lang-am" id="payouts-text-am">የሽልማት ገንዘብዎ በቴሌብር ወይም በንግድ ባንክ ወዲያውኑ ይላክልዎታል፡፡</span>
-                </div>
-                
-                <div class="principle-item">
-                    <strong class="lang-en">Frequency:</strong>
-                    <strong class="lang-am">ተከታታይነት:</strong>
-                    <span class="lang-en" id="frequency-text-en">Only 100 tickets per round for faster games and more wins.</span>
-                    <span class="lang-am" id="frequency-text-am">ፈጣን ጨዋታና ብዙ እድል እንዲኖር በአንድ ዙር 100 ቲኬቶች ብቻ፡፡</span>
-                </div>
-                
-                <h3 class="about-subtitle lang-en" id="rules-title-en">Rules & Notice</h3>
-                <h3 class="about-subtitle lang-am" id="rules-title-am">ደንቦች እና ማሳሰቢያ</h3>
-                
-
-
-
-
-                <div style="margin: 20px 0; text-align: center;">
-                    <a href="dashboard.html" style="display: inline-block; background: rgba(212, 175, 55, 0.2); color: var(--accent); padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 13px; margin: 5px;">
-                        <span class="lang-en">📊 My Dashboard</span>
-                        <span class="lang-am">📊 የእኔ ዳሽቦርድ</span>
-                    </a>
-                </div>
-                
-                <div class="rule-item">
-                    <strong class="lang-en">Payout Policy:</strong>
-                    <strong class="lang-am">የክፍያ ሁኔታ:</strong>
-                    <span class="lang-en" id="payout-policy-text-en">You can receive your prize money via a different Telebirr or Cbebirr account than the one used for purchase.</span>
-                    <span class="lang-am" id="payout-policy-text-am">የሽልማት ገንዘብዎን በተለያዩ ባንኮች መቀበል ይችላሉ፡፡</span>
-                </div>
-                
-                <div class="rule-item">
-                    <strong class="lang-en">Tipping Policy:</strong>
-                    <strong class="lang-am">የቲኬት አጠቃቀም:</strong>
-                    <span class="lang-en" id="tipping-policy-text-en">You are NOT obligated to tip Contact Center workers. Tipping is 100% optional.</span>
-                    <span class="lang-am" id="tipping-policy-text-am">በመረጃ ማዕከል በኩል መጠቀም ምርጫዎ ነው።</span>
-                </div>
-                
-                <div class="rule-item">
-                    <strong class="lang-en">Draw Timing:</strong>
-                    <strong class="lang-am">የዕጣ ጊዜ:</strong>
-                    <span class="lang-en" id="draw-timing-text-en">The 3-minute countdown after a sell-out is to allow all buyers time to join the live animation.</span>
-                    <span class="lang-am" id="draw-timing-text-am">ሁሉም ቲኬቶች እንደተሸጡ የ5 ደቂቃ ቆጠራ ይጀምራል፡፡</span>
-                </div>
-                
-                <div class="rule-item">
-                    <strong class="lang-en">Restrictions:</strong>
-                    <strong class="lang-am">ክልከላዎች:</strong>
-                    <span class="lang-en" id="restrictions-text-en">Players must be 18+. Play responsibly.</span>
-                    <span class="lang-am" id="restrictions-text-am">ተጫዋቾች 18+ መሆን አለባቸው። በኃላፊነት ይጫወቱ።</span>
-                </div>
-                
-                <div class="rule-item" style="border: none; padding-left: 0;">
-                    <a href="https://t.me/Contact_Siketlottery" class="ask-me-btn" id="ask-me-btn">💬 Ask Me</a>
-                </div>
             </div>
         </section>
 
@@ -1057,7 +1234,21 @@
                 <p class="lang-en" style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;">Disclaimer</p>
                 <p class="lang-am" style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;">መግለጫ</p>
                 <p class="disc-text lang-en" id="disc-text-en">Siket Lottery members must be 18+. Participants must be residents of Ethiopia. Payments are non-refundable. The draw will be random.</p>
+                <p class="disc-text lang-en">Transparency: Cinematic live draws from 3rd to 1st prize ensure fairness.</p>
+                <p class="disc-text lang-en">Fast Payouts: Winners receive prizes via Telebirr/Cbebirr instantly after the round ends.</p>
+                <p class="disc-text lang-en">Frequency: Only 100 tickets per round for faster games and more wins.</p>
+                <p class="disc-text lang-en">Payout Policy: You can receive your prize money via a different Telebirr or Cbebirr account than the one used for purchase.</p>
+                <p class="disc-text lang-en">Tipping Policy: You are NOT obligated to tip Contact Center workers. Tipping is 100% optional.</p>
+                <p class="disc-text lang-en">Draw Timing: The 3-minute countdown after a sell-out is to allow all buyers time to join the live animation.</p>
+                <p class="disc-text lang-en">Restrictions: Players must be 18+. Play responsibly.</p>
                 <p class="disc-text lang-am" id="disc-text-am">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አይመለስም። ዕጣው በዘፈቀደ የሚወጣ ይሆናል።</p>
+                <p class="disc-text lang-am">ግልጽነት፡ እጣዎች ከ3ኛ እስከ 1ኛ ደረጃ ለሁሉም በሚታይ መልኩ ይወጣሉ።</p>
+                <p class="disc-text lang-am">ፈጣን ክፍያ፡ አሸናፊዎች ሽልማታቸውን በቴሌብር/ሲቢኢ በዚያ ጊዜው ይቀበላሉ።</p>
+                <p class="disc-text lang-am">ተከታታይነት፡ በእያንዳንዱ ዙር 100 ቲኬቶች ብቻ ለፈጣን ጨዋታና ብዙ እድል።</p>
+                <p class="disc-text lang-am">የክፍያ ሁኔታ፡ የሽልማት ገንዘብዎን ከገዙበት ተቋም በተለየ ቴሌብር ወይም ሲቢኢ አካውንት ላይ ማግኘት ይችላሉ።</p>
+                <p class="disc-text lang-am">የቲፕ ፖሊሲ፡ የመረጃ ማዕከል ሰራተኞችን መታሰቢያ መስጠት አልተግዳዳም። ቲፕ መስጠት 100% የምርጫ ነው።</p>
+                <p class="disc-text lang-am">የዕጣ ጊዜ፡ ሁሉም ቲኬቶች እንደተሸጡ የ3 ደቂቃ ቆይታ ሁሉም ገዢዎች በቀጥታ አኒሜሽኑ እንዲቀላቀሉ ይፈቅዳል።</p>
+                <p class="disc-text lang-am">ክልከላዎች፡ ተጫዋቾች 18+ መሆን አለባቸው። በኃላፊነት ይጫወቱ።</p>
             </div>
             <p class="lang-en" style="margin-top:30px; font-size:10px; color:#444; text-align:center;">Siket Success &copy; 2026. All Rights Reserved.</p>
             <p class="lang-am" style="margin-top:30px; font-size:10px; color:#444; text-align:center;">ስኬት ስኬት &copy; 2026. ሁሉም መብቶች የተጠበቁ ናቸው።</p>
@@ -1201,6 +1392,11 @@
             
             // Handle theme changes
             tg.onEvent('themeChanged', applyTelegramTheme);
+
+            const submitBtn = document.getElementById('submit-btn');
+            if (submitBtn) {
+                submitBtn.style.display = 'none';
+            }
         } else {
             console.warn('Telegram WebApp not detected, falling back to web mode');
             // Fallback for non-Telegram environment
@@ -1236,7 +1432,7 @@
             tg.MainButton.hide();
             tg.MainButton.onClick(() => {
                 // Handle main button click based on context
-                const activeModal = document.querySelector('.modal.active');
+                const activeModal = document.querySelector('.payment-modal.active');
                 if (activeModal && activeModal.id === 'payment-modal') {
                     submitPayment();
                 }
@@ -1250,9 +1446,9 @@
             tg.BackButton.hide();
             tg.BackButton.onClick(() => {
                 // Handle back navigation
-                const activeModal = document.querySelector('.modal.active');
+                const activeModal = document.querySelector('.payment-modal.active');
                 if (activeModal) {
-                    closeModal(activeModal.id);
+                    closePaymentModal();
                 } else if (window.history.length > 1) {
                     window.history.back();
                 }
@@ -1311,6 +1507,19 @@
             }
         }
         
+        function showToast(message, type = 'success') {
+            const el = document.getElementById('toast');
+            if (!el) return;
+            el.className = `toast ${type}`;
+            el.textContent = message;
+            el.classList.add('active');
+            if (type === 'success') triggerHaptic('success');
+            if (type === 'error') triggerHaptic('error');
+            setTimeout(() => {
+                el.classList.remove('active');
+            }, 2500);
+        }
+        
         // Show confirm dialog in Telegram style
         function showConfirm(message, callback) {
             if (tg?.showConfirm) {
@@ -1322,12 +1531,17 @@
             }
         }
         
-        // Load language from localStorage if available
+        // Ensure language has a safe default before any use
+        let lang = (localStorage.getItem('language') || 'am');
         const savedLang = localStorage.getItem('language');
         if(savedLang) {
             lang = savedLang;
-            document.getElementById('lang-btn').innerText = lang === 'am' ? 'EN' : 'አማርኛ';
         }
+        // Set initial language toggle label if button exists
+        (function(){
+            const btn = document.getElementById('lang-btn');
+            if (btn) btn.innerText = lang === 'am' ? 'EN' : 'አማርኛ';
+        })();
         
         // Set initial language attribute on html element
         document.documentElement.setAttribute('data-lang', lang);
@@ -1345,6 +1559,7 @@
             if(document.getElementById('buy-silver-btn')) document.getElementById('buy-silver-btn').innerText = langData[lang].buySilver;
             if(document.getElementById('buy-bronze-btn')) document.getElementById('buy-bronze-btn').innerText = langData[lang].buyBronze;
             if(document.getElementById('nav-title')) document.getElementById('nav-title').innerText = langData[lang].navTitle;
+            if(document.getElementById('nav-subtitle')) document.getElementById('nav-subtitle').innerText = langData[lang].navSubtitle;
             if(document.getElementById('page-title')) document.getElementById('page-title').innerText = langData[lang].navTitle;
             if(document.getElementById('nav-about')) document.getElementById('nav-about').innerText = langData[lang].navAbout;
             if(document.getElementById('contact-btn')) document.getElementById('contact-btn').innerText = langData[lang].commentBtn;
@@ -1354,7 +1569,6 @@
             if(document.getElementById('th-status')) document.getElementById('th-status').innerText = langData[lang].thS;
             if(document.getElementById('th-price')) document.getElementById('th-price').innerText = langData[lang].thP;
             
-            // Toggle language visibility
             toggleLanguageVisibility();
         }
         
@@ -1365,14 +1579,33 @@
             initializeTranslations();
         }
 
+        // Initialize theme (works both in Telegram and normal browser)
+        (function(){
+            const savedTheme = localStorage.getItem('theme');
+            let initialTheme = 'dark';
+
+            if (savedTheme === 'light' || savedTheme === 'dark') {
+                initialTheme = savedTheme;
+            }
+
+            document.documentElement.setAttribute('data-theme', initialTheme);
+            const themeBtn = document.getElementById('theme-btn');
+            if (themeBtn) themeBtn.textContent = initialTheme === 'dark' ? '🌙' : '☀️';
+
+            if (!savedTheme) {
+                localStorage.setItem('theme', initialTheme);
+            }
+        })();
+
         const langData = {
             am: { 
                 thT: "ዓይነት", thR: "ዙር", thS: "ሁኔታ", thP: "ዋጋ", 
                 leagueT: "የዕጣዎች ሁኔታ", statusSold: "ተሽጧል", statusDraw: "ዕጣ በመውጣት ላይ", statusDone: "ተጠናቋል",
                 soonT: "በቅርቡ ይጠብቁ!", soonB: "አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!",
                 navAbout: "ስለእኛ", commentBtn: "አስተያየት",
-                navTitle: "ስኬት ሎቶ",
-                aboutTitle: "ስለ ሲኬት ሎተሪ",
+                navTitle: "ስኬት ሎተሪ",
+                navSubtitle: "በኃላፊነት ይጫወቱ",
+                aboutTitle: "ስለ ስኬት ሎተሪ",
                 prizeStructureTitle: "የሽልማት ዝርዝር",
                 principlesTitle: "መመሪያዎቻችን",
                 rulesTitle: "ደንቦች እና ማሳሰቢያ",
@@ -1418,6 +1651,7 @@
                 soonT: "Coming Soon!", soonB: "We are preparing exciting new lotteries and even bigger prizes. Stay tuned!",
                 navAbout: "About Us", commentBtn: "Comment",
                 navTitle: "Siket Lotto",
+                navSubtitle: "Play Responsibly",
                 aboutTitle: "About Siket Lottery",
                 prizeStructureTitle: "Official Prize Structure",
                 principlesTitle: "Our Core Principles",
@@ -1472,36 +1706,43 @@
             for(let t of tiers) {
                 try {
                     const res = await fetch(`/api/status/${t.id}`);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
                     const data = await res.json();
-                    const sold = data.tickets.filter(tk => tk.status === 'sold').length;
-                    let statusHtml = `<span class="status-badge status-sold">${sold}/100 ${langData[lang].statusSold}</span>`;
-                    if(sold === 100) statusHtml = `<span class="status-badge status-drawing">🕒 ${langData[lang].statusDraw}</span>`;
+                    const sold = Array.isArray(data.tickets) ? data.tickets.filter(tk => tk.status === 'sold').length : 0;
+                    let statusHtml = `<span class=\"status-badge status-sold\">${sold}/100 ${langData[lang].statusSold}</span>`;
+                    if(sold === 100) statusHtml = `<span class=\"status-badge status-drawing\">🕒 ${langData[lang].statusDraw}</span>`;
                     
                     leagueBody.innerHTML += `
                         <tr>
-                            <td class="league-type" style="color:${t.color}; font-weight:800">${t.name}</td>
-                            <td>#${String(data.round).padStart(4, '0')}</td>
+                            <td class=\"league-type\" style=\"color:${t.color}; font-weight:800\">${t.name}</td>
+                            <td>${data.round ? ('#' + String(data.round).padStart(4, '0')) : '-'}</td>
                             <td>${statusHtml}</td>
-                            <td style="color:var(--orange); font-weight:bold;">${t.price}</td>
+                            <td style=\"color:var(--orange); font-weight:bold;\">${t.price}</td>
                         </tr>
                     `;
-                } catch(e) {}
+                } catch(e) {
+                    // Fallback row on error to make UI still responsive
+                    leagueBody.innerHTML += `
+                        <tr>
+                            <td class=\"league-type\" style=\"color:${t.color}; font-weight:800\">${t.name}</td>
+                            <td>-</td>
+                            <td><span class=\"status-badge status-done\">${langData[lang].statusDone}</span></td>
+                            <td style=\"color:var(--orange); font-weight:bold;\">${t.price}</td>
+                        </tr>
+                    `;
+                }
             }
         }
 
-        // Enhanced theme toggle with Telegram integration
+        // Theme toggle (works in both Telegram and browser)
         function toggleTheme() {
-            // In Telegram environment, theme is controlled by Telegram settings
-            if (isTelegramEnvironment) {
-                showAlert('Theme is controlled by your Telegram settings');
-                return;
-            }
-            
-            // Fallback theme toggle for web environment
-            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
             document.documentElement.setAttribute('data-theme', newTheme);
-            document.getElementById('theme-btn').textContent = newTheme === 'dark' ? '🌙' : '☀️';
+
+            const themeBtn = document.getElementById('theme-btn');
+            if (themeBtn) themeBtn.textContent = newTheme === 'dark' ? '🌙' : '☀️';
+
             localStorage.setItem('theme', newTheme);
             triggerHaptic('light');
         }
@@ -1521,6 +1762,7 @@
             document.getElementById('nav-about').innerText = langData[lang].navAbout;
             document.getElementById('contact-btn').innerText = langData[lang].commentBtn;
             document.getElementById('nav-title').innerText = langData[lang].navTitle;
+            if(document.getElementById('nav-subtitle')) document.getElementById('nav-subtitle').innerText = langData[lang].navSubtitle;
             document.getElementById('page-title').innerText = langData[lang].navTitle;
             if(document.getElementById('sec-t')) document.getElementById('sec-t').innerText = langData[lang].hottestCompetitions;
             if(document.getElementById('buy-ticket-btn')) document.getElementById('buy-ticket-btn').innerText = langData[lang].buyTicket;
@@ -1571,8 +1813,14 @@
             updateBetSlip();
             document.getElementById('home-view').style.display = 'none';
             document.getElementById('grid-view').style.display = 'block';
-            const res = await fetch(`/api/status/${id}`);
-            const data = await res.json();
+            let data = { round: null, tickets: [], prizes: {} };
+            try {
+                const res = await fetch(`/api/status/${id}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                data = await res.json();
+            } catch (e) {
+                showToast('Failed to load status. Start the server to fetch live data.', 'error');
+            }
             currentRound = data.round;
 
 
@@ -1768,33 +2016,29 @@
                 tg.MainButton.show();
             }
             
-            triggerHaptic('light');
+            triggerHaptic('medium');
         }
 
-            function openModal(modalId) {
-                const modal = document.getElementById(modalId);
-                if (modal) {
-                    modal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-                    
-                    // Show Telegram Back Button when modal is open
-                    if (tg?.BackButton) {
-                        tg.BackButton.show();
-                    }
-                    
-                    // Configure Main Button for payment modal
-                    if (modalId === 'payment-modal' && tg?.MainButton) {
-                        tg.MainButton.setText('Submit Payment');
-                        tg.MainButton.color = tg.buttonColor;
-                        tg.MainButton.textColor = tg.buttonTextColor;
-                        tg.MainButton.show();
-                    }
-                    
-                    triggerHaptic('light');
-                }
+        // Close payment modal helper used by back button and close icon
+        function closePaymentModal() {
+            const modal = document.getElementById('payment-modal');
+            if (!modal) return;
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            if (tg?.BackButton) tg.BackButton.hide();
+            if (tg?.MainButton) tg.MainButton.hide();
+        }
+
+        function openModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                if (tg?.BackButton) tg.BackButton.show();
             }
+        }
             
-            function closeModal(modalId) {
+        function closeModal(modalId) {
                 const modal = document.getElementById(modalId);
                 if (modal) {
                     modal.classList.remove('active');
@@ -1811,27 +2055,7 @@
                     }
                     
                     triggerHaptic('light');
-                }
             }
-
-        function highlightActiveBetSlipItem(num) {
-            const listEl = document.getElementById('betslip-list');
-            if (!listEl) return;
-            const items = listEl.querySelectorAll('.betslip-item');
-            items.forEach(item => {
-                item.style.outline = 'none';
-                item.style.boxShadow = 'none';
-            });
-            const entries = Array.from(selectedNumbersMap.keys()).sort((a, b) => Number(a) - Number(b));
-            entries.forEach((n, index) => {
-                if (String(n) === String(num)) {
-                    const target = items[index];
-                    if (target) {
-                        target.style.outline = '1px solid var(--accent)';
-                        target.style.boxShadow = '0 0 0 1px rgba(212, 175, 55, 0.6)';
-                    }
-                }
-            });
         }
 
         function startCountdown() {
@@ -1861,22 +2085,6 @@
             }, 1000);
         }
 
-        function copyAccount(account) {
-            navigator.clipboard.writeText(account).then(() => {
-                // Visual feedback
-                const btn = event.target;
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                btn.style.background = '#15803d';
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.background = '';
-                }, 2000);
-            }).catch(() => {
-                alert('Failed to copy. Account: ' + account);
-            });
-        }
-
         // SHA256 hash function (browser-compatible)
         async function sha256(message) {
             const msgBuffer = new TextEncoder().encode(message);
@@ -1885,14 +2093,13 @@
             return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
-        async function submitPayment(event) {
-            event.preventDefault();
-            
+        async function submitPayment(e) {
+            if (e && e.preventDefault) {
+                e.preventDefault();
+            }
+            const submitBtn = document.getElementById('submit-btn');
             const formData = new FormData();
-
-
-
-
+            
             const allSelected = Array.from(selectedNumbersMap.keys()).sort((a, b) => Number(a) - Number(b));
             const fullName = document.getElementById('full-name').value;
             const phone = document.getElementById('phone-number').value;
@@ -1901,10 +2108,6 @@
             if(allSelected.length === 0) {
                 alert(lang === 'am' ? 'እባክዎ ቢያንስ አንድ ትኬት ይምረጡ' : 'Please select at least one ticket');
                 return;
-
-
-
-
             }
             
             if(!fullName) {
@@ -1919,8 +2122,9 @@
             
             // Generate transaction hash for audit trail (provably fair)
             const timestamp = new Date().toISOString();
-            const userId = tg.initDataUnsafe?.user?.id || '0';
-
+            const userId = (isTelegramEnvironment && tg?.initDataUnsafe?.user?.id)
+                ? tg.initDataUnsafe.user.id
+                : '0';
 
             const primaryNumber = activePaymentNumber || allSelected[0];
 
@@ -1931,12 +2135,36 @@
             formData.append('userId', userId);
             formData.append('tierId', currentTierId);
             formData.append('number', primaryNumber);
-
+            formData.append('phone', phone);
+            formData.append('round', currentRound);
+            formData.append('fullName', fullName);
+            formData.append('transactionHash', transactionHash);
+            formData.append('numbers', JSON.stringify(allSelected));
 
             submitBtn.disabled = true;
-            setTimeout(() => {
+            submitBtn.textContent = lang === 'am' ? 'በመላክ ላይ...' : 'Submitting...';
+            try {
+                const res = await fetch('/api/upload-payment', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!res.ok) {
+                    const text = await res.text();
+                    throw new Error(text || 'Upload failed');
+                }
+                // Success UI feedback
+                showToast(lang === 'am' ? '✅ ክፍያዎ ተልኳል! እባክዎ ማረጋገጥ ይጠብቁ።' : '✅ Payment submitted! Please wait for verification.', 'success');
+                // Clear selection and close modal
+                selectedNumbersMap.clear();
+                activePaymentNumber = null;
+                updateBetSlip();
                 closeModal('payment-modal');
-            }, 2000);
+            } catch (e) {
+                showToast(lang === 'am' ? ('❌ መላክ አልተሳካም። ' + e.message) : ('❌ Submission failed. ' + e.message), 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = lang === 'am' ? 'ክፍያ አስገባ' : 'Submit Payment';
+            }
         }
 
         function copyAccount(account) {
@@ -2052,7 +2280,7 @@
             // If no winners, show message
             if (winnersGrid.children.length === 0) {
                 winnersGrid.innerHTML = `
-                    <div style="grid-column: 1/-1; text-align: center; color: #94a3b8; padding: 40px;">
+                    <div style="grid-column: 1/-1; text-align: center; color: #000000; padding: 40px;">
                         <p class="lang-en">No winners yet. Be the first!</p>
                         <p class="lang-am">እስካሁን አሸናፊ የለም። የመጀመሪያው ይሁኑ!</p>
                     </div>
@@ -2167,5 +2395,3 @@
     </script>
 </body>
 </html>
-
-

@@ -15,7 +15,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Inter', 'Noto Sans Ethiopic', sans-serif;
-            background-image: url('images/desire.png');
+            background-image: url('images/countdown.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -26,6 +26,7 @@
             align-items: center;
             justify-content: center;
             padding: 0;
+            animation: countdown-bg-pan 22s ease-in-out infinite alternate;
         }
         .container {
             text-align: center;
@@ -35,20 +36,32 @@
         .tier-badge {
             font-size: 24px;
             font-weight: 900;
-            color: var(--accent);
+            color: #000000;
             margin-bottom: 20px;
         }
         .countdown-display {
             font-size: 72px;
             font-weight: 900;
-            color: var(--accent);
+            color: #000000;
             font-family: 'Courier New', monospace;
             margin: 30px 0;
-            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+            text-shadow: 0 0 20px rgba(15, 23, 42, 0.4);
+            letter-spacing: 4px;
+            animation: countdown-breathe 1.4s ease-in-out infinite;
+        }
+        .countdown-display.warning {
+            color: #f97316;
+            text-shadow: 0 0 24px rgba(249, 115, 22, 0.9);
+            animation: countdown-warning 0.7s ease-in-out infinite;
+        }
+        .countdown-display.urgent {
+            color: #ef4444;
+            text-shadow: 0 0 26px rgba(239, 68, 68, 1);
+            animation: countdown-urgent 0.35s ease-in-out infinite;
         }
         .status-text {
             font-size: 18px;
-            color: #94a3b8;
+            color: #000000;
             margin-bottom: 30px;
         }
         .seed-info {
@@ -81,6 +94,25 @@
             border-radius: 25px;
             text-decoration: none;
             font-weight: bold;
+        }
+        @keyframes countdown-bg-pan {
+            0% { background-position: center top; }
+            100% { background-position: center bottom; }
+        }
+        @keyframes countdown-breathe {
+            0% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.95; }
+        }
+        @keyframes countdown-warning {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+            100% { transform: scale(1); }
+        }
+        @keyframes countdown-urgent {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.12); }
+            100% { transform: scale(1); }
         }
     </style>
 </head>
@@ -120,7 +152,9 @@
                 const data = await res.json();
                 
                 if (!data.isFull) {
-                    document.getElementById('countdown').textContent = `${data.sold}/100`;
+                    const countdownEl = document.getElementById('countdown');
+                    countdownEl.textContent = `${data.sold}/100`;
+                    countdownEl.classList.remove('warning', 'urgent');
                     document.getElementById('status-en').textContent = `Waiting for all tickets to sell...`;
                     document.getElementById('status-am').textContent = `ሁሉም ትኬቶች እንዲሸጡ በመጠባበቅ ላይ...`;
                     return;
@@ -140,18 +174,30 @@
                     const diff = targetTime - now;
                     
                     if (diff <= 0) {
-                        // Countdown finished, redirect to draw
                         window.location.href = `draw.html?tier=${tierId}`;
                         return;
                     }
                     
+                    const totalSeconds = Math.floor(diff / 1000);
                     const minutes = Math.floor(diff / 60000);
                     const seconds = Math.floor((diff % 60000) / 1000);
-                    document.getElementById('countdown').textContent = 
+                    const countdownEl = document.getElementById('countdown');
+                    countdownEl.textContent = 
                         `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                    countdownEl.classList.remove('warning', 'urgent');
                     
-                    document.getElementById('status-en').textContent = `Draw starting soon...`;
-                    document.getElementById('status-am').textContent = `ዕጣው በቅርቡ ይጀምራል...`;
+                    if (totalSeconds <= 10) {
+                        countdownEl.classList.add('urgent');
+                        document.getElementById('status-en').textContent = `Final seconds before draw...`;
+                        document.getElementById('status-am').textContent = `ከዕጣው በፊት የመጨረሻ ሰከንዶች...`;
+                    } else if (totalSeconds <= 60) {
+                        countdownEl.classList.add('warning');
+                        document.getElementById('status-en').textContent = `Almost time for the draw...`;
+                        document.getElementById('status-am').textContent = `ለዕጣው ጊዜው ተቃርቧል...`;
+                    } else {
+                        document.getElementById('status-en').textContent = `Draw starting soon...`;
+                        document.getElementById('status-am').textContent = `ዕጣው በቅርቡ ይጀምራል...`;
+                    }
                 }
             } catch (e) {
                 console.error('Error updating countdown:', e);
