@@ -91,6 +91,9 @@ app.get('/admin.html', requireAdmin, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
 // --- API: Get Tier Status & Tickets ---
 app.get('/api/status/:tierId', async (req, res) => {
     try {
