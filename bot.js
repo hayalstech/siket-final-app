@@ -1379,8 +1379,8 @@ bot.command("start", async (ctx) => {
     }
     
     // Telegram Web Apps work with the base URL - server should serve index.html by default
-    // If your server requires /index.html, uncomment the line below
-    webAppUrl = `${webAppUrl}/index.html`;
+    // Using the root URL is safer and cleaner
+    // webAppUrl = `${webAppUrl}/index.html`;
     
     console.log(`🔗 Web App URL configured: ${webAppUrl}`);
     
