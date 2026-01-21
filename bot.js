@@ -170,8 +170,27 @@ app.get('/api/user/dashboard', async (req, res) => {
         const userId = telegramAuth.user.id;
         
         // Get user stats
+        // We calculate this dynamically to avoid dependency on the 'user_stats' view
         const statsRes = await pool.query(`
-            SELECT * FROM user_stats WHERE user_id = $1
+            SELECT 
+                $1::bigint as user_id,
+                COUNT(CASE WHEN t.status = 'sold' THEN 1 END) as total_tickets_bought,
+                COUNT(CASE WHEN t.status = 'pending' THEN 1 END) as pending_tickets,
+                COALESCE(SUM(CASE WHEN t.status = 'sold' THEN ti.price ELSE 0 END), 0) as total_spent,
+                COUNT(CASE WHEN wv.status = 'paid' THEN 1 END) as total_wins,
+                COALESCE(SUM(CASE 
+                    WHEN wv.status = 'paid' AND wv.place = 1 THEN ti.first_prize
+                    WHEN wv.status = 'paid' AND wv.place = 2 THEN ti.second_prize
+                    WHEN wv.status = 'paid' AND wv.place = 3 THEN ti.third_prize
+                    ELSE 0
+                END), 0) as total_won
+            FROM tickets t
+            LEFT JOIN tiers ti ON t.tier_id = ti.id
+            LEFT JOIN winners_verification wv ON t.tier_id = wv.tier_id 
+                AND t.round_no = wv.round_no 
+                AND t.number_val = wv.ticket_number
+                AND t.owner_id = wv.user_id
+            WHERE t.owner_id = $1
         `, [userId]);
         
         const stats = statsRes.rows[0] || {
@@ -1118,6 +1137,84 @@ async function runDrawLogic(tId, rnd) {
         // Alert Admin
         await bot.api.sendMessage(process.env.ADMIN_ID, `🔄 **ROUND #${nextR} STARTED**\nTier ${tId} is now accepting tickets for Round #${nextR}`);
     }, 60000); // 60 seconds total
+}
+
+// Post winners to Telegram group/channel instantly
+async function checkAndNotifyRemainingTickets(tierId, roundNo) {
+    try {
+        const soldCountRes = await pool.query(
+            "SELECT count(*) as count FROM tickets WHERE tier_id = $1 AND status = 'sold' AND round_no = $2",
+            [tierId, roundNo]
+        );
+        const sold = parseInt(soldCountRes.rows[0].count);
+        const remaining = 100 - sold;
+        
+        const thresholds = [50, 40, 30, 20, 10, 5, 3, 2, 1];
+        if (!thresholds.includes(remaining)) return;
+        
+        const tierEmojis = { 1: '🥉', 2: '🥈', 3: '🥇' };
+        const tierNames = { 1: 'BRONZE', 2: 'SILVER', 3: 'GOLD' };
+        const tierNamesAm = { 1: 'ነሐስ', 2: 'ብር', 3: 'ወርቅ' };
+        
+        const emoji = tierEmojis[tierId] || '🎫';
+        const name = tierNames[tierId] || 'Ticket';
+        const nameAm = tierNamesAm[tierId] || 'ትኬት';
+        
+        let msgEn = "";
+        let msgAm = "";
+        
+        switch(remaining) {
+            case 50:
+                msgEn = `🔥 Halfway there! 50 tickets remaining for ${name} Round #${roundNo}. Get yours now!`;
+                msgAm = `🔥 ግማሽ መንገድ ተጉዘናል! 50 ትኬቶች ብቻ ቀርተዋል ለ${nameAm} ዙር #${roundNo}። አሁኑኑ ይግዙ!`;
+                break;
+            case 40:
+                msgEn = `⏳ Ticking fast! Only 40 tickets left for ${name} Round #${roundNo}. Don't miss out!`;
+                msgAm = `⏳ በፍጥነት እያለቀ ነው! 40 ትኬቶች ብቻ ቀርተዋል። የ${nameAm} ዕድልዎን እንዳያመልጥዎ!`;
+                break;
+            case 30:
+                msgEn = `🚀 30 Tickets left for ${name} Round #${roundNo}! The draw is getting closer. Secure your chance!`;
+                msgAm = `🚀 30 ትኬቶች ቀርተዋል! ዕጣው እየቀረበ ነው። ለ${nameAm} ዙር #${roundNo} ዕድልዎን ያረጋግጡ!`;
+                break;
+            case 20:
+                msgEn = `⚠️ Low stock alert! Just 20 tickets remaining for ${name} Round #${roundNo}. Buy now before they're gone!`;
+                msgAm = `⚠️ ማስጠንቀቂያ! 20 ትኬቶች ብቻ ቀርተዋል ለ${nameAm} ዙር #${roundNo}። ሳያልቅ አሁኑኑ ይግዙ!`;
+                break;
+            case 10:
+                msgEn = `🚨 FINAL 10 TICKETS! ${name} Round #${roundNo} is almost sold out. Hurry!`;
+                msgAm = `🚨 የመጨረሻ 10 ትኬቶች! ${nameAm} ዙር #${roundNo} ሊጠናቀቅ ነው። ይፍጠኑ!`;
+                break;
+            case 5:
+                msgEn = `⚡ ONLY 5 LEFT! The jackpot is calling. Grab a ticket NOW!`;
+                msgAm = `⚡ 5 ብቻ ቀርተዋል! ሽልማቱ እየጠበቀዎት ነው። አሁኑኑ ይቁረጡ!`;
+                break;
+            case 3:
+                msgEn = `😱 JUST 3 TICKETS! It's now or never. Win big with ${name}!`;
+                msgAm = `😱 3 ትኬቶች ብቻ! አሁን ወይም በጭራሽ። በ${nameAm} ትልቅ ያሸንፉ!`;
+                break;
+            case 2:
+                msgEn = `🔥 2 TICKETS REMAINING! Someone is about to win. Will it be you?`;
+                msgAm = `🔥 2 ትኬቶች ቀርተዋል! አንድ ሰው ሊያሸንፍ ነው። እርስዎ ይሆኑ?`;
+                break;
+            case 1:
+                msgEn = `🏆 LAST TICKET! One lucky person takes the final spot for ${name} Round #${roundNo}. Buy it NOW!`;
+                msgAm = `🏆 የመጨረሻ ትኬት! አንድ እድለኛ ሰው የመጨረሻውን ቦታ ይወስዳል። ለ${nameAm} ዙር #${roundNo} አሁኑኑ ይግዙ!`;
+                break;
+        }
+        
+        const message = `📢 **TICKET ALERT / የትኬት ማስጠንቀቂያ**\n\n` +
+                        `${emoji} **${name} / ${nameAm}**\n` +
+                        `🔄 **Round / ዙር:** #${roundNo}\n\n` +
+                        `${msgEn}\n\n` +
+                        `${msgAm}\n\n` +
+                        `👉 @siketlotto_bot`;
+
+        const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
+        await bot.api.sendMessage(groupId, message, { parse_mode: 'Markdown' });
+
+    } catch (e) {
+        console.error('Error in checkAndNotifyRemainingTickets:', e);
+    }
 }
 
 // Post winners to Telegram group/channel instantly

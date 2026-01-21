@@ -217,8 +217,8 @@
                 if (data.history.length === 0) {
                     document.getElementById('history-tickets').innerHTML = `
                         <div style="text-align: center; color: #94a3b8; padding: 20px;">
-                            <span class="lang-en">No ticket history yet</span>
-                            <span class="lang-am">የትኬት ታሪክ አልተገኘም</span>
+                            <span class="lang-en">No ticket history available</span>
+                            <span class="lang-am">የትኬት ታሪክ የለም</span>
                         </div>
                     `;
                 } else {
@@ -243,6 +243,11 @@
                 }
             } catch (e) {
                 document.getElementById('active-tickets').innerHTML = `
+                    <div style="text-align: center; color: #f97316; padding: 20px;">
+                        Error: ${e.message}
+                    </div>
+                `;
+                document.getElementById('history-tickets').innerHTML = `
                     <div style="text-align: center; color: #f97316; padding: 20px;">
                         Error: ${e.message}
                     </div>

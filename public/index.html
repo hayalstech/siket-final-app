@@ -171,12 +171,12 @@
         @keyframes pulse-glow { 0% { transform: scale(1); } 70% { transform: scale(1.05); box-shadow: 0 0 10px var(--accent); } 100% { transform: scale(1); } }
 
         /* --- HERO --- */
-        .hero { position: relative; width: 100%; background: radial-gradient(circle at top, rgba(212,175,55,0.16), #020617); line-height: 0; overflow: hidden; margin-top: 0; padding: 0; }
+        .hero { position: relative; width: 100%; background: radial-gradient(circle at top, rgba(212,175,55,0.16), #020617); line-height: 0; overflow: hidden; margin-top: 76px; padding: 0; }
         .hero-img { width: 100%; height: auto; opacity: 0.95; transition: transform 0.6s ease, opacity 0.6s ease; }
         .hero-trust {
             position: absolute;
             left: 8%;
-            top: 38%;
+            top: 22%;
             transform: translateY(-50%);
             z-index: 2;
             color: #f9fafb;
@@ -207,8 +207,9 @@
         .hero-highlight {
             position: absolute;
             left: 6%;
-            top: 72%;
-            transform: translateY(-50%);
+            top: auto;
+            bottom: 12%;
+            transform: translateY(0);
             z-index: 2;
         }
         .hero-highlight-pill {
@@ -293,7 +294,7 @@
         .desire-text.lang-en { color: var(--gold); }
 
         /* --- TICKET CARDS --- */
-        .comp-section { padding: 36px 16px; background: radial-gradient(circle at top, rgba(15,23,42,0.8), var(--bg-primary)); text-align: center; transition: background 0.3s, color 0.3s; }
+        .comp-section { position: relative; z-index: 1; padding: 36px 16px; background: radial-gradient(circle at top, rgba(15,23,42,0.8), var(--bg-primary)); text-align: center; transition: background 0.3s, color 0.3s; }
         .comp-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; color: var(--accent); transition: color 0.3s; }
 
 
@@ -419,12 +420,12 @@
         }
 
         /* --- PSYCHOLOGICAL GRID --- */
-        #grid-view { display: none; padding: 80px 15px 30px 15px; text-align: center; flex: 1; position: relative; }
+        #grid-view { display: none; padding: 110px 15px 30px 15px; text-align: center; flex: 1; position: relative; }
         
         /* Back button in top-left corner */
         .back-button {
             position: fixed;
-            top: 70px;
+            top: 85px;
             left: 15px;
             z-index: 2000;
             background: rgba(0, 0, 0, 0.8);
@@ -493,7 +494,7 @@
         }
         .color-legend {
             position: absolute;
-            top: 55px;
+            top: 85px;
             right: 15px;
             background: rgba(0,0,0,0.8);
             padding: 10px;
@@ -869,12 +870,14 @@
             margin-top: 0;
             border-top: 1px solid rgba(250,204,21,0.7);
             border-bottom: 1px solid rgba(250,204,21,0.4);
-            background-color: #ffffff;
-            color: #000000;
+            background: url('images/header.png') no-repeat center center;
+            background-size: cover;
+            color: #f9fafb;
         }
         [data-theme="dark"] .live-winners-section {
-            background-color: #ffffff;
-            color: #000000;
+            background: url('images/header.png') no-repeat center center;
+            background-size: cover;
+            color: #f9fafb;
         }
 
         .live-winners-layout {
@@ -914,12 +917,12 @@
         .social-proof-title {
             font-size: 18px;
             font-weight: 800;
-            color: #000000;
+            color: #f9fafb;
             text-align: center;
             margin: 0 0 12px 0;
         }
         .live-winners-text {
-            color: #000000;
+            color: #e5e7eb;
             margin-bottom: 20px;
             font-size: 14px;
         }
@@ -1160,12 +1163,6 @@
         <!-- Lotteries Status Section -->
         <section class="league-container">
             <h2 class="comp-title" id="league-t">የዕጣዎች ሁኔታ</h2>
-            <div style="text-align: center; margin-bottom: 15px;">
-                <a href="dashboard.html" style="display: inline-block; background: var(--accent); color: var(--text-primary); padding: 10px 20px; border-radius: 25px; text-decoration: none; font-weight: bold; font-size: 13px;">
-                    <span class="lang-en">📊 My Dashboard</span>
-                    <span class="lang-am">📊 የእኔ ዳሽቦርድ</span>
-                </a>
-            </div>
             <table class="league-table">
                 <thead>
                     <tr>
