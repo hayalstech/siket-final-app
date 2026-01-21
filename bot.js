@@ -1401,4 +1401,9 @@ bot.command("start", async (ctx) => {
 setInterval(() => { if (process.env.WEBAPP_URL) axios.get(process.env.WEBAPP_URL).catch(() => {}); }, 300000);
 
 app.listen(process.env.PORT || 3000, () => console.log("🌐 Siket Production Server Live"));
+
+// Enable graceful stop
+process.once("SIGINT", () => bot.stop());
+process.once("SIGTERM", () => bot.stop());
+
 bot.start();
