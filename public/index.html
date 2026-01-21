@@ -142,6 +142,28 @@
         .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 800; color: #f9fafb; text-shadow: 0 1px 3px rgba(0,0,0,0.9); }
         .header-logo-text { display: flex; flex-direction: column; }
         .header-subtitle { font-size: 11px; margin: 2px 0 0 0; font-weight: 600; color: #e5e7eb; text-shadow: 0 1px 2px rgba(0,0,0,0.85); }
+        
+        .header-actions { display: flex; align-items: center; gap: 20px; }
+        .nav-links { display: flex; align-items: center; gap: 10px; }
+        .header-controls { display: flex; align-items: center; gap: 10px; }
+        .lang-toggle {
+            background: rgba(255,255,255,0.9);
+            border: none;
+            color: #111827;
+            border-radius: 6px; padding: 6px 10px; cursor: pointer;
+            font-size: 12px; font-weight: 700;
+            transition: all 0.3s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            font-family: 'Noto Sans Ethiopic', 'Inter', sans-serif;
+            min-width: 40px;
+        }
+        .lang-toggle:hover { background: #fff; transform: translateY(-1px); }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .header-subtitle { display: none; }
+            .header-actions { gap: 10px; }
+        }
 
         .nav-link {
             color: #f9fafb; text-decoration: none; padding: 6px 12px; 
@@ -154,6 +176,7 @@
             border-radius: 20px; font-size: 11px; font-weight: bold;
             animation: pulse-glow 2s infinite; border: 1px solid var(--tg-theme-hint-color, rgba(255,255,255,0.2));
             transition: background 0.3s;
+            white-space: nowrap;
         }
         .theme-toggle {
             background: rgba(0,0,0,0.45);
@@ -162,7 +185,6 @@
             border-radius: 50%; width: 35px; height: 35px; cursor: pointer;
             font-size: 16px; display: flex; align-items: center; justify-content: center;
             transition: all 0.3s;
-            margin-right: 10px;
             box-shadow: 0 2px 6px rgba(0,0,0,0.6);
         }
         .theme-toggle:hover {
@@ -792,6 +814,10 @@
         .prize-tier { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 3px solid var(--gold); transition: background 0.3s, color 0.3s; }
         .tier-name { font-size: 15px; font-weight: 700; color: var(--accent); margin-bottom: 8px; transition: color 0.3s; }
         .prize-details { font-size: 14px; color: #cbd5e1; margin: 0; transition: color 0.3s; }
+        .prize-list { list-style: none; padding: 0; margin: 10px 0 0 0; font-size: 13px; color: #cbd5e1; }
+        .prize-list li { margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+        .prize-list li::before { content: '🏆'; font-size: 10px; }
+        [data-theme="light"] .prize-list { color: #4b5563; }
         .principle-item, .rule-item { font-size: 14px; color: #cbd5e1; line-height: 1.8; margin-bottom: 12px; padding-left: 10px; border-left: 2px solid rgba(255,255,255,0.1); transition: color 0.3s, border-color 0.3s; }
         [data-theme="light"] .prize-tier {
             background: #111827;
@@ -1079,13 +1105,17 @@
                 <div id="nav-subtitle" class="header-subtitle">በኃላፊነት ይጫወቱ</div>
             </div>
         </div>
-        <div class="header-logo">
-            <a href="dashboard.html" class="nav-link lang-en">My Tickets</a>
-            <a href="dashboard.html" class="nav-link lang-am">የእኔ ትኬቶች</a>
-            <a href="#about-us" class="nav-link" id="nav-about">About Us</a>
-            <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle Dark/Light Mode">🌙</button>
-            <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
-            <a href="https://t.me/Contact_Siketlottery" class="contact-btn" id="contact-btn">ያግኙን</a>
+        <div class="header-actions">
+            <nav class="nav-links">
+                <a href="dashboard.html" class="nav-link lang-en">My Tickets</a>
+                <a href="dashboard.html" class="nav-link lang-am">የእኔ ትኬቶች</a>
+                <a href="#about-us" class="nav-link" id="nav-about">About Us</a>
+            </nav>
+            <div class="header-controls">
+                <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle Dark/Light Mode">🌙</button>
+                <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
+                <a href="https://t.me/Contact_Siketlottery" class="contact-btn" id="contact-btn">ያግኙን</a>
+            </div>
         </div>
     </header>
     <div id="toast" class="toast"></div>
@@ -1211,6 +1241,11 @@
                     <h4 class="tier-name lang-am">የወርቅ ቲኬት: ዋጋ 500 ብር</h4>
                     <p class="prize-details lang-en">Total Prize Money is 40,000 ETB</p>
                     <p class="prize-details lang-am">የጠቅላላ የሽልማት ገንዘብ: 40,000 ብር</p>
+                    <ul class="prize-list">
+                        <li><span class="lang-en">1st Prize: 30,000 ETB</span><span class="lang-am">1ኛ ሽልማት: 30,000 ብር</span></li>
+                        <li><span class="lang-en">2nd Prize: 7,000 ETB</span><span class="lang-am">2ኛ ሽልማት: 7,000 ብር</span></li>
+                        <li><span class="lang-en">3rd Prize: 3,000 ETB</span><span class="lang-am">3ኛ ሽልማት: 3,000 ብር</span></li>
+                    </ul>
                 </div>
                 
                 <div class="prize-tier">
@@ -1218,6 +1253,11 @@
                     <h4 class="tier-name lang-am">የብር ቲኬት: ዋጋ 300 ብር</h4>
                     <p class="prize-details lang-en">Total Prize Money is 21,000 ETB</p>
                     <p class="prize-details lang-am">የጠቅላላ የሽልማት ገንዘብ: 21,000 ብር</p>
+                    <ul class="prize-list">
+                        <li><span class="lang-en">1st Prize: 15,000 ETB</span><span class="lang-am">1ኛ ሽልማት: 15,000 ብር</span></li>
+                        <li><span class="lang-en">2nd Prize: 4,000 ETB</span><span class="lang-am">2ኛ ሽልማት: 4,000 ብር</span></li>
+                        <li><span class="lang-en">3rd Prize: 2,000 ETB</span><span class="lang-am">3ኛ ሽልማት: 2,000 ብር</span></li>
+                    </ul>
                 </div>
                 
                 <div class="prize-tier">
@@ -1225,6 +1265,11 @@
                     <h4 class="tier-name lang-am">የነሐስ ቲኬት: ዋጋ 100 ብር</h4>
                     <p class="prize-details lang-en">Total Prize Money is 7,000 ETB + 2 Free Tickets</p>
                     <p class="prize-details lang-am">የጠቅላላ የሽልማት ገንዘብ: 7,000 ብር  + 2 ነጻ ቲኬቶች</p>
+                    <ul class="prize-list">
+                        <li><span class="lang-en">1st Prize: 5,000 ETB</span><span class="lang-am">1ኛ ሽልማት: 5,000 ብር</span></li>
+                        <li><span class="lang-en">2nd Prize: 2,000 ETB</span><span class="lang-am">2ኛ ሽልማት: 2,000 ብር</span></li>
+                        <li><span class="lang-en">3rd Prize: 2 Free Tickets</span><span class="lang-am">3ኛ ሽልማት: 2 ነጻ ቲኬቶች</span></li>
+                    </ul>
                 </div>
             </div>
         </section>
@@ -2283,7 +2328,7 @@
             // If no winners, show message
             if (winnersGrid.children.length === 0) {
                 winnersGrid.innerHTML = `
-                    <div style="grid-column: 1/-1; text-align: center; color: #000000; padding: 40px;">
+                    <div style="grid-column: 1/-1; text-align: center; color: #f9fafb; padding: 40px;">
                         <p class="lang-en">No winners yet. Be the first!</p>
                         <p class="lang-am">እስካሁን አሸናፊ የለም። የመጀመሪያው ይሁኑ!</p>
                     </div>
