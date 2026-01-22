@@ -97,13 +97,25 @@ app.use(express.static(path.join(__dirname, 'public')));
 // --- API: Get Tier Status & Tickets ---
 app.get('/api/status/:tierId', async (req, res) => {
     try {
-        const roundRes = await pool.query("SELECT current_round FROM game_rounds WHERE tier_id = $1", [req.params.tierId]);
-        const round = roundRes.rows[0].current_round;
-        const tierRes = await pool.query("SELECT * FROM tiers WHERE id = $1", [req.params.tierId]);
-        const ticketsRes = await pool.query("SELECT number_val, status FROM tickets WHERE tier_id = $1 AND round_no = $2 ORDER BY number_val ASC", [req.params.tierId, round]);
+        const tId = req.params.tierId;
+        console.log(`API: Fetching status for Tier ${tId}`);
         
+        const roundRes = await pool.query("SELECT current_round FROM game_rounds WHERE tier_id = $1", [tId]);
+        if (roundRes.rows.length === 0) {
+            console.error(`API Error: No round found for Tier ${tId}`);
+            return res.status(404).send('Tier not found');
+        }
+        
+        const round = roundRes.rows[0].current_round;
+        const tierRes = await pool.query("SELECT * FROM tiers WHERE id = $1", [tId]);
+        
+        console.log(`API: Tier ${tId} is at Round ${round}`);
+        
+        const ticketsRes = await pool.query("SELECT number_val, status FROM tickets WHERE tier_id = $1 AND round_no = $2 ORDER BY number_val ASC", [tId, round]);
+        console.log(`API: Found ${ticketsRes.rows.length} tickets for Tier ${tId}`);
+
         // Fetch last winner for animation trigger
-        const lastWinner = await pool.query("SELECT w1_num as first, w2_num as second, w3_num as third FROM winners_history WHERE tier_id=$1 ORDER BY id DESC LIMIT 1", [req.params.tierId]);
+        const lastWinner = await pool.query("SELECT w1_num as first, w2_num as second, w3_num as third FROM winners_history WHERE tier_id=$1 ORDER BY id DESC LIMIT 1", [tId]);
 
         res.json({ 
             round, 
@@ -111,7 +123,10 @@ app.get('/api/status/:tierId', async (req, res) => {
             tickets: ticketsRes.rows,
             winners: lastWinner.rows[0] || { first: 0, second: 0, third: 0 }
         });
-    } catch (err) { res.status(500).send(err.message); }
+    } catch (err) { 
+        console.error(`API Error in /api/status/${req.params.tierId}:`, err);
+        res.status(500).send(err.message); 
+    }
 });
 
 // --- API: Get History (Last 10) ---

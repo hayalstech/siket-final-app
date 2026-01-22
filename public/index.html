@@ -1758,7 +1758,7 @@
                     if(sold === 100) statusHtml = `<span class=\"status-badge status-drawing\">🕒 ${langData[lang].statusDraw}</span>`;
                     
                     leagueBody.innerHTML += `
-                        <tr>
+                        <tr onclick="openTier(${t.id})" style="cursor:pointer">
                             <td class=\"league-type\" style=\"color:${t.color}; font-weight:800\">${t.name}</td>
                             <td>${data.round ? ('#' + String(data.round).padStart(4, '0')) : '-'}</td>
                             <td>${statusHtml}</td>
@@ -1863,8 +1863,13 @@
                 const res = await fetch(`/api/status/${id}`);
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 data = await res.json();
+                console.log(`Tier ${id} status loaded:`, data);
+                if (!data.tickets || data.tickets.length === 0) {
+                    console.warn(`No tickets found for Tier ${id} Round ${data.round}`);
+                }
             } catch (e) {
-                showToast('Failed to load status. Start the server to fetch live data.', 'error');
+                console.error("Error loading tier status:", e);
+                showToast(`Failed to load status: ${e.message}`, 'error');
             }
             currentRound = data.round;
 
@@ -1894,6 +1899,12 @@
             
             const g = document.getElementById('grid-main');
             g.innerHTML = '';
+            
+            if (!data.tickets || data.tickets.length === 0) {
+                g.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #f87171;">⚠️ No tickets loaded. Please try refreshing or contact support.</div>';
+                return;
+            }
+
             data.tickets.forEach(t => {
                 const d = document.createElement('div');
                 let statusClass = 'available';
