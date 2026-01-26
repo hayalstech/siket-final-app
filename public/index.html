@@ -37,8 +37,34 @@
   </script>
 
   <!-- STYLES -->
-  <style>
-    :root {
+    <style>
+        /* Force Grid Visibility and Cell Styling */
+        #grid-main {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 4px;
+            width: 100%;
+            min-height: 300px;
+            padding: 5px;
+        }
+        .cell {
+            aspect-ratio: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .cell:active { transform: scale(0.9); }
+        .cell.sold { background: rgba(255, 69, 58, 0.3); color: #ff453a; border-color: #ff453a; pointer-events: none; }
+        .cell.selected { background: #32d74b; color: black; border-color: #32d74b; font-weight: bold; }
+        
+        :root {
       --orange: #ff7a2f;
       --green: #15803d;
       --yellow: #eab308;
@@ -1901,11 +1927,15 @@
             g.innerHTML = '';
             
             if (!data.tickets || data.tickets.length === 0) {
-                g.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #f87171;">⚠️ No tickets loaded. Please try refreshing or contact support.</div>';
-                return;
-            }
+                    g.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #f87171;">⚠️ No tickets loaded. API returned empty list.</div>';
+                    // Fallback: Manually create grid for debugging if API fails but we know they exist
+                    return;
+                }
 
-            data.tickets.forEach(t => {
+                // Force grid layout update
+                g.style.display = 'grid';
+                
+                data.tickets.forEach(t => {
                 const d = document.createElement('div');
                 let statusClass = 'available';
                 if(t.status === 'sold') {
