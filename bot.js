@@ -515,22 +515,35 @@ app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
         console.error('Error fetching tier price:', e);
     }
     
+    const successfulTickets = [];
     try {
-        const updatePromises = ticketNumbers.map(num => 
-            pool.query(
-                'UPDATE tickets SET status = $1, owner_id = $2, payment_phone = $3, screenshot_url = $4, transaction_hash = $5, purchase_timestamp = NOW() WHERE tier_id = $6 AND number_val = $7 AND round_no = $8', 
-                ['pending', userId, phone, req.file.path, transactionHash || null, tierId, num, round]
-            )
-        );
-        await Promise.all(updatePromises);
+        for (const num of ticketNumbers) {
+            // CRITICAL FIX: Only update if status is 'available' to prevent race conditions
+            const result = await pool.query(
+                "UPDATE tickets SET status = 'pending', owner_id = $1, payment_phone = $2, screenshot_url = $3, transaction_hash = $4, purchase_timestamp = NOW() WHERE tier_id = $5 AND number_val = $6 AND round_no = $7 AND status = 'available'", 
+                [userId, phone, req.file.path, transactionHash || null, tierId, num, round]
+            );
+            
+            if (result.rowCount > 0) {
+                successfulTickets.push(num);
+            }
+        }
     } catch (e) {
         console.error('Error updating tickets for payment:', e);
+        return res.status(500).json({ error: 'Database error processing tickets' });
     }
 
+    if (successfulTickets.length === 0) {
+        // All selected tickets were taken
+        return res.status(409).send('Selected tickets are no longer available. Please choose different tickets.');
+    }
+
+    // Use only successful tickets for the rest of the process
+    
     // Store transaction records for audit trail
     if (transactionHash) {
         try {
-            const txPromises = ticketNumbers.map(num =>
+            const txPromises = successfulTickets.map(num =>
                 pool.query(`
                     INSERT INTO ticket_transactions (tier_id, round_no, ticket_number, user_id, transaction_hash, status)
                     VALUES ($1, $2, $3, $4, $5, 'pending')
@@ -547,7 +560,7 @@ app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
 
     // Store payment requests permanently in admin dashboard table (one per ticket)
     try {
-        const paymentPromises = ticketNumbers.map(num =>
+        const paymentPromises = successfulTickets.map(num =>
             pool.query(`
                 INSERT INTO payment_requests (tier_id, ticket_number, round_no, user_id, full_name, phone, screenshot_url, start_time, status)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')
@@ -559,11 +572,11 @@ app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
     }
 
     try {
-        const numbersLabel = ticketNumbers
+        const numbersLabel = successfulTickets
             .map(n => `🎟 ${String(n).padStart(2, '0')}`)
             .join(', ');
         const shortHash = (transactionHash || '').toString().slice(0, 16) || 'nohash';
-        const count = ticketNumbers.length;
+        const count = successfulTickets.length;
         const expectedTotal = tierPrice * count;
 
         const keyboard = new InlineKeyboard()
@@ -622,11 +635,14 @@ bot.callbackQuery(/approve_group_(\d+)_(\d+)_(\d+)_([0-9a-fA-F]+)/, async (ctx) 
         }
 
         try {
+            const adminId = ctx.from ? ctx.from.id : null;
             await pool.query(`
                 UPDATE payment_requests 
-                SET status = 'approved'
+                SET status = 'approved',
+                    admin_id = $5,
+                    processed_at = NOW()
                 WHERE tier_id = $1 AND round_no = $2 AND ticket_number = ANY($3::int[]) AND user_id = $4
-            `, [tId, rnd, nums, uId]);
+            `, [tId, rnd, nums, uId, adminId]);
         } catch (e) {
             console.error('Error updating group payment requests:', e);
         }
@@ -711,11 +727,14 @@ bot.callbackQuery(/reject_group_(\d+)_(\d+)_(\d+)_([0-9a-fA-F]+)/, async (ctx) =
         }
 
         try {
+            const adminId = ctx.from ? ctx.from.id : null;
             await pool.query(`
                 UPDATE payment_requests 
-                SET status = 'rejected'
+                SET status = 'rejected',
+                    admin_id = $5,
+                    processed_at = NOW()
                 WHERE tier_id = $1 AND round_no = $2 AND ticket_number = ANY($3::int[]) AND user_id = $4
-            `, [tId, rnd, nums, uId]);
+            `, [tId, rnd, nums, uId, adminId]);
         } catch (e) {
             console.error('Error updating group payment requests (reject):', e);
         }
@@ -757,8 +776,12 @@ bot.callbackQuery(/approve_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     
     // Update payment request status
     try {
-        await pool.query('UPDATE payment_requests SET status = $1 WHERE tier_id = $2 AND ticket_number = $3 AND round_no = $4 AND user_id = $5', 
-            ['approved', tId, num, rnd, uId]);
+        const adminId = ctx.from ? ctx.from.id : null;
+        await pool.query(`
+            UPDATE payment_requests 
+            SET status = $1, admin_id = $6, processed_at = NOW() 
+            WHERE tier_id = $2 AND ticket_number = $3 AND round_no = $4 AND user_id = $5
+        `, ['approved', tId, num, rnd, uId, adminId]);
     } catch(e) {
         console.error('Error updating payment request:', e);
     }
@@ -821,8 +844,12 @@ bot.callbackQuery(/reject_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     
     // Update payment request status
     try {
-        await pool.query('UPDATE payment_requests SET status = $1 WHERE tier_id = $2 AND ticket_number = $3 AND round_no = $4 AND user_id = $5', 
-            ['rejected', tId, num, rnd, uId]);
+        const adminId = ctx.from ? ctx.from.id : null;
+        await pool.query(`
+            UPDATE payment_requests 
+            SET status = $1, admin_id = $6, processed_at = NOW() 
+            WHERE tier_id = $2 AND ticket_number = $3 AND round_no = $4 AND user_id = $5
+        `, ['rejected', tId, num, rnd, uId, adminId]);
     } catch(e) {
         console.error('Error updating payment request:', e);
     }
@@ -843,11 +870,14 @@ bot.callbackQuery(/confirm_payout_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     const [_, tId, rnd, num, uId] = ctx.match;
     
     try {
+        const adminId = ctx.from ? ctx.from.id : null;
         await pool.query(`
             UPDATE winners_verification 
-            SET status = 'paid', paid_at = NOW()
+            SET status = 'paid', 
+                paid_at = NOW(),
+                admin_id = $5
             WHERE tier_id = $1 AND round_no = $2 AND ticket_number = $3 AND user_id = $4
-        `, [tId, rnd, num, uId]);
+        `, [tId, rnd, num, uId, adminId]);
         
         await bot.api.sendMessage(uId, `✅ ሽልማትዎ ተረጋግጧል እና በቅርቡ ወደ አካውንትዎ ይላካል!`);
         await ctx.editMessageCaption({ caption: `✅ Payout Confirmed | Tier ${tId} | Round #${rnd} | Ticket #${num}` });
@@ -861,11 +891,13 @@ bot.callbackQuery(/reject_payout_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     const [_, tId, rnd, num, uId] = ctx.match;
     
     try {
+        const adminId = ctx.from ? ctx.from.id : null;
         await pool.query(`
             UPDATE winners_verification 
-            SET status = 'rejected'
+            SET status = 'rejected',
+                admin_id = $5
             WHERE tier_id = $1 AND round_no = $2 AND ticket_number = $3 AND user_id = $4
-        `, [tId, rnd, num, uId]);
+        `, [tId, rnd, num, uId, adminId]);
         
         await bot.api.sendMessage(uId, `❌ ማረጋገጥዎ ተቀባይነት አላገኘም። እባክዎ ድጋፍ ያግኙ።`);
         await ctx.editMessageCaption({ caption: `❌ Payout Rejected | Tier ${tId} | Round #${rnd} | Ticket #${num}` });

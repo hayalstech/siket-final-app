@@ -1928,35 +1928,76 @@
             loadWinners(id);
             
             const g = document.getElementById('grid-main');
+            if (!g) {
+                console.error("Grid container not found!");
+                showToast("Error: Grid container missing", "error");
+                return;
+            }
             g.innerHTML = '';
             
-            if (!data.tickets || data.tickets.length === 0) {
-                    g.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #f87171;">⚠️ No tickets loaded. API returned empty list.</div>';
-                    // Fallback: Manually create grid for debugging if API fails but we know they exist
-                    return;
-                }
+            // Check if tickets data is valid
+            if (!data || !data.tickets || !Array.isArray(data.tickets) || data.tickets.length === 0) {
+                console.warn("No tickets data available:", data);
+                g.innerHTML = `
+                    <div style="grid-column: 1/-1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; text-align: center; color: var(--text-secondary);">
+                        <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+                        <div style="font-weight: bold; margin-bottom: 5px;">No Tickets Available</div>
+                        <div style="font-size: 12px; opacity: 0.8;">
+                            Round #${currentRound || '?'} • Tier ${id}<br>
+                            Please try refreshing or contact support.
+                        </div>
+                        <button onclick="openTier(${id})" style="margin-top: 15px; padding: 8px 16px; background: var(--accent); border: none; border-radius: 6px; color: white; font-weight: bold;">Retry</button>
+                    </div>
+                `;
+                g.style.display = 'grid'; // Ensure container is visible even with error
+                return;
+            }
 
+            try {
                 // Force grid layout update
                 g.style.display = 'grid';
                 
-                data.tickets.forEach(t => {
-                const d = document.createElement('div');
-                let statusClass = 'available';
-                if(t.status === 'sold') {
-                    statusClass = 'sold'; // Sold shows wood color
-                } else if(t.status === 'pending') {
-                    statusClass = 'pending'; // Pending shows yellow
-                }
+                console.log(`Rendering ${data.tickets.length} tickets for Tier ${id}`);
                 
-                d.className = `cell ${statusClass}`;
-                d.innerText = t.number_val;
-                if(t.status === 'available') {
-                    d.onclick = () => toggleSelectCell(t.number_val, d);
-                } else {
-                    d.style.pointerEvents = 'none'; // Disable clicks for non-available
-                }
-                g.appendChild(d);
-            });
+                data.tickets.forEach(t => {
+                    const d = document.createElement('div');
+                    let statusClass = 'available';
+                    if(t.status === 'sold') {
+                        statusClass = 'sold'; // Sold shows wood color
+                    } else if(t.status === 'pending') {
+                        statusClass = 'pending'; // Pending shows yellow
+                    }
+                    
+                    d.className = `cell ${statusClass}`;
+                    d.innerText = t.number_val;
+                    
+                    // Add touch feedback
+                    d.addEventListener('touchstart', () => {
+                        if (statusClass === 'available' || statusClass === 'selected') {
+                            d.style.transform = 'scale(0.9)';
+                        }
+                    }, { passive: true });
+                    
+                    d.addEventListener('touchend', () => {
+                        d.style.transform = '';
+                    }, { passive: true });
+
+                    if(t.status === 'available') {
+                        d.onclick = () => toggleSelectCell(t.number_val, d);
+                    } else {
+                        d.style.pointerEvents = 'none'; // Disable clicks for non-available
+                    }
+                    g.appendChild(d);
+                });
+            } catch (renderError) {
+                console.error("Error rendering grid:", renderError);
+                g.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #f87171;">
+                        ⚠️ Display Error: ${renderError.message}<br>
+                        <button onclick="openTier(${id})" style="margin-top: 10px; padding: 5px 10px;">Retry</button>
+                    </div>
+                `;
+            }
         }
 
         // Toggle selection for bet slip (multi-ticket)
