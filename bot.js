@@ -6,6 +6,7 @@ const multer = require('multer');
 const fs = require('fs');
 const axios = require('axios');
 const crypto = require('crypto');
+const path = require('path');
 
 const bot = new Bot(process.env.BOT_TOKEN);
 const app = express();
@@ -16,6 +17,11 @@ if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
+
+// Explicitly serve index.html for root route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 // --- API: Get Tier Status & Tickets ---
 app.get('/api/status/:tierId', async (req, res) => {
@@ -1222,9 +1228,8 @@ bot.command("start", async (ctx) => {
         webAppUrl = `https://${webAppUrl}`;
     }
     
-    // Telegram Web Apps work with the base URL - server should serve index.html by default
-    // If your server requires /index.html, uncomment the line below
-    webAppUrl = `${webAppUrl}/index.html`;
+    // Use root URL for Web App (server now explicitly handles /)
+    // webAppUrl = `${webAppUrl}/index.html`; 
     
     console.log(`🔗 Web App URL configured: ${webAppUrl}`);
     
