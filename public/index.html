@@ -64,6 +64,18 @@
         .cell.sold { background: rgba(255, 69, 58, 0.3); color: #ff453a; border-color: #ff453a; pointer-events: none; }
         .cell.selected { background: #32d74b; color: black; border-color: #32d74b; font-weight: bold; }
         
+        /* Light Theme Grid Visibility */
+        [data-theme="light"] .cell {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: rgba(0, 0, 0, 0.1);
+            color: #1f2937;
+        }
+        [data-theme="light"] .cell.sold {
+            background: rgba(220, 38, 38, 0.1);
+            color: #dc2626;
+            border-color: #fca5a5;
+        }
+        
         :root {
       --orange: #ff7a2f;
       --green: #15803d;
@@ -119,17 +131,12 @@
         .lang-en { font-family: 'Inter', 'Segoe UI', sans-serif; }
         .lang-am { font-family: 'Noto Sans Ethiopic', 'Segoe UI', sans-serif; }
         
-        /* Language visibility - default to Amharic */
-        .lang-en { display: none; }
-        .lang-am { display: block; }
+        /* Language visibility - robust switching */
+        /* Hide English unless language is explicitly English */
+        :root:not([data-lang="en"]) .lang-en { display: none !important; }
         
-        /* Language visibility when English is selected */
-        [data-lang="en"] .lang-en { display: block; }
-        [data-lang="en"] .lang-am { display: none; }
-        
-        /* Language visibility when Amharic is selected */
-        [data-lang="am"] .lang-en { display: none; }
-        [data-lang="am"] .lang-am { display: block; }
+        /* Hide Amharic if language is English */
+        :root[data-lang="en"] .lang-am { display: none !important; }
 
         /* THEME OVERRIDES */
         :root[data-theme="dark"] {
@@ -273,6 +280,7 @@
             font-weight: 600;
             animation: hero-pill-float 3.2s ease-in-out infinite;
             box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+            max-width: 90vw; /* Prevent screen overflow */
         }
         .hero-highlight-dot {
             width: 10px;
@@ -280,9 +288,12 @@
             border-radius: 999px;
             background: #22c55e;
             box-shadow: 0 0 10px rgba(34,197,94,0.9);
+            flex-shrink: 0; /* Prevent dot from shrinking */
         }
         .hero-highlight-text {
-            white-space: nowrap;
+            white-space: normal; /* Allow text to wrap */
+            text-align: center;
+            line-height: 1.4;
         }
         @keyframes hero-pill-float {
             0%, 100% { transform: translateY(0); opacity: 0.96; }
@@ -294,9 +305,8 @@
                 top: auto;
                 bottom: 18px;
                 transform: translateX(-50%);
-            }
-            .hero-highlight-text {
-                white-space: normal;
+                width: max-content;
+                max-width: 95%;
             }
         }
         .hero-overlay { 
@@ -1603,18 +1613,23 @@
         }
         
         // Ensure language has a safe default before any use
-        let lang = (localStorage.getItem('language') || 'am');
-        const savedLang = localStorage.getItem('language');
-        if(savedLang) {
-            lang = savedLang;
+        let lang = localStorage.getItem('language');
+
+        // If no saved language, try to detect from Telegram
+        if (!lang) {
+            // Check Telegram init data
+            const tgUserLang = (window.Telegram?.WebApp?.initDataUnsafe?.user?.language_code || '').toLowerCase();
+            // Default to Amharic unless English is detected
+            lang = tgUserLang.startsWith('en') ? 'en' : 'am';
         }
+
         // Set initial language toggle label if button exists
         (function(){
             const btn = document.getElementById('lang-btn');
             if (btn) btn.innerText = lang === 'am' ? 'EN' : 'አማርኛ';
         })();
         
-        // Set initial language attribute on html element
+        // Set initial language attribute on html element immediately
         document.documentElement.setAttribute('data-lang', lang);
         
         // Function to toggle language visibility
@@ -1639,6 +1654,23 @@
             if(document.getElementById('th-round')) document.getElementById('th-round').innerText = langData[lang].thR;
             if(document.getElementById('th-status')) document.getElementById('th-status').innerText = langData[lang].thS;
             if(document.getElementById('th-price')) document.getElementById('th-price').innerText = langData[lang].thP;
+            if(document.getElementById('soon-t')) document.getElementById('soon-t').innerText = langData[lang].soonT;
+            if(document.getElementById('soon-b')) document.getElementById('soon-b').innerText = langData[lang].soonB;
+            
+            // Grid view elements (always update regardless of visibility)
+            if(document.getElementById('prize-title')) document.getElementById('prize-title').innerText = langData[lang].prizeTitle;
+            if(document.getElementById('modal-title')) document.getElementById('modal-title').innerText = langData[lang].modalTitle;
+            if(document.getElementById('winner-title')) document.getElementById('winner-title').innerText = langData[lang].winnerTitle;
+            if(document.getElementById('submit-btn')) document.getElementById('submit-btn').innerText = langData[lang].submitBtn;
+            
+            const fullNameLabel = document.querySelector('label[for="full-name"]');
+            const phoneLabel = document.querySelector('label[for="phone-number"]');
+            const screenshotLabel = document.querySelector('label[for="payment-screenshot"]');
+            if(fullNameLabel) fullNameLabel.innerText = langData[lang].fullNameLabel;
+            if(phoneLabel) phoneLabel.innerText = langData[lang].phoneLabel;
+            if(screenshotLabel) {
+                screenshotLabel.innerHTML = langData[lang].screenshotLabel + ' <span class="file-required">' + langData[lang].fileRequired + '</span>';
+            }
             
             toggleLanguageVisibility();
         }
@@ -1822,43 +1854,15 @@
             lang = lang === 'am' ? 'en' : 'am';
             localStorage.setItem('language', lang);
             document.documentElement.setAttribute('data-lang', lang);
-            document.getElementById('lang-btn').innerText = lang === 'am' ? 'EN' : 'አማርኛ';
-            document.getElementById('th-type').innerText = langData[lang].thT;
-            document.getElementById('th-round').innerText = langData[lang].thR;
-            document.getElementById('th-status').innerText = langData[lang].thS;
-            document.getElementById('th-price').innerText = langData[lang].thP;
-            document.getElementById('league-t').innerText = langData[lang].leagueT;
-            document.getElementById('soon-t').innerText = langData[lang].soonT;
-            document.getElementById('soon-b').innerText = langData[lang].soonB;
-            document.getElementById('nav-about').innerText = langData[lang].navAbout;
-            document.getElementById('contact-btn').innerText = langData[lang].commentBtn;
-            document.getElementById('nav-title').innerText = langData[lang].navTitle;
-            if(document.getElementById('nav-subtitle')) document.getElementById('nav-subtitle').innerText = langData[lang].navSubtitle;
-            document.getElementById('page-title').innerText = langData[lang].navTitle;
-            if(document.getElementById('sec-t')) document.getElementById('sec-t').innerText = langData[lang].hottestCompetitions;
-            if(document.getElementById('buy-ticket-btn')) document.getElementById('buy-ticket-btn').innerText = langData[lang].buyTicket;
-            if(document.getElementById('buy-gold-btn')) document.getElementById('buy-gold-btn').innerText = langData[lang].buyGold;
-            if(document.getElementById('buy-silver-btn')) document.getElementById('buy-silver-btn').innerText = langData[lang].buySilver;
-            if(document.getElementById('buy-bronze-btn')) document.getElementById('buy-bronze-btn').innerText = langData[lang].buyBronze;
             
-            // Toggle language visibility for all elements
-            toggleLanguageVisibility();
+            // Update button text immediately
+            const btn = document.getElementById('lang-btn');
+            if (btn) btn.innerText = lang === 'am' ? 'EN' : 'አማርኛ';
             
-            // Update grid view elements if visible
-            if(document.getElementById('grid-view').style.display !== 'none') {
-                document.getElementById('prize-title').innerText = langData[lang].prizeTitle;
-                document.getElementById('modal-title').innerText = langData[lang].modalTitle;
-                document.getElementById('winner-title').innerText = langData[lang].winnerTitle;
-                const fullNameLabel = document.querySelector('label[for="full-name"]');
-                const phoneLabel = document.querySelector('label[for="phone-number"]');
-                const screenshotLabel = document.querySelector('label[for="payment-screenshot"]');
-                if(fullNameLabel) fullNameLabel.innerText = langData[lang].fullNameLabel;
-                if(phoneLabel) phoneLabel.innerText = langData[lang].phoneLabel;
-                if(screenshotLabel) {
-                    screenshotLabel.innerHTML = langData[lang].screenshotLabel + ' <span class="file-required">' + langData[lang].fileRequired + '</span>';
-                }
-            }
+            // Update all translations
+            initializeTranslations();
             
+            // Reload dynamic data (league table)
             loadLeagueData();
         }
 

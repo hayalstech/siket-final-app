@@ -1,12 +1,11 @@
 require('dotenv').config();
-const { Bot, InlineKeyboard, InputFile } = require('grammy');
+const { Bot, InlineKeyboard, InputFile, webhookCallback } = require('grammy');
 const { pool, getUser } = require('./database');
 const express = require('express');
 const multer = require('multer');
 const fs = require('fs');
 const axios = require('axios');
 const crypto = require('crypto');
-const path = require('path');
 
 const bot = new Bot(process.env.BOT_TOKEN);
 const app = express();
@@ -15,107 +14,19 @@ const pendingProofs = new Map();
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 app.use(express.json());
+app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
-
-const TELEGRAM_BOT_TOKEN = process.env.BOT_TOKEN;
-const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET_KEY;
-
-function getInitDataRaw(req) {
-    const auth = req.headers['authorization'];
-    if (auth && typeof auth === 'string' && auth.startsWith('tma ')) {
-        return auth.slice(4).trim();
-    }
-    if (req.body && req.body.initData) {
-        return req.body.initData;
-    }
-    if (req.query && req.query.initData) {
-        return req.query.initData;
-    }
-    return null;
-}
-
-function verifyTelegramInitData(initDataRaw) {
-    if (!initDataRaw || !TELEGRAM_BOT_TOKEN) return null;
-    try {
-        const decoded = decodeURIComponent(initDataRaw);
-        const params = new URLSearchParams(decoded);
-        const hash = params.get('hash');
-        if (!hash) return null;
-        params.delete('hash');
-        const pairs = [];
-        for (const [key, value] of params.entries()) {
-            pairs.push(`${key}=${value}`);
-        }
-        pairs.sort();
-        const dataCheckString = pairs.join('\n');
-        const secret = crypto.createHmac('sha256', 'WebAppData').update(TELEGRAM_BOT_TOKEN).digest();
-        const computedHash = crypto.createHmac('sha256', secret).update(dataCheckString).digest('hex');
-        if (computedHash !== hash) return null;
-        const userJson = params.get('user');
-        let user = null;
-        if (userJson) {
-            try {
-                user = JSON.parse(userJson);
-            } catch (e) {
-                user = null;
-            }
-        }
-        return {
-            hash,
-            user,
-            authDate: params.get('auth_date')
-        };
-    } catch (e) {
-        console.error('Init data validation error:', e);
-        return null;
-    }
-}
-
-function isAdminAuthorized(req) {
-    if (!ADMIN_SECRET_KEY) return false;
-    const headerKey = req.headers['x-admin-key'];
-    const queryKey = req.query && req.query.key;
-    if (headerKey && headerKey === ADMIN_SECRET_KEY) return true;
-    if (queryKey && queryKey === ADMIN_SECRET_KEY) return true;
-    return false;
-}
-
-function requireAdmin(req, res, next) {
-    if (!isAdminAuthorized(req)) {
-        return res.status(403).send('Forbidden');
-    }
-    next();
-}
-
-app.get('/admin.html', requireAdmin, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-// Serve static files from public directory
-app.use(express.static(path.join(__dirname, 'public')));
 
 // --- API: Get Tier Status & Tickets ---
 app.get('/api/status/:tierId', async (req, res) => {
     try {
-        const tId = req.params.tierId;
-        console.log(`API: Fetching status for Tier ${tId}`);
-        
-        const roundRes = await pool.query("SELECT current_round FROM game_rounds WHERE tier_id = $1", [tId]);
-        if (roundRes.rows.length === 0) {
-            console.error(`API Error: No round found for Tier ${tId}`);
-            return res.status(404).send('Tier not found');
-        }
-        
+        const roundRes = await pool.query("SELECT current_round FROM game_rounds WHERE tier_id = $1", [req.params.tierId]);
         const round = roundRes.rows[0].current_round;
-        const tierRes = await pool.query("SELECT * FROM tiers WHERE id = $1", [tId]);
+        const tierRes = await pool.query("SELECT * FROM tiers WHERE id = $1", [req.params.tierId]);
+        const ticketsRes = await pool.query("SELECT number_val, status FROM tickets WHERE tier_id = $1 AND round_no = $2 ORDER BY number_val ASC", [req.params.tierId, round]);
         
-        console.log(`API: Tier ${tId} is at Round ${round}`);
-        
-        const ticketsRes = await pool.query("SELECT number_val, status FROM tickets WHERE tier_id = $1 AND round_no = $2 ORDER BY number_val ASC", [tId, round]);
-        console.log(`API: Found ${ticketsRes.rows.length} tickets for Tier ${tId}`);
-
         // Fetch last winner for animation trigger
-        const lastWinner = await pool.query("SELECT w1_num as first, w2_num as second, w3_num as third FROM winners_history WHERE tier_id=$1 ORDER BY id DESC LIMIT 1", [tId]);
+        const lastWinner = await pool.query("SELECT w1_num as first, w2_num as second, w3_num as third FROM winners_history WHERE tier_id=$1 ORDER BY id DESC LIMIT 1", [req.params.tierId]);
 
         res.json({ 
             round, 
@@ -123,10 +34,7 @@ app.get('/api/status/:tierId', async (req, res) => {
             tickets: ticketsRes.rows,
             winners: lastWinner.rows[0] || { first: 0, second: 0, third: 0 }
         });
-    } catch (err) { 
-        console.error(`API Error in /api/status/${req.params.tierId}:`, err);
-        res.status(500).send(err.message); 
-    }
+    } catch (err) { res.status(500).send(err.message); }
 });
 
 // --- API: Get History (Last 10) ---
@@ -177,35 +85,14 @@ app.get('/api/statistics', async (req, res) => {
 // --- API: Get User Dashboard Data ---
 app.get('/api/user/dashboard', async (req, res) => {
     try {
-        const initDataRaw = getInitDataRaw(req);
-        const telegramAuth = verifyTelegramInitData(initDataRaw);
-        if (!telegramAuth || !telegramAuth.user || !telegramAuth.user.id) {
-            return res.status(403).json({ error: 'Invalid Telegram authentication data' });
+        const userId = req.query.userId || req.headers['x-user-id'];
+        if (!userId) {
+            return res.status(400).json({ error: 'User ID required' });
         }
-        const userId = telegramAuth.user.id;
         
         // Get user stats
-        // We calculate this dynamically to avoid dependency on the 'user_stats' view
         const statsRes = await pool.query(`
-            SELECT 
-                $1::bigint as user_id,
-                COUNT(CASE WHEN t.status = 'sold' THEN 1 END) as total_tickets_bought,
-                COUNT(CASE WHEN t.status = 'pending' THEN 1 END) as pending_tickets,
-                COALESCE(SUM(CASE WHEN t.status = 'sold' THEN ti.price ELSE 0 END), 0) as total_spent,
-                COUNT(CASE WHEN wv.status = 'paid' THEN 1 END) as total_wins,
-                COALESCE(SUM(CASE 
-                    WHEN wv.status = 'paid' AND wv.place = 1 THEN ti.first_prize
-                    WHEN wv.status = 'paid' AND wv.place = 2 THEN ti.second_prize
-                    WHEN wv.status = 'paid' AND wv.place = 3 THEN ti.third_prize
-                    ELSE 0
-                END), 0) as total_won
-            FROM tickets t
-            LEFT JOIN tiers ti ON t.tier_id = ti.id
-            LEFT JOIN winners_verification wv ON t.tier_id = wv.tier_id 
-                AND t.round_no = wv.round_no 
-                AND t.number_val = wv.ticket_number
-                AND t.owner_id = wv.user_id
-            WHERE t.owner_id = $1
+            SELECT * FROM user_stats WHERE user_id = $1
         `, [userId]);
         
         const stats = statsRes.rows[0] || {
@@ -429,7 +316,7 @@ app.get('/api/verify/:tierId/:roundNo', async (req, res) => {
 });
 
 // --- API: Admin Dashboard ---
-app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
+app.get('/api/admin/dashboard', async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT 
@@ -456,7 +343,7 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
 });
 
 // --- API: Admin Dashboard by Status ---
-app.get('/api/admin/dashboard/:status', requireAdmin, async (req, res) => {
+app.get('/api/admin/dashboard/:status', async (req, res) => {
     try {
         const status = req.params.status;
         const result = await pool.query(`
@@ -487,13 +374,7 @@ app.get('/api/admin/dashboard/:status', requireAdmin, async (req, res) => {
 // --- API: Submit Winner Verification ---
 app.post('/api/winner/verify', async (req, res) => {
     try {
-        const { tierId, roundNo, ticketNumber, fullName, paymentMethod, accountNumber } = req.body;
-        const initDataRaw = getInitDataRaw(req);
-        const telegramAuth = verifyTelegramInitData(initDataRaw);
-        if (!telegramAuth || !telegramAuth.user || !telegramAuth.user.id) {
-            return res.status(403).json({ error: 'Invalid Telegram authentication data' });
-        }
-        const userId = telegramAuth.user.id;
+        const { tierId, roundNo, ticketNumber, userId, fullName, paymentMethod, accountNumber } = req.body;
         
         // Update verification status
         await pool.query(`
@@ -584,13 +465,7 @@ app.get('/api/draw/:tierId', async (req, res) => {
 
 // --- API: Upload Payment ---
 app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
-    const { tierId, number, phone, round, fullName, transactionHash, numbers } = req.body;
-    const initDataRaw = getInitDataRaw(req);
-    const telegramAuth = verifyTelegramInitData(initDataRaw);
-    if (!telegramAuth || !telegramAuth.user || !telegramAuth.user.id) {
-        return res.status(403).json({ error: 'Invalid Telegram authentication data' });
-    }
-    const userId = telegramAuth.user.id;
+    const { userId, tierId, number, phone, round, fullName, transactionHash, numbers } = req.body;
     const tierName = tierId == 3 ? "🥇 GOLD" : tierId == 2 ? "🥈 SILVER" : "🥉 BRONZE";
     
     let ticketNumbers = [];
@@ -1155,84 +1030,6 @@ async function runDrawLogic(tId, rnd) {
 }
 
 // Post winners to Telegram group/channel instantly
-async function checkAndNotifyRemainingTickets(tierId, roundNo) {
-    try {
-        const soldCountRes = await pool.query(
-            "SELECT count(*) as count FROM tickets WHERE tier_id = $1 AND status = 'sold' AND round_no = $2",
-            [tierId, roundNo]
-        );
-        const sold = parseInt(soldCountRes.rows[0].count);
-        const remaining = 100 - sold;
-        
-        const thresholds = [50, 40, 30, 20, 10, 5, 3, 2, 1];
-        if (!thresholds.includes(remaining)) return;
-        
-        const tierEmojis = { 1: '🥉', 2: '🥈', 3: '🥇' };
-        const tierNames = { 1: 'BRONZE', 2: 'SILVER', 3: 'GOLD' };
-        const tierNamesAm = { 1: 'ነሐስ', 2: 'ብር', 3: 'ወርቅ' };
-        
-        const emoji = tierEmojis[tierId] || '🎫';
-        const name = tierNames[tierId] || 'Ticket';
-        const nameAm = tierNamesAm[tierId] || 'ትኬት';
-        
-        let msgEn = "";
-        let msgAm = "";
-        
-        switch(remaining) {
-            case 50:
-                msgEn = `🔥 Halfway there! 50 tickets remaining for ${name} Round #${roundNo}. Get yours now!`;
-                msgAm = `🔥 ግማሽ መንገድ ተጉዘናል! 50 ትኬቶች ብቻ ቀርተዋል ለ${nameAm} ዙር #${roundNo}። አሁኑኑ ይግዙ!`;
-                break;
-            case 40:
-                msgEn = `⏳ Ticking fast! Only 40 tickets left for ${name} Round #${roundNo}. Don't miss out!`;
-                msgAm = `⏳ በፍጥነት እያለቀ ነው! 40 ትኬቶች ብቻ ቀርተዋል። የ${nameAm} ዕድልዎን እንዳያመልጥዎ!`;
-                break;
-            case 30:
-                msgEn = `🚀 30 Tickets left for ${name} Round #${roundNo}! The draw is getting closer. Secure your chance!`;
-                msgAm = `🚀 30 ትኬቶች ቀርተዋል! ዕጣው እየቀረበ ነው። ለ${nameAm} ዙር #${roundNo} ዕድልዎን ያረጋግጡ!`;
-                break;
-            case 20:
-                msgEn = `⚠️ Low stock alert! Just 20 tickets remaining for ${name} Round #${roundNo}. Buy now before they're gone!`;
-                msgAm = `⚠️ ማስጠንቀቂያ! 20 ትኬቶች ብቻ ቀርተዋል ለ${nameAm} ዙር #${roundNo}። ሳያልቅ አሁኑኑ ይግዙ!`;
-                break;
-            case 10:
-                msgEn = `🚨 FINAL 10 TICKETS! ${name} Round #${roundNo} is almost sold out. Hurry!`;
-                msgAm = `🚨 የመጨረሻ 10 ትኬቶች! ${nameAm} ዙር #${roundNo} ሊጠናቀቅ ነው። ይፍጠኑ!`;
-                break;
-            case 5:
-                msgEn = `⚡ ONLY 5 LEFT! The jackpot is calling. Grab a ticket NOW!`;
-                msgAm = `⚡ 5 ብቻ ቀርተዋል! ሽልማቱ እየጠበቀዎት ነው። አሁኑኑ ይቁረጡ!`;
-                break;
-            case 3:
-                msgEn = `😱 JUST 3 TICKETS! It's now or never. Win big with ${name}!`;
-                msgAm = `😱 3 ትኬቶች ብቻ! አሁን ወይም በጭራሽ። በ${nameAm} ትልቅ ያሸንፉ!`;
-                break;
-            case 2:
-                msgEn = `🔥 2 TICKETS REMAINING! Someone is about to win. Will it be you?`;
-                msgAm = `🔥 2 ትኬቶች ቀርተዋል! አንድ ሰው ሊያሸንፍ ነው። እርስዎ ይሆኑ?`;
-                break;
-            case 1:
-                msgEn = `🏆 LAST TICKET! One lucky person takes the final spot for ${name} Round #${roundNo}. Buy it NOW!`;
-                msgAm = `🏆 የመጨረሻ ትኬት! አንድ እድለኛ ሰው የመጨረሻውን ቦታ ይወስዳል። ለ${nameAm} ዙር #${roundNo} አሁኑኑ ይግዙ!`;
-                break;
-        }
-        
-        const message = `📢 **TICKET ALERT / የትኬት ማስጠንቀቂያ**\n\n` +
-                        `${emoji} **${name} / ${nameAm}**\n` +
-                        `🔄 **Round / ዙር:** #${roundNo}\n\n` +
-                        `${msgEn}\n\n` +
-                        `${msgAm}\n\n` +
-                        `👉 @siketlotto_bot`;
-
-        const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
-        await bot.api.sendMessage(groupId, message, { parse_mode: 'Markdown' });
-
-    } catch (e) {
-        console.error('Error in checkAndNotifyRemainingTickets:', e);
-    }
-}
-
-// Post winners to Telegram group/channel instantly
 async function postWinnersToGroup(tierId, roundNo, firstNum, secondNum, thirdNum) {
     try {
         const tierEmojis = { 1: '🥉', 2: '🥈', 3: '🥇' };
@@ -1394,8 +1191,8 @@ bot.command("start", async (ctx) => {
     }
     
     // Telegram Web Apps work with the base URL - server should serve index.html by default
-    // Using the root URL is safer and cleaner
-    // webAppUrl = `${webAppUrl}/index.html`;
+    // If your server requires /index.html, uncomment the line below
+    webAppUrl = `${webAppUrl}/index.html`;
     
     console.log(`🔗 Web App URL configured: ${webAppUrl}`);
     
@@ -1412,25 +1209,58 @@ bot.command("start", async (ctx) => {
     }
 });
 
-// Keep Awake
-setInterval(() => { if (process.env.WEBAPP_URL) axios.get(process.env.WEBAPP_URL).catch(() => {}); }, 300000);
-
-app.listen(process.env.PORT || 3000, () => console.log("🌐 Siket Production Server Live"));
-
-// Enable graceful stop
-process.once("SIGINT", () => bot.stop());
-process.once("SIGTERM", () => bot.stop());
-
-// Start the bot with error handling to prevent server crash on 409 Conflict
-bot.start({
-    onStart: (botInfo) => {
-        console.log(`🤖 Bot @${botInfo.username} started!`);
-    }
-}).catch((err) => {
-    if (err.error_code === 409) {
-        console.warn("⚠️ BOT CONFLICT DETECTED: Another instance is already running (local or previous deploy).");
-        console.warn("⚠️ The Web App/API will continue to run, but this specific instance will not receive Telegram updates.");
-    } else {
-        console.error("❌ Bot start fatal error:", err);
-    }
+// Error handling
+bot.catch((err) => {
+    console.error('Error in bot:', err);
 });
+
+// Start Server logic
+const port = process.env.PORT || 3000;
+const domain = process.env.WEBAPP_URL || process.env.RENDER_EXTERNAL_URL;
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.RENDER_EXTERNAL_URL;
+
+// Keep Awake
+setInterval(() => { if (domain) axios.get(domain).catch(() => {}); }, 300000);
+
+if (domain && (isProduction || process.env.USE_WEBHOOK === 'true')) {
+    // Webhook Mode (Production)
+    // Ensure domain starts with https://
+    const safeDomain = domain.startsWith('http') ? domain : `https://${domain}`;
+    const webhookUrl = safeDomain.endsWith('/') ? `${safeDomain}webhook` : `${safeDomain}/webhook`;
+    
+    app.use('/webhook', webhookCallback(bot, 'express'));
+    
+    app.listen(port, async () => {
+        console.log(`🌐 Siket Production Server Live on port ${port}`);
+        console.log(`🔗 Webhook URL: ${webhookUrl}`);
+        try {
+            // Delete any previous webhook to ensure clean state
+            await bot.api.deleteWebhook({ drop_pending_updates: true });
+            await bot.api.setWebhook(webhookUrl);
+            console.log("✅ Webhook set successfully");
+        } catch (e) {
+            console.error("❌ Failed to set webhook:", e);
+        }
+    });
+} else {
+    // Long Polling Mode (Development / Local)
+    app.listen(port, () => console.log(`🌐 Siket Dev Server Live on port ${port}`));
+    
+    // Clear any webhook first
+    bot.api.deleteWebhook({ drop_pending_updates: true }).then(() => {
+        console.log("🔄 Webhooks cleared, starting long polling...");
+        bot.start({
+            drop_pending_updates: true,
+            onStart: (botInfo) => {
+                console.log(`🤖 Bot @${botInfo.username} started in Long Polling mode`);
+            }
+        }).catch(e => {
+            if (e.message && e.message.includes('409')) {
+                console.error("❌ CONFLICT ERROR: Another instance of the bot is running.");
+                console.error("👉 Please stop the other instance (local terminal or other deployment).");
+            } else {
+                console.error("❌ Bot start error:", e);
+            }
+        });
+    }).catch(e => console.error("Error clearing webhook:", e));
+}
