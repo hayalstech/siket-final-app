@@ -1421,4 +1421,16 @@ app.listen(process.env.PORT || 3000, () => console.log("🌐 Siket Production Se
 process.once("SIGINT", () => bot.stop());
 process.once("SIGTERM", () => bot.stop());
 
-bot.start();
+// Start the bot with error handling to prevent server crash on 409 Conflict
+bot.start({
+    onStart: (botInfo) => {
+        console.log(`🤖 Bot @${botInfo.username} started!`);
+    }
+}).catch((err) => {
+    if (err.error_code === 409) {
+        console.warn("⚠️ BOT CONFLICT DETECTED: Another instance is already running (local or previous deploy).");
+        console.warn("⚠️ The Web App/API will continue to run, but this specific instance will not receive Telegram updates.");
+    } else {
+        console.error("❌ Bot start fatal error:", err);
+    }
+});
