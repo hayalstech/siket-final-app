@@ -3573,8 +3573,12 @@
         // EVENT LISTENERS FOR AUTHENTICATION
         // ============================================
         
-        // Initialize all systems\n        initializeDepositSystem();\n        initializeTrustSystem();\n        \n        // Add event listeners when DOM is ready
+        // Add event listeners when DOM is ready
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize all systems
+            initializeDepositSystem();
+            initializeTrustSystem();
+            
             // Balance toggle
             const balanceToggle = document.getElementById('balance-toggle');
             if (balanceToggle) {
@@ -3585,7 +3589,7 @@
             const depositBtn = document.getElementById('deposit-btn');
             if (depositBtn) {
                 depositBtn.addEventListener('click', function() {
-                    showToast('Deposit feature coming soon!', 'success');
+                    openDepositModal();
                 });
             }
             
@@ -3829,53 +3833,6 @@
                     : Math.floor(current);
             }, 16);
         }
-        
-        // ============================================
-        // EVENT LISTENERS FOR AUTHENTICATION
-        // ============================================
-        
-        // Initialize all systems\n        initializeDepositSystem();\n        initializeTrustSystem();\n        \n        // Add event listeners when DOM is ready
-        document.addEventListener('DOMContentLoaded', function() {
-            // Balance toggle
-            const balanceToggle = document.getElementById('balance-toggle');
-            if (balanceToggle) {
-                balanceToggle.addEventListener('click', toggleBalanceVisibility);
-            }
-            
-            // Deposit button
-            const depositBtn = document.getElementById('deposit-btn');
-            if (depositBtn) {
-                depositBtn.addEventListener('click', function() {
-                    showToast('Deposit feature coming soon!', 'success');
-                });
-            }
-            
-            // My Account button
-            const myAccountBtn = document.getElementById('my-account-btn');
-            if (myAccountBtn) {
-                myAccountBtn.addEventListener('click', function() {
-                    if (currentUser) {
-                        showAlert(`Account: ${currentUser.first_name} ${currentUser.last_name}\nID: ${currentUser.id}\nBalance: ${userBalance.toLocaleString()} ETB`);
-                    }
-                });
-            }
-            
-            // Sign In button
-            const signInBtns = document.querySelectorAll('#sign-in-btn');
-            signInBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    showAlert('Please open this app in Telegram to sign in.', 'info');
-                });
-            });
-            
-            // Register button
-            const registerBtns = document.querySelectorAll('#register-btn');
-            registerBtns.forEach(btn => {
-                btn.addEventListener('click', function() {
-                    showAlert('Please open this app in Telegram to register.', 'info');
-                });
-            });
-        });
         
         // Helper functions for ticket history\n        function loadTicketHistory() {\n            const grid = document.getElementById(" ticket-history-grid\);\n if (!grid) return;\n grid.innerHTML = \\;\n for (let i = 1; i <= 100; i++) {\n const cell = document.createElement(\div\);\n cell.className = \ticket-cell-mini available\;\n if (Math.random() < 0.3) {\n cell.className = \ticket-cell-mini sold\;\n }\n cell.textContent = i;\n grid.appendChild(cell);\n }\n }\n \n function loadRecentWinners() {\n const grid = document.getElementById(\recent-winners-grid\);\n if (!grid) return;\n const winners = [\n { number: 23, tier: \Gold\, prize: 15000 },\n { number: 67, tier: \Silver\, prize: 9000 },\n { number: 45, tier: \Bronze\, prize: 3000 }\n ];\n grid.innerHTML = \\;\n winners.forEach(winner => {\n const card = document.createElement(\div\);\n card.className = \winner-card\;\n card.innerHTML = <div class=\winner-number\>#</div><div class=\winner-tier\> Tier</div><div class=\winner-prize\> ETB</div>;\n grid.appendChild(card);\n });\n }\n \n // Initial load
         checkAuthenticationState(); // Check authentication first
