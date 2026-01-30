@@ -8,6 +8,8 @@
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <!-- Tailwind Play CDN for utilities (fast prototype) -->
     <script src="https://cdn.tailwindcss.com"></script>
+        <!-- Load Noto Sans Ethiopic for Amharic rendering -->
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@400;700;900&display=swap" rel="stylesheet">
 
   <!-- TRANSLATIONS -->
   <script>
@@ -346,6 +348,24 @@
             /* Use -webkit-text-fill-color for proper clipping on WebKit/Blink; fallback to white when not supported */
             color: #ffffff;
             font-family: 'Noto Sans Ethiopic', 'Inter', sans-serif;
+            text-shadow: 0 6px 18px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.4);
+        }
+
+        /* Per-language span styling and staggered animations */
+        .hero-trust-title span { display:block; }
+        .hero-trust-title .lang-am { animation: hero-fade-in 900ms ease-out 200ms both, hero-subtle-float 4000ms ease-in-out infinite; }
+        .hero-trust-title .lang-en { animation: hero-fade-in 900ms ease-out 400ms both, hero-subtle-float 4200ms ease-in-out infinite; }
+
+        @keyframes hero-fade-in {
+            0% { opacity: 0; transform: translateY(-6px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes hero-subtle-float {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-4px); }
+            100% { transform: translateY(0); }
+        }
         }
 
         /* If background-clip text is supported, make the fill transparent so the gradient shows through */
