@@ -374,7 +374,6 @@
                 -webkit-text-fill-color: transparent;
                 color: transparent;
             }
-        
         }
 
         [data-theme="light"] .hero-trust-title {
@@ -1642,55 +1641,7 @@
     </div>
 
     <!-- Dynamic Deposit Modal -->
-    <div class="deposit-modal" id="deposit-modal">
-        <div class="deposit-content">
-            <div class="deposit-header">
-                <h3 class="lang-en">Deposit Funds</h3>
-                <h3 class="lang-am">ገንዘብ ያስገቡ</h3>
-                <button class="deposit-close" onclick="closeDepositModal()">&times;</button>
-            </div>
-            
-            <div class="validity-timer" id="validity-timer">
-                <span class="lang-en">Method valid for next</span>
-                <span class="lang-am">ዘዴ ይቆያል</span>
-                <span id="countdown-hours">2</span>
-                <span class="lang-en">hours</span>
-                <span class="lang-am">ሰዓቶች</span>
-                <span id="countdown-minutes">45</span>
-                <span class="lang-en">minutes</span>
-                <span class="lang-am">ደቂታት</span>
-            </div>
-            
-            <div class="payment-options-grid" id="payment-options-grid">
-                <!-- Payment options will be dynamically generated -->
-            </div>
-            
-            <form class="deposit-form" id="deposit-form" onsubmit="submitDepositRequest(event)">
-                <div class="form-group">
-                    <label class="lang-en">Deposit Amount (EUR)</label>
-                    <label class="lang-am">የመግቢያ መጠን (ኢዩሮ)</label>
-                    <input type="number" id="deposit-amount" min="1" required placeholder="1">
-                </div>
-                
-                <div class="form-group">
-                    <label class="lang-en">Transaction Reference</label>
-                    <label class="lang-am">የግብይት ማስረጃ</label>
-                    <input type="text" id="transaction-reference" placeholder="TRX123456789" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="lang-en">Additional Notes (Optional)</label>
-                    <label class="lang-am">ተጨማማሪ ማስታወሻ (አማራጭ)</label>
-                    <textarea id="deposit-notes" placeholder="Any additional information..."></textarea>
-                </div>
-                
-                <button type="submit" class="submit-deposit-btn" id="submit-deposit-btn">
-                    <span class="lang-en">Send Deposit Request</span>
-                    <span class="lang-am">የመግቢያ ጥያቄ ይላኩ</span>
-                </button>
-            </form>
-        </div>
-    </div>
+        <!-- Duplicate deposit modal removed (kept single instance above) -->
 
     <div id="grid-view">
         <!-- Back button in top-left corner -->
@@ -1888,8 +1839,6 @@
             </form>
         </div>
     </div>
-
-    </style>
 
     <script>
         // Initialize Telegram WebApp with proper error handling
@@ -3855,16 +3804,8 @@
 
         function copyAccount(account) {
             navigator.clipboard.writeText(account).then(() => {
-                // Visual feedback
-                const btn = event.target;
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                btn.style.background = '#15803d';
+                showToast(lang === 'en' ? 'Account number copied' : 'የአካውንት ቁጥር ተቀድሏል', 'success');
                 triggerHaptic('success');
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.background = '';
-                }, 2000);
             }).catch(() => {
                 triggerHaptic('error');
                 showAlert('Failed to copy. Account: ' + account);
@@ -3980,6 +3921,7 @@
                 // Try to use the statistics API first
                 try {
                     const statsRes = await fetch('/api/statistics');
+                    if (!statsRes.ok) throw new Error(`statistics API ${statsRes.status}`);
                     const stats = await statsRes.json();
                     
                     const totalWinnersEl = document.getElementById('total-winners');
@@ -4000,6 +3942,7 @@
                         for (let tierId = 1; tierId <= 3; tierId++) {
                             try {
                                 const statusRes = await fetch(`/api/status/${tierId}`);
+                                if (!statusRes.ok) continue;
                                 const status = await statusRes.json();
                                 ticketsSold += status.tickets.filter(t => t.status === 'sold').length;
                             } catch (e) {}
@@ -4021,8 +3964,10 @@
                 for (let tierId = 1; tierId <= 3; tierId++) {
                     try {
                         const statusRes = await fetch(`/api/status/${tierId}`);
+                        if (!statusRes.ok) continue;
                         const status = await statusRes.json();
                         const historyRes = await fetch(`/api/history/${tierId}`);
+                        if (!historyRes.ok) continue;
                         const history = await historyRes.json();
                         
                         if (status.prizes && history) {
