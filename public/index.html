@@ -917,6 +917,23 @@
         .modal .modal-body { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
         .modal input[type="text"], .modal input[type="tel"], .modal input[type="password"] { padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:var(--tg-theme-text-color); }
         .modal button.primary { background:var(--button-bg); color:var(--button-text); padding:10px 14px; border-radius:8px; border:none; cursor:pointer; }
+
+        /* Payment modal (separate from generic .modal to allow custom layout) */
+        .payment-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 5000; align-items: center; justify-content: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+        .payment-modal.active { display: flex; }
+        .payment-content { background: var(--tg-theme-secondary-bg-color, #020617); color: var(--tg-theme-text-color); border-radius: 12px; padding: 18px; width: 92%; max-width: 720px; box-shadow: 0 18px 40px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.04); }
+        .payment-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+        .payment-header h3 { margin:0; font-size:18px; font-weight:800; }
+        .payment-header .close-btn { background:none; border:none; color:var(--tg-theme-text-color); font-size:20px; cursor:pointer; }
+        .account-info { display:flex; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+        .account-item { display:flex; align-items:center; gap:10px; background: rgba(255,255,255,0.02); padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.02); }
+        .account-label { font-size:12px; opacity:0.85; }
+        .account-number { font-weight:800; font-size:14px; }
+        .copy-btn { background:transparent; border:1px solid rgba(255,255,255,0.04); color:var(--tg-theme-text-color); padding:6px 8px; border-radius:8px; cursor:pointer; }
+        .countdown-timer { font-weight:800; font-size:18px; text-align:center; margin:8px 0 12px 0; }
+        .form-group { display:flex; flex-direction:column; gap:6px; margin-bottom:10px; }
+        .form-group input[type="text"], .form-group input[type="tel"], .form-group input[type="file"] { padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:var(--tg-theme-text-color); }
+        .submit-btn { background: linear-gradient(135deg,#f97316,#ea580c); color:white; padding:10px 14px; border-radius:8px; border:none; cursor:pointer; font-weight:800; }
         
         /* Grid layout for tiers */
         .grid-main {
@@ -2333,6 +2350,11 @@
             if (balanceToggle) balanceToggle.addEventListener('click', toggleBalanceVisibility);
             const myAccount = document.getElementById('my-account-btn');
             if (myAccount) myAccount.addEventListener('click', openAccountModal);
+            // Language and theme toggles
+            const langToggleBtn = document.getElementById('lang-toggle') || document.getElementById('lang-btn');
+            if (langToggleBtn) langToggleBtn.addEventListener('click', toggleLang);
+            const themeBtn = document.getElementById('theme-btn');
+            if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
             // tier tabs wiring
             const tabs = document.querySelectorAll('.tier-tab');
             tabs.forEach(t => t.addEventListener('click', (e) => {
