@@ -6,50 +6,39 @@
   <title>Siket Lotto</title>
 
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Tailwind Play CDN for utilities (fast prototype) -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- TRANSLATIONS -->
   <script>
-    const i18n = {
-      am: {
-        thT: "ዓይነት",
-        thR: "ዙር",
-        thS: "ሁኔታ",
-        thP: "ዋጋ",
-        leagueT: "የዕጣዎች ሁኔታ",
-        statusSold: "ተሽጧል",
-        statusDraw: "ዕጣ በመውጣት ላይ",
-        statusDone: "ተጠናቋል",
-        soonT: "በቅርቡ ይጠብቁ!",
-        soonB: "አዳዲስ አስደሳች የሎተሪ ዕጣዎችን...",
-        navAbout: "ስለእኛ",
-        commentBtn: "አስተያየት",
-        navTitle: "ስኬት ሎተሪ",
-        aboutTitle: "ስለ ስኬት ሎተሪ",
-        prizeStructureTitle: "የሽልማት ዝርዝር",
-        principlesTitle: "መመሪያዎቻችን",
-        rulesTitle: "ደንቦች እና ማሳሰቢያ",
-        transparencyText: "ከ3ኛ እስከ 1ኛ ሽልማት ድረስ የሚደረጉ የቀጥታ ዕጣዎች ፍትሃዊነትን ያረጋግጣሉ።",
-        payoutsText: "የሽልማት ክፍያዎች ብቻ በቴሌብር እና CBE ብር ይከፈላሉ።",
-        frequencyText: "በእያንዳንዱ ዙር 100 ትኬቶች ብቻ ለፈጣን ጨዋታዎች እና ተጨማሪ ድሎች።",
-        payoutPolicyText: "የሽልማት ገንዘብ በቴሌብር ወይም CBE ብር ብቻ ይቀበላሉ።"
-      }
-    };
-  </script>
+    // Top translation block was corrupted; providing minimal safe stubs.
+    // The full translations are defined later in `langData`.
+    function loadTicketHistory() {
+        const grid = document.getElementById('ticket-history-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+    }
 
-  <!-- STYLES -->
-    <style>
-        /* Force Grid Visibility and Cell Styling */
-        #grid-main {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 4px;
-            width: 100%;
-            min-height: 300px;
-            padding: 5px;
-        }
-        .cell {
-            aspect-ratio: 1;
-            background: rgba(255, 255, 255, 0.1);
+    function loadRecentWinners() {
+        const grid = document.getElementById('recent-winners-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+    }
+
+    // Attempt safe initial calls if real implementations exist later
+    try { if (typeof checkAuthenticationState === 'function') checkAuthenticationState(); } catch(e){}
+    try { if (typeof loadLeagueData === 'function') loadLeagueData(); } catch(e){}
+    try { if (typeof loadLiveWinners === 'function') loadLiveWinners(); } catch(e){}
+    try { if (typeof loadStatistics === 'function') loadStatistics(); } catch(e){}
+
+    setInterval(() => {
+        try { if (typeof loadLiveWinners === 'function') loadLiveWinners(); } catch(e){}
+        try { if (typeof loadStatistics === 'function') loadStatistics(); } catch(e){}
+        try { if (typeof loadLeagueData === 'function') loadLeagueData(); } catch(e){}
+    }, 30000);
+  </script>
+</body>
+</html>
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 4px;
             display: flex;
@@ -59,6 +48,50 @@
             color: var(--text-primary);
             cursor: pointer;
             transition: all 0.2s ease;
+        }
+        /* Auto color contrast for numbers inside cells */
+        .cell { color: var(--tg-theme-text-color, var(--text-primary)); }
+        [data-theme="light"] .cell { color: #000; }
+        [data-theme="dark"] .cell { color: #fff; }
+        /* Pop & Glow selection */
+        .cell.pop {
+            transform: scale(1.10);
+            box-shadow: 0 6px 20px rgba(59,130,246,0.35);
+            transition: transform 150ms ease, box-shadow 150ms ease;
+        }
+        .cell.glow {
+            outline: 2px solid rgba(59,130,246,0.9);
+            outline-offset: 2px;
+        }
+        /* Sold diagonal shading */
+        .cell.sold {
+            background: linear-gradient(135deg, rgba(0,0,0,0.06) 25%, rgba(255,255,255,0.02) 25%, rgba(255,255,255,0.02) 50%, rgba(0,0,0,0.06) 50%, rgba(0,0,0,0.06) 75%, rgba(255,255,255,0.02) 75%);
+            background-size: 16px 16px;
+            color: rgba(255,255,255,0.6);
+            border-color: rgba(255,69,58,0.4);
+            pointer-events: none;
+        }
+        .cell.selected { background: #32d74b; color: black; border-color: #32d74b; font-weight: bold; }
+
+        /* Scan highlight during draw */
+        .cell.scan {
+            background: linear-gradient(90deg, rgba(255,215,0,0.9), rgba(255,223,93,0.6));
+            color: black;
+            transform: scale(1.06);
+            box-shadow: 0 6px 18px rgba(250,204,21,0.3);
+            transition: all 80ms linear;
+        }
+
+        /* Winner pulse */
+        @keyframes winner-pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 rgba(34,197,94,0.6); }
+            50% { transform: scale(1.12); box-shadow: 0 0 30px rgba(34,197,94,0.9); }
+            100% { transform: scale(1); box-shadow: 0 0 0 rgba(34,197,94,0.0); }
+        }
+        .cell.winner {
+            background: #22c55e !important;
+            color: #042f1f !important;
+            animation: winner-pulse 900ms ease-in-out 0s 3;
         }
         .cell:active { transform: scale(0.9); }
         .cell.sold { background: rgba(255, 69, 58, 0.3); color: #ff453a; border-color: #ff453a; pointer-events: none; }
@@ -84,25 +117,31 @@
       --navy: #020617;
     }
             
-           :root {
-  /* Default fallback values - will be overridden by Telegram theme */
-  --tg-theme-bg-color: #0B0E14;
-  --tg-theme-text-color: #FFFFFF;
-  --tg-theme-hint-color: #999999;
-  --tg-theme-link-color: #2481cc;
-  --tg-theme-button-color: #007AFF;
-  --tg-theme-button-text-color: #FFFFFF;
-  --tg-theme-secondary-bg-color: #020617;
+                :root {
+    /* Default fallback values - will be overridden by Telegram theme */
+    --tg-theme-bg-color: #0B0E14;
+    --tg-theme-text-color: #FFFFFF;
+    --tg-theme-hint-color: #999999;
+    --tg-theme-link-color: #2481cc;
+    --tg-theme-button-color: #007AFF;
+    --tg-theme-button-text-color: #FFFFFF;
+    --tg-theme-secondary-bg-color: #020617;
 
-  /* App-specific variables that inherit from Telegram theme */
-  --bg-primary: var(--tg-theme-bg-color, #0B0E14);
-  --bg-secondary: var(--tg-theme-secondary-bg-color, #020617);
-  --accent: #D4AF37;
-  --text-primary: var(--tg-theme-text-color, #FFFFFF);
-  --text-secondary: var(--tg-theme-hint-color, #999999);
-  --link-color: var(--tg-theme-link-color, #2481cc);
-  --button-bg: var(--tg-theme-button-color, #007AFF);
-  --button-text: var(--tg-theme-button-text-color, #FFFFFF);
+    /* App-specific variables that inherit from Telegram theme */
+    --bg-primary: var(--tg-theme-bg-color, #0B0E14);
+    --bg-secondary: var(--tg-theme-secondary-bg-color, #020617);
+    --accent: #D4AF37;
+    --text-primary: var(--tg-theme-text-color, #FFFFFF);
+    --text-secondary: var(--tg-theme-hint-color, #999999);
+    --link-color: var(--tg-theme-link-color, #2481cc);
+    --button-bg: var(--tg-theme-button-color, #007AFF);
+    --button-text: var(--tg-theme-button-text-color, #FFFFFF);
+
+    /* Surface and glass variables to keep polarity consistent between themes */
+    --surface: rgba(2,6,23,0.75);
+    --surface-strong: rgba(2,6,23,0.9);
+    --glass: rgba(255,255,255,0.04);
+    --card-border: rgba(255,255,255,0.06);
 }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -123,8 +162,8 @@
             flex-direction: column; 
             overflow-x: hidden;
             /* Handle viewport height changes when keyboard appears */
-            height: 100vh;
             height: -webkit-fill-available;
+            height: 100vh;
         }
         
         /* Font classes for language-specific styling */
@@ -145,6 +184,10 @@
             --text-primary: #f9fafb;
             --text-secondary: #9ca3af;
             --tg-theme-secondary-bg-color: #020617;
+            --surface: rgba(2,6,23,0.75);
+            --surface-strong: rgba(2,6,23,0.92);
+            --glass: rgba(255,255,255,0.04);
+            --card-border: rgba(255,255,255,0.08);
         }
 
         :root[data-theme="light"] {
@@ -153,6 +196,10 @@
             --text-primary: #111827;
             --text-secondary: #4b5563;
             --tg-theme-secondary-bg-color: #e5e7eb;
+            --surface: rgba(255,255,255,0.9);
+            --surface-strong: rgba(255,255,255,1);
+            --glass: rgba(0,0,0,0.04);
+            --card-border: rgba(0,0,0,0.08);
         }
 
 
@@ -160,52 +207,96 @@
         /* --- HEADER --- */
         header {
             position: fixed; top: 0; width: 100%; z-index: 1000;
-            background: linear-gradient(to right, rgba(0,0,0,0.75), rgba(0,0,0,0.55)),
-                        url('images/header.png') center/cover no-repeat,
-                        var(--bg-primary);
-            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
-            padding: 18px 20px; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
+            /* Soft gold gradient for premium header */
+            --header-start: #D4AF37;
+            --header-end: #C5A028;
+            background: linear-gradient(90deg,var(--header-start),var(--header-end));
+            -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+            padding: 10px 14px; display: block; gap:6px;
+            border-bottom: 1px solid rgba(0,0,0,0.12);
             transition: background 0.3s, border-color 0.3s;
-            /* Account for safe area */
-            padding-top: calc(18px + env(safe-area-inset-top));
+            padding-top: calc(10px + env(safe-area-inset-top));
+            max-height: 112px;
+            overflow: hidden;
         }
+        .header-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .status-bar { padding-bottom:6px; }
+        .action-bar { padding-top:6px; }
+        /* Ensure header text uses Telegram theme variables for correct contrast */
+        header, header * {
+            color: var(--tg-theme-text-color, var(--text-primary)) !important;
+        }
+        .header-subtitle { color: var(--tg-theme-hint-color, var(--text-secondary)) !important; text-shadow:none !important; }
+        .nav-link { color: var(--tg-theme-text-color, var(--text-primary)) !important; }
+        .nav-link:hover { background: rgba(0,0,0,0.04); }
+        .nav-btn, .lang-toggle, .contact-btn { color: var(--tg-theme-button-text-color, var(--text-primary)) !important; background: var(--tg-theme-button-color, transparent) !important; }
+        .balance-text { color: var(--tg-theme-text-color, var(--text-primary)) !important; }
         .header-logo { display: flex; align-items: center; gap: 10px; }
         .header-logo img { height: 30px; }
-        .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 800; color: #f9fafb; text-shadow: 0 1px 3px rgba(0,0,0,0.9); }
+        .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; color: var(--tg-theme-text-color, var(--text-primary)); text-shadow: 0 1px 3px rgba(0,0,0,0.06); }
         .header-logo-text { display: flex; flex-direction: column; }
-        .header-subtitle { font-size: 11px; margin: 2px 0 0 0; font-weight: 600; color: #e5e7eb; text-shadow: 0 1px 2px rgba(0,0,0,0.85); }
+        .header-subtitle { font-size: 11px; margin: 2px 0 0 0; font-weight: 600; color: var(--tg-theme-hint-color, var(--text-secondary)); text-shadow: none; }
         
         .header-actions { display: flex; align-items: center; gap: 20px; }
         .nav-links { display: flex; align-items: center; gap: 10px; }
         .header-controls { display: flex; align-items: center; gap: 10px; }
         .lang-toggle {
-            background: rgba(255,255,255,0.9);
+            background: var(--tg-theme-button-color, rgba(255,255,255,0.9));
             border: none;
-            color: #111827;
+            color: var(--tg-theme-button-text-color, var(--text-primary));
             border-radius: 6px; padding: 6px 10px; cursor: pointer;
             font-size: 12px; font-weight: 700;
-            transition: all 0.3s;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            transition: all 0.18s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
             font-family: 'Noto Sans Ethiopic', 'Inter', sans-serif;
-            min-width: 40px;
+            min-width: 40px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
         }
-        .lang-toggle:hover { background: #fff; transform: translateY(-1px); }
+        .lang-toggle:hover { opacity:0.95; transform: translateY(-1px); }
+
+        /* Pill-style nav buttons */
+        .nav-btn {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            background: var(--tg-theme-button-color, rgba(255,255,255,0.06));
+            color: var(--tg-theme-button-text-color, var(--tg-theme-text-color, var(--text-primary)));
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            min-height: 34px;
+            display: inline-flex; align-items:center; gap:8px;
+        }
+        .nav-btn.primary { background: var(--tg-theme-button-color, rgba(59,130,246,0.12)); border-color: rgba(0,0,0,0.04); }
+        /* Make primary buttons suit the warm header (dark translucent with subtle gold accent) */
+        .nav-btn.primary { background: rgba(0,0,0,0.14) !important; color: #fff !important; border-color: rgba(255,255,255,0.12) !important; }
+        .theme-toggle { background: rgba(0,0,0,0.18); border: 1px solid rgba(255,255,255,0.18); color: #fff; }
+
+        /* Compact logo sizing for mobile */
+        .header-left img { height: 26px; border-radius:6px; }
+
+        /* Ensure center links shrink on small widths */
+        .action-center .nav-link { font-size: 13px; padding: 4px 8px; }
+        @media (max-width:420px) {
+            .header-left .header-logo-text h1 { font-size: 12px; }
+            .action-center .nav-link { font-size: 12px; padding: 3px 6px; }
+            header { padding: 8px 10px; max-height: 96px; }
+        }
 
         @media (max-width: 768px) {
             .nav-links { display: none; }
             .header-subtitle { display: none; }
             .header-actions { gap: 10px; }
+            .header-row { flex-wrap:wrap; }
         }
 
         .nav-link {
-            color: #f9fafb; text-decoration: none; padding: 6px 12px; 
+            color: var(--tg-theme-text-color, var(--text-primary)); text-decoration: none; padding: 6px 12px; 
             border-radius: 20px; font-size: 11px; font-weight: bold;
             transition: all 0.3s ease;
         }
         .nav-link:hover { background: rgba(0,0,0,0.3); }
         .contact-btn { 
-            background: var(--accent); color: #111827; text-decoration: none; padding: 6px 12px; 
+            background: var(--tg-theme-button-color, var(--accent)); color: var(--tg-theme-button-text-color, #111827); text-decoration: none; padding: 6px 12px; 
             border-radius: 20px; font-size: 11px; font-weight: bold;
             animation: pulse-glow 2s infinite; border: 1px solid var(--tg-theme-hint-color, rgba(255,255,255,0.2));
             transition: background 0.3s;
@@ -226,7 +317,7 @@
         @keyframes pulse-glow { 0% { transform: scale(1); } 70% { transform: scale(1.05); box-shadow: 0 0 10px var(--accent); } 100% { transform: scale(1); } }
 
         /* --- HERO --- */
-        .hero { position: relative; width: 100%; background: radial-gradient(circle at top, rgba(212,175,55,0.16), #020617); line-height: 0; overflow: hidden; margin-top: 76px; padding: 0; }
+        .hero { position: relative; width: 100%; background: radial-gradient(circle at top, rgba(212,175,55,0.12), transparent), linear-gradient(180deg, var(--bg-secondary), var(--bg-primary)); line-height: 0; overflow: hidden; margin-top: 76px; padding: 0; }
         .hero-img { width: 100%; height: auto; opacity: 0.95; transition: transform 0.6s ease, opacity 0.6s ease; }
         .hero-trust {
             position: absolute;
@@ -239,25 +330,69 @@
             line-height: 1.3;
         }
         .hero-trust-title {
-            font-size: 26px;
+            font-size: 48px;
             font-weight: 900;
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            text-shadow: 0 4px 18px rgba(0,0,0,0.9);
-            line-height: 1.4;
+            line-height: 1.05;
+            /* Entrance + subtle pop */
+            opacity: 0;
+            transform: translateY(-8px) scale(0.98);
+            animation: hero-title-pop 900ms cubic-bezier(.2,.9,.2,1) 300ms both, hero-shimmer 2.6s linear 1200ms infinite;
+            background: linear-gradient(90deg, rgba(255,255,255,0.98), rgba(255,255,255,0.9));
+            background-size: 400% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            /* Use -webkit-text-fill-color for proper clipping on WebKit/Blink; fallback to white when not supported */
+            color: #ffffff;
+            font-family: 'Noto Sans Ethiopic', 'Inter', sans-serif;
+        }
+
+        /* If background-clip text is supported, make the fill transparent so the gradient shows through */
+        @supports (-webkit-background-clip: text) {
+            .hero-trust-title {
+                -webkit-text-fill-color: transparent;
+                color: transparent;
+            }
+        
+        }
+
+        [data-theme="light"] .hero-trust-title {
+            /* darker text shimmer for light backgrounds */
+            background: linear-gradient(90deg, rgba(17,24,39,0.98), rgba(30,41,59,0.98));
+            background-size: 400% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        @media (max-width: 640px) {
+            .hero-trust-title { font-size: 28px; }
+            .hero-trust-sub { font-size: 13px; }
         }
         .hero-trust-sub {
             margin-top: 6px;
             font-size: 14px;
             font-weight: 600;
-            color: #e5e7eb;
-            text-shadow: 0 3px 10px rgba(0,0,0,0.8);
+            color: var(--tg-theme-text-color, #e5e7eb);
+            text-shadow: none;
             line-height: 1.4;
         }
         @keyframes hero-trust-entrance {
             0% { opacity: 0; transform: translateY(-40%) translateX(-10px); }
             60% { opacity: 1; transform: translateY(-52%) translateX(0); }
             100% { opacity: 1; transform: translateY(-50%) translateX(0); }
+        }
+
+        @keyframes hero-title-pop {
+            0% { opacity: 0; transform: translateY(-8px) scale(0.98); }
+            60% { opacity: 1; transform: translateY(0) scale(1.02); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes hero-shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
         }
         .hero-highlight {
             position: absolute;
@@ -271,15 +406,15 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(15,23,42,0.88);
+            background: var(--surface-strong);
             padding: 10px 18px;
             border-radius: 999px;
-            border: 1px solid rgba(250,204,21,0.9);
-            color: #f9fafb;
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
             font-size: 13px;
             font-weight: 600;
             animation: hero-pill-float 3.2s ease-in-out infinite;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
             max-width: 90vw; /* Prevent screen overflow */
         }
         .hero-highlight-dot {
@@ -336,7 +471,7 @@
             content: "";
             position: absolute;
             inset: 0;
-            background: linear-gradient(to bottom, rgba(15,23,42,0.85), rgba(15,23,42,0.4), rgba(15,23,42,0.9));
+            background: linear-gradient(to bottom, rgba(0,0,0,0.0), rgba(0,0,0,0.06), rgba(0,0,0,0.08));
         }
         .desire-text {
             position: relative;
@@ -345,22 +480,22 @@
             font-weight: 900;
             color: var(--accent);
             text-align: center;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+            text-shadow: 0 1px 3px rgba(0,0,0,0.06);
             max-width: 320px;
             margin: 6px auto;
         }
         .desire-text.lang-en { color: var(--gold); }
 
         /* --- TICKET CARDS --- */
-        .comp-section { position: relative; z-index: 1; padding: 36px 16px; background: radial-gradient(circle at top, rgba(15,23,42,0.8), var(--bg-primary)); text-align: center; transition: background 0.3s, color 0.3s; }
+        .comp-section { position: relative; z-index: 1; padding: 36px 16px; background: radial-gradient(circle at top, rgba(0,0,0,0.0), var(--bg-primary)); text-align: center; transition: background 0.3s, color 0.3s; }
         .comp-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; color: var(--accent); transition: color 0.3s; }
 
 
         .comp-grid { display: flex; flex-direction: column; gap: 10px; align-items: center; }
         .ticket-card { 
             width: 100%; max-width: 920px; aspect-ratio: 2.2 / 1; border-radius: 16px; overflow: hidden; position: relative;
-            border: 1px solid rgba(148,163,184,0.5); background: radial-gradient(circle at top left, rgba(15,23,42,0.9), #020617); cursor: pointer;
-            box-shadow: 0 14px 40px rgba(0,0,0,0.65);
+            border: 1px solid var(--card-border); background: radial-gradient(circle at top left, rgba(0,0,0,0.0), var(--surface)); cursor: pointer;
+            box-shadow: 0 14px 40px rgba(0,0,0,0.12);
             transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
         }
         .ticket-card img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.03); transition: transform 0.4s ease, opacity 0.4s ease; opacity: 0.96; }
@@ -384,6 +519,18 @@
             box-shadow: 0 12px 30px rgba(0,0,0,0.7);
             filter: brightness(1.05);
         }
+
+        .buy-cta-small { font-size: 14px; padding: 10px 24px; }
+        .comment-section { padding: 20px 15px; text-align: center; background: var(--navy); }
+        .legend-color { width: 16px; height: 16px; border-radius: 4px; display:inline-block; margin-right:8px; }
+        .legend-available { background: #1d4ed8; }
+        .legend-selected-color { background: #eab308; }
+        .legend-sold-color { background: var(--bronze); }
+        .betslip-total { margin-left:6px; font-size:11px; color:#f97316; }
+        .modal-actions-right { display:flex; gap:8px; margin-top:12px; justify-content:flex-end; }
+        .tier-header-right { text-align:right; }
+        .section-cta { margin-bottom: 20px; }
+        .disc-title { font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8; }
 
         .ticket-card:hover {
             transform: translateY(-6px) scale(1.01);
@@ -409,7 +556,7 @@
         }
 
         /* --- LOTTERIES STATUS TABLE --- */
-        .league-container { background: linear-gradient(to bottom, rgba(15,23,42,1), rgba(15,23,42,0.96)); padding: 34px 16px; border-top: 1px solid rgba(255,255,255,0.06); transition: background 0.3s, border-color 0.3s; }
+        .league-container { background: linear-gradient(to bottom, rgba(0,0,0,0.0), var(--surface)); padding: 34px 16px; border-top: 1px solid var(--card-border); transition: background 0.3s, border-color 0.3s; }
         [data-theme="light"] .league-container {
             border-top: 1px solid rgba(0,0,0,0.1);
             background: #e5e7eb;
@@ -461,11 +608,11 @@
         .tier-card { 
             width: 100%; max-width: 920px; aspect-ratio: 2.2 / 1; border-radius: 16px; 
             overflow: hidden; position: relative; border: 1px solid rgba(255,255,255,0.25); 
-            background: rgba(15,23,42,0.9); display: flex; align-items: center; justify-content: center;
+            background: var(--surface); display: flex; align-items: center; justify-content: center;
             box-shadow: 0 14px 36px rgba(0,0,0,0.7);
             transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
         }
-        .tier-card.coming-soon { background: radial-gradient(circle at top, rgba(250,204,21,0.15), rgba(15,23,42,0.95)); }
+        .tier-card.coming-soon { background: radial-gradient(circle at top, rgba(250,204,21,0.15), var(--surface)); }
         .tier-card .coming-soon-text { 
             font-size: 20px; font-weight: 900; color: var(--accent); 
             text-align: center; padding: 20px;
@@ -706,7 +853,7 @@
         /* --- DYNAMIC DEPOSIT MODAL --- */
         .deposit-modal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.8); z-index: 3000; backdrop-filter: blur(10px);
+            background: rgba(0, 0, 0, 0.8); z-index: 3000; -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
         }
         .deposit-modal.active { display: flex; align-items: center; justify-content: center; }
         .deposit-content {
@@ -738,802 +885,104 @@
             display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 25px;
         }
         
-        .payment-tile {
-            background: var(--tg-theme-bg-color, #0B0E14); border: 2px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-            border-radius: 15px; padding: 20px; cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden;
+        /* Generic modal (register, signin, account) */
+        .modal {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 4000;
+            align-items: center; justify-content: center; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
         }
-        .payment-tile:hover {
-            border-color: var(--accent, #D4AF37); transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
+        /* Right-side slide-in account panel (full-screen overlay + right panel) */
+        .panel-overlay { display:none; position:fixed; inset:0; background: rgba(0,0,0,0.5); z-index:4500; }
+        .panel-overlay.open { display:block; }
+        .panel-right { position: fixed; right: 0; top: 0; bottom: 0; width: 92%; max-width: 520px; background: var(--tg-theme-secondary-bg-color,#020617); color:var(--tg-theme-text-color); box-shadow: -24px 0 48px rgba(0,0,0,0.6); z-index:4600; transform: translateX(100%); transition: transform 250ms cubic-bezier(.2,.9,.2,1); border-left: 1px solid rgba(255,255,255,0.03); display:flex; flex-direction:column; }
+        .panel-right.open { transform: translateX(0%); }
+        .panel-right .panel-header { display:flex; align-items:center; justify-content:space-between; padding:16px 18px; border-bottom:1px solid rgba(255,255,255,0.03); }
+        .panel-body { padding:14px 16px; overflow:auto; flex:1; }
+        .tier-tab.active { box-shadow: inset 0 -3px 0 0 var(--accent,#D4AF37); font-weight:800; }
+        .sub-header .sub-cat { white-space:nowrap; padding:6px 10px; border-radius:999px; background:transparent; color:var(--tg-theme-hint-color); text-decoration:none; font-weight:600; }
+        .sub-header .sub-cat:hover { background: rgba(255,255,255,0.02); }
+        /* Animated trust badge */
+        .trust-animated { position:relative; padding:10px 14px; border-radius:12px; background: rgba(0,0,0,0.12); overflow:visible; }
+        .trust-animated::before { content: ''; position:absolute; inset: -2px; border-radius:14px; background: linear-gradient(90deg,var(--header-start,#f59e0b),var(--header-end,#fbbf24),#ffd27a); filter: blur(8px); opacity:0.95; z-index: -1; transform: translateZ(0); animation: borderShift 3s linear infinite; }
+        .trust-animated-sub { padding:8px 12px; border-radius:10px; background: rgba(255,255,255,0.02); }
+        .hero-trust-payouts { font-weight:700; opacity:0.95; }
+        @keyframes borderShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .modal .modal-content {
+            background: var(--tg-theme-secondary-bg-color, #020617); color: var(--tg-theme-text-color);
+            border-radius: 12px; padding: 18px; width: 92%; max-width: 420px; box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+            border: 1px solid var(--tg-theme-hint-color, rgba(255,255,255,0.06));
         }
-        .payment-tile.selected {
-            border-color: var(--accent, #D4AF37); background: rgba(212, 175, 55, 0.1);
-        }
-        .payment-tile.selected::before {
-            content: "✓"; position: absolute; top: 10px; right: 10px; background: var(--accent, #D4AF37);
-            color: #111827; width: 24px; height: 24px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;
-        }
+        .modal .modal-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .modal .modal-title { margin:0; font-size:16px; font-weight:800; }
+        .modal .modal-close { background:none; border:none; color:var(--tg-theme-text-color); font-size:18px; cursor:pointer; }
+        .modal .modal-body { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
+        .modal input[type="text"], .modal input[type="tel"], .modal input[type="password"] { padding:10px; border-radius:8px; border:1px solid rgba(255,255,255,0.06); background:transparent; color:var(--tg-theme-text-color); }
+        .modal button.primary { background:var(--button-bg); color:var(--button-text); padding:10px 14px; border-radius:8px; border:none; cursor:pointer; }
         
-        .payment-method-header {
-            display: flex; align-items: center; gap: 12px; margin-bottom: 15px;
+        /* Grid layout for tiers */
+        .grid-main {
+            display: grid; grid-template-columns: repeat(10, 1fr); gap:6px; width: 100%; max-width: 720px; margin: 12px auto; padding: 6px;
         }
-        .payment-icon {
-            width: 40px; height: 40px; border-radius: 10px;
-            display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold;
+        .grid-main .cell {
+            aspect-ratio: 1; border-radius: 6px; display:flex; align-items:center; justify-content:center; cursor:pointer; -webkit-user-select:none; user-select:none;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); color: var(--tg-theme-text-color);
         }
-        .telebirr-icon { background: linear-gradient(135deg, #0088cc, #006699); color: white; }
-        .cbe-icon { background: linear-gradient(135deg, #1e40af, #1e3a8a); color: white; }
-        .payment-method-name {
-            font-size: 16px; font-weight: 600; color: var(--tg-theme-text-color, #FFFFFF);
-        }
-        .account-number-container {
-            background: rgba(0, 0, 0, 0.3); border: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-            border-radius: 10px; padding: 15px; margin-bottom: 10px;
-        }
-        .account-label {
-            font-size: 12px; color: var(--tg-theme-hint-color, #999999); margin-bottom: 5px;
-            text-transform: uppercase; letter-spacing: 1px;
-        }
-        .account-number {
-            font-family: "Courier New", monospace; font-size: 18px; font-weight: bold;
-            color: var(--tg-theme-text-color, #FFFFFF); margin-bottom: 10px; letter-spacing: 2px;
-        }
-        .copy-button {
-            background: var(--tg-theme-button-color, #007AFF); color: var(--tg-theme-button-text-color, #FFFFFF);
-            border: none; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: 600;
-            cursor: pointer; transition: all 0.3s; width: 100%;
-        }
-        .copy-button:hover { background: var(--accent, #D4AF37); transform: translateY(-1px); }
-        .copy-button.copied { background: #10b981; }
+        .grid-main .cell.available:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+        .grid-main .cell.selected { background: #32d74b; color: #062814; border-color: #32d74b; font-weight:700; }
+        .grid-main .cell.sold { background: rgba(255,69,58,0.18); color: #ff453a; border-color: #ff453a; pointer-events: none; opacity:0.9; }
+        .tier-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+        .betslip-bar { position: fixed; left: 12px; right: 12px; bottom: 12px; background: linear-gradient(90deg, var(--surface), var(--surface-strong)); color: var(--text-primary); padding: 12px 14px; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.06); display:none; z-index:5000; align-items:center; justify-content:space-between; gap:12px; }
+        .betslip-items { display:flex; gap:8px; align-items:center; flex-wrap:wrap; max-width:70%; }
+        .betslip-item { background: rgba(255,255,255,0.03); padding:6px 8px; border-radius:8px; font-weight:600; }
+        .betslip-summary { text-align:right; min-width:160px; }
+        .betslip-button { background: linear-gradient(135deg,#f97316,#ea580c); color:white; padding:10px 14px; border-radius:10px; border:none; font-weight:800; cursor:pointer; }
         
-        .deposit-form { margin-top: 25px; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label {
-            display: block; margin-bottom: 8px; color: var(--tg-theme-text-color, #FFFFFF);
-            font-weight: 600; font-size: 14px;
-        }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%; padding: 12px 16px; border: 2px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-            border-radius: 10px; background: var(--tg-theme-bg-color, #0B0E14);
-            color: var(--tg-theme-text-color, #FFFFFF); font-size: 14px; transition: all 0.3s;
-        }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-            outline: none; border-color: var(--accent, #D4AF37);
-        }
-        .form-group textarea { resize: vertical; min-height: 80px; }
-        .submit-deposit-btn {
-            width: 100%; background: linear-gradient(135deg, var(--accent, #D4AF37), #b8941f);
-            color: #111827; border: none; padding: 16px; border-radius: 12px;
-            font-size: 16px; font-weight: 700; cursor: pointer; transition: all 0.3s;
-            text-transform: uppercase; letter-spacing: 1px;
-        }
-        .submit-deposit-btn:hover {
-            transform: translateY(-2px); box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
-        }
-        .submit-deposit-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-        
-        /* --- TICKET HISTORY & RECENT WINNERS --- */
-        .ticket-history-container {
-            background: var(--tg-theme-secondary-bg-color, #020617); border-radius: 15px; padding: 20px;
-            margin: 20px 0; border: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-        }
-        .history-header {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;
-            padding-bottom: 10px; border-bottom: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-        }
-        .history-title {
-            font-size: 16px; font-weight: 700; color: var(--tg-theme-text-color, #FFFFFF);
-        }
-        .export-btn {
-            background: var(--accent, #D4AF37); color: #111827; border: none; padding: 8px 16px;
-            border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;
-        }
-        .export-btn:hover { background: #b8941f; transform: translateY(-1px); }
-        .ticket-grid-mini {
-            display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; margin: 15px 0;
-        }
-        .ticket-cell-mini {
-            aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
-            font-size: 8px; font-weight: bold; border-radius: 2px; border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .ticket-cell-mini.available { background: #1d4ed8; color: white; }
-        .ticket-cell-mini.sold { background: var(--bronze); color: white; }
-        .ticket-cell-mini.winner {
-            background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: bold;
-            animation: winnerPulse 2s infinite;
-        }
-        @keyframes winnerPulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 5px rgba(16, 185, 129, 0.5); }
-            50% { transform: scale(1.1); box-shadow: 0 0 15px rgba(16, 185, 129, 0.8); }
-        }
-        .recent-winners-section { margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1)); }
-        .winners-grid {
-            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 15px;
-        }
-        .winner-card {
-            background: var(--tg-theme-bg-color, #0B0E14); border: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-            border-radius: 12px; padding: 15px; text-align: center; transition: all 0.3s;
-        }
-        .winner-card:hover { border-color: var(--accent, #D4AF37); transform: translateY(-2px); }
-        .winner-number { font-size: 24px; font-weight: bold; color: var(--accent, #D4AF37); margin-bottom: 5px; }
-        .winner-tier { font-size: 12px; color: var(--tg-theme-text-color, #FFFFFF); margin-bottom: 5px; }
-        .winner-prize { font-size: 14px; color: #10b981; font-weight: 600; }
-        .winner-date { font-size: 10px; color: var(--tg-theme-hint-color, #999999); margin-top: 5px; }
-        
-        /* --- SECURITY COMPONENTS --- */
-        .security-indicator {
-            position: fixed; top: 10px; right: 10px; background: rgba(0, 255, 0, 0.1);
-            border: 1px solid rgba(0, 255, 0, 0.3); border-radius: 20px; padding: 5px 10px;
-            font-size: 10px; color: #00ff00; z-index: 1000; display: flex; align-items: center; gap: 5px;
-        }
-        .security-dot {
-            width: 6px; height: 6px; background: #00ff00; border-radius: 50%; animation: securityPulse 2s infinite;
-        }
-        @keyframes securityPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        
-        .verification-panel {
-            background: linear-gradient(135deg, rgba(0, 255, 0, 0.1), rgba(0, 200, 0, 0.05));
-            border: 1px solid rgba(0, 255, 0, 0.3); border-radius: 15px; padding: 20px; margin: 20px 0; text-align: center;
-        }
-        .verification-status { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px; }
-        .verification-icon {
-            width: 40px; height: 40px; background: linear-gradient(135deg, #10b981, #059669);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; color: white;
-        }
-        .verification-text { font-size: 16px; font-weight: 600; color: var(--tg-theme-text-color, #FFFFFF); }
-        .verification-details { font-size: 12px; color: var(--tg-theme-hint-color, #999999); margin-bottom: 15px; }
-        .verification-actions { display: flex; gap: 10px; justify-content: center; }
-        .verify-btn {
-            background: var(--accent, #D4AF37); color: #111827; border: none; padding: 8px 16px;
-            border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s;
-        }
-        .verify-btn:hover { background: #b8941f; transform: translateY(-1px); }
-        
-        /* --- DYNAMIC DEPOSIT MODAL --- */
-        .deposit-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            z-index: 3000;
-            backdrop-filter: blur(10px);
-        }
-        
-        .deposit-modal.active {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .deposit-content {
-            background: var(--tg-theme-secondary-bg-color, #020617);
-            border-radius: 20px;
-            padding: 30px;
-            width: 90%;
-            max-width: 500px;
-            max-height: 90vh;
-            overflow-y: auto;
-            border: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            animation: slideUp 0.3s ease-out;
-        }
-        
-        @keyframes slideUp {
-            from {
-                transform: translateY(50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-        
-        .deposit-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-        }
-        
-        .deposit-header h3 {
-            margin: 0;
-            color: var(--tg-theme-text-color, #FFFFFF);
-            font-size: 20px;
-            font-weight: 700;
-        }
-        
-        .deposit-close {
-            background: none;
-            border: none;
-            color: var(--tg-theme-hint-color, #999999);
-            font-size: 24px;
-            cursor: pointer;
-            padding: 5px;
-            border-radius: 50%;
-            transition: all 0.3s;
-        }
-        
-        .deposit-close:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: var(--tg-theme-text-color, #FFFFFF);
-        }
-        
-        .validity-timer {
-            background: linear-gradient(135deg, var(--accent, #D4AF37), #b8941f);
-            color: #111827;
-            padding: 12px 20px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 20px;
-            font-weight: 600;
-            font-size: 14px;
-            border: 2px solid rgba(212, 175, 55, 0.3);
-        }
-        
-        .payment-options-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-            margin-bottom: 25px;
-        }
-        
-        .payment-tile {
-            background: var(--tg-theme-bg-color, #0B0E14);
-            border: 2px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-            border-radius: 15px;
-            padding: 20px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .payment-tile:hover {
-            border-color: var(--accent, #D4AF37);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
-        }
-        
-        .payment-tile.selected {
-            border-color: var(--accent, #D4AF37);
-            background: rgba(212, 175, 55, 0.1);
-        }
-        
-        .payment-tile.selected::before {
-            content: '✓';
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: var(--accent, #D4AF37);
-            color: #111827;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        
-        .payment-method-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 15px;
-        }
-        
-        .payment-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            font-weight: bold;
-        }
-        
-        .telebirr-icon {
-            background: linear-gradient(135deg, #0088cc, #006699);
-            color: white;
-        }
-        
-        .cbe-icon {
-            background: linear-gradient(135deg, #1e40af, #1e3a8a);
-            color: white;
-        }
-        
-        .payment-method-name {
-            font-size: 16px;
-            font-weight: 600;
-            color: var(--tg-theme-text-color, #FFFFFF);
-        }
-        
-        .account-number-container {
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
-        }
-        
-        .account-label {
-            font-size: 12px;
-            color: var(--tg-theme-hint-color, #999999);
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .account-number {
-            font-family: 'Courier New', monospace;
-            font-size: 18px;
-            font-weight: bold;
-            color: var(--tg-theme-text-color, #FFFFFF);
-            margin-bottom: 10px;
-            letter-spacing: 2px;
-        }
-        
-        .copy-button {
-            background: var(--tg-theme-button-color, #007AFF);
-            color: var(--tg-theme-button-text-color, #FFFFFF);
-            border: none;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            width: 100%;
-        }
-        
-        .copy-button:hover {
-            background: var(--accent, #D4AF37);
-            transform: translateY(-1px);
-        }
-        
-        .copy-button.copied {
-            background: #10b981;
-        }
-        
-        .deposit-form {
-            margin-top: 25px;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--tg-theme-text-color, #FFFFFF);
-            font-weight: 600;
-            font-size: 14px;
-        }
-        
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px 16px;
-            border: 2px solid var(--tg-theme-hint-color, rgba(255, 255, 255, 0.1));
-            border-radius: 10px;
-            background: var(--tg-theme-bg-color, #0B0E14);
-            color: var(--tg-theme-text-color, #FFFFFF);
-            font-size: 14px;
-            transition: all 0.3s;
-        }
-        
-        .form-group input:focus,
-        .form-group select:focus,
-        .form-group textarea:focus {
-            outline: none;
-            border-color: var(--accent, #D4AF37);
-        }
-        
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-        
-        .submit-deposit-btn {
-            width: 100%;
-            background: linear-gradient(135deg, var(--accent, #D4AF37), #b8941f);
-            color: #111827;
-            border: none;
-            padding: 16px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .submit-deposit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
-        }
-        
-        .submit-deposit-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        /* Responsive design for mobile */
-        @media (max-width: 480px) {
-            .deposit-content {
-                padding: 20px;
-                margin: 20px;
-            }
-            
-            .payment-tile {
-                padding: 15px;
-            }
-            
-            .account-number {
-                font-size: 16px;
-            }
-        }
-        
-        /* Responsive grid for mobile */
-        @media (max-width: 480px) {
-            .grid {
-                grid-template-columns: repeat(8, 1fr);
-                gap: 3px;
-                padding: 8px;
-                min-height: 250px;
-            }
-            .cell {
-                font-size: 9px;
-                min-height: 20px;
-            }
-        }
-        
-        @media (max-width: 360px) {
-            .grid {
-                grid-template-columns: repeat(7, 1fr);
-                gap: 2px;
-                padding: 6px;
-                min-height: 200px;
-            }
-            .cell {
-                font-size: 8px;
-                min-height: 18px;
-            }
-        }
-        
-        /* --- BET SLIP (MULTI-SELECTION) --- */
-        .betslip-container {
-            margin-top: 15px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 12px;
-            padding: 12px 12px 16px 12px;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-        }
-        .betslip-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .betslip-title {
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .betslip-count {
-            font-size: 11px;
-            color: #94a3b8;
-        }
-        .betslip-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            max-height: 120px;
-            overflow-y: auto;
-        }
-        .betslip-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border-radius: 999px;
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(148, 163, 184, 0.6);
-            font-size: 11px;
-        }
-        .betslip-number {
-            font-weight: 700;
-            color: var(--accent);
-            min-width: 32px;
-            text-align: center;
-        }
-        .betslip-remove {
-            background: none;
-            border: none;
-            color: #f97316;
-            font-size: 14px;
-            cursor: pointer;
-            padding: 0 2px;
-        }
-        .betslip-pay-btn {
-            margin-top: 10px;
-            width: 100%;
-            background: var(--accent);
-            color: var(--text-primary);
-            border: none;
-            border-radius: 999px;
-            padding: 10px 16px;
-            font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            transition: all 0.2s ease;
-        }
-        .betslip-pay-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-        .betslip-pay-btn:not(:disabled):hover {
-            box-shadow: 0 4px 14px rgba(212, 175, 55, 0.5);
-            transform: translateY(-1px);
-        }
-        
-        /* --- PAYMENT MODAL --- */
-        .payment-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.9);
-            z-index: 2000;
-            overflow-y: auto;
-            padding: 20px;
-        }
-        .payment-modal.active { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .payment-content {
-            background: var(--bg-primary);
-            border-radius: 15px;
-            padding: 20px;
-            max-width: 400px;
-            width: 100%;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .payment-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .payment-header h3 {
-            margin: 0;
-            color: var(--accent);
-            font-size: 18px;
-            transition: color 0.3s;
-        }
-        .close-btn {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            padding: 0;
-            width: 30px;
-            height: 30px;
-        }
-        .account-info {
-            background: rgba(0,0,0,0.3);
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-        }
-        .account-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 10px 0;
-        }
-        .account-label {
-            font-size: 12px;
-            color: #94a3b8;
-        }
-        .account-number {
-            font-size: 14px;
-            font-weight: bold;
-            color: white;
-            font-family: monospace;
-        }
-        .copy-btn {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 5px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-        .countdown-timer {
-            background: rgba(255,122,47,0.2);
-            padding: 10px;
-            border-radius: 8px;
-            text-align: center;
-            margin-bottom: 15px;
-            font-size: 16px;
-            font-weight: bold;
-            color: var(--accent);
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-size: 12px;
-            color: #cbd5e1;
-        }
-        .form-group input,
-        .form-group input[type="file"] {
-            width: 100%;
-            padding: 10px;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.2);
-            background: rgba(0,0,0,0.3);
-            color: white;
-            font-size: 14px;
-        }
-        .form-group input[type="file"] {
-            padding: 8px;
-        }
-        .file-required {
-            color: var(--accent);
-            font-size: 10px;
-            margin-top: 3px;
-        }
-        .submit-btn {
-            width: 100%;
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .submit-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        /* --- WINNER FEED --- */
-        .winner-feed {
-            margin-top: 20px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 10px;
-            padding: 15px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .winner-feed-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: var(--accent);
-            margin-bottom: 10px;
-            text-align: center;
-            transition: color 0.3s;
-        }
-        .winner-item {
-            padding: 8px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            font-size: 11px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .winner-item:last-child {
-            border-bottom: none;
-        }
-        .winner-number {
-            color: var(--accent);
-            font-weight: bold;
-        }
-        .winner-round {
-            color: #94a3b8;
-        }
-
         /* --- ABOUT US SECTION --- */
-        .about-section { padding: 34px 16px 40px 16px; background: radial-gradient(circle at top, rgba(15,23,42,0.95), #020617); text-align: left; transition: background 0.3s, color 0.3s; }
+        .about-section { padding: 34px 16px 40px 16px; background: var(--surface); text-align: left; transition: background 0.3s, color 0.3s; }
         [data-theme="light"] .about-section {
-            background: #f9fafb;
-            color: #111827;
+            background: var(--glass);
+            color: var(--text-primary);
         }
-        .about-title { font-size: 20px; font-weight: 800; margin-bottom: 25px; color: var(--accent); text-align: center; transition: color 0.3s; }
-        .about-content { max-width: 760px; margin: 0 auto; }
-        .about-subtitle { font-size: 16px; font-weight: 700; margin: 25px 0 15px 0; color: var(--accent); transition: color 0.3s; }
-        .prize-tier { background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 3px solid var(--gold); transition: background 0.3s, color 0.3s; }
-        .tier-name { font-size: 15px; font-weight: 700; color: var(--accent); margin-bottom: 8px; transition: color 0.3s; }
-        .prize-details { font-size: 14px; color: #cbd5e1; margin: 0; transition: color 0.3s; }
-        .prize-list { list-style: none; padding: 0; margin: 10px 0 0 0; font-size: 13px; color: #cbd5e1; }
-        .prize-list li { margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
-        .prize-list li::before { content: '🏆'; font-size: 10px; }
-        [data-theme="light"] .prize-list { color: #4b5563; }
-        .principle-item, .rule-item { font-size: 14px; color: #cbd5e1; line-height: 1.8; margin-bottom: 12px; padding-left: 10px; border-left: 2px solid rgba(255,255,255,0.1); transition: color 0.3s, border-color 0.3s; }
+        .prize-tier {
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 3px solid var(--gold);
+            transition: background 0.3s, color 0.3s;
+        }
         [data-theme="light"] .prize-tier {
-            background: #111827;
+            background: var(--surface);
+        }
+        .prize-details, .principle-item, .rule-item {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+            margin-bottom: 12px;
+            padding-left: 10px;
+            border-left: 2px solid rgba(255, 255, 255, 0.1);
+            transition: color 0.3s, border-color 0.3s;
         }
         [data-theme="light"] .prize-details,
         [data-theme="light"] .principle-item,
         [data-theme="light"] .rule-item {
-            color: #e5e7eb;
-            border-left-color: rgba(15,23,42,0.3);
+            color: var(--text-primary);
+            border-left-color: rgba(15, 23, 42, 0.3);
         }
         [data-theme="light"] .principle-item,
         [data-theme="light"] .rule-item {
-            background: #111827;
+            background: var(--surface);
         }
-        .principle-item strong, .rule-item strong { color: var(--accent); transition: color 0.3s; }
-        .ask-me-btn {
-            display: inline-block;
-            background: var(--accent);
-            color: var(--text-primary);
-            text-decoration: none;
-            padding: 12px 24px;
-            border-radius: 25px;
-            font-size: 14px;
-            font-weight: bold;
-            margin-top: 10px;
-            transition: all 0.3s;
-            border: 1px solid rgba(255,255,255,0.2);
-        }
-        .ask-me-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(212, 175, 55, 0.4);
-            opacity: 0.9;
-        }
-        [data-theme="light"] .ask-me-btn {
-            color: white;
-            border-color: rgba(0,0,0,0.1);
-        }
-        [data-theme="light"] .ask-me-btn:hover {
-            box-shadow: 0 5px 15px rgba(161, 102, 47, 0.4);
-        }
-        .comment-btn { 
-            background: var(--accent); color: white; text-decoration: none; padding: 10px 22px; 
-            border-radius: 999px; font-size: 14px; font-weight: bold; display: inline-block;
-            margin-bottom: 30px; animation: pulse-glow 2s infinite; border: 1px solid rgba(255,255,255,0.2);
-        }
-
         /* --- FOOTER --- */
         footer { 
-            padding: 40px 20px; background: var(--bg-secondary); border-top: 1px solid rgba(255,255,255,0.1); 
+            padding: 40px 20px; background: var(--bg-secondary); border-top: 1px solid var(--card-border); 
             margin-top: auto; position: relative; z-index: 0;
-            transition: background 0.3s, border-color 0.3s;
+            transition: background 0.3s, border-color 0.3s, color 0.3s;
+            color: var(--text-primary);
         }
         [data-theme="light"] footer {
-            border-top: 1px solid rgba(0,0,0,0.1);
-            background: #e5e7eb;
+            border-top: 1px solid var(--card-border);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
         }
         .disclaimer-card {
             background: var(--glass);
@@ -1557,14 +1006,14 @@
             margin-top: 0;
             border-top: 1px solid rgba(250,204,21,0.7);
             border-bottom: 1px solid rgba(250,204,21,0.4);
-            background: url('images/header.png') no-repeat center center;
+            background: linear-gradient(180deg, rgba(0,0,0,0.0), rgba(0,0,0,0.0)), url('images/header.png') no-repeat center center;
             background-size: cover;
-            color: #f9fafb;
+            color: var(--text-primary);
         }
         [data-theme="dark"] .live-winners-section {
-            background: url('images/header.png') no-repeat center center;
+            background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.25)), url('images/header.png') no-repeat center center;
             background-size: cover;
-            color: #f9fafb;
+            color: var(--text-primary);
         }
 
         .live-winners-layout {
@@ -1654,11 +1103,7 @@
             padding: 20px;
             border: 1px solid rgba(250,204,21,0.6);
             text-align: center;
-            transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 14px 36px rgba(0,0,0,0.6);
-            font-weight: 700;
+            transition: all 0.3s;
         }
         .winner-card:hover {
             transform: translateY(-5px);
@@ -1754,81 +1199,206 @@
             text-transform: uppercase;
             letter-spacing: 1px;
         }
+
+        /* Safe area for bottom home indicator */
+        body { padding-bottom: env(safe-area-inset-bottom); }
+        .balance-text { max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+        .header-logo-text { max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+
+        /* Header styling */
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background-color: #1E293B; /* Replace with the pasted image color */
+        }
+        .header-row.status-bar {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+        .header-row.action-bar {
+            border-top: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        /* Show and style theme toggle button */
+        #theme-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        /* Force primary text color to white to improve contrast on dark theme */
+        body, header, main, footer, .cell, .nav-link, .nav-btn, .lang-toggle, .balance-text, .header-logo h1, .header-subtitle, .betslip-bar, .league-row, .league-body, .ticket-card, .desire-banner, .about-section {
+            color: #ffffff !important;
+        }
     </style>
 </head>
-<body>
+<body data-theme="dark">
 
     <header>
-        <div class="header-logo">
-            <img src="images/logo.png" alt="Siket Logo">
-            <div class="header-logo-text">
-                <h1 id="nav-title" style="font-weight: 900; letter-spacing: 1px;">ስኬት ሎተሪ</h1>
-                <div id="nav-subtitle" class="header-subtitle">በኃላፊነት ይጫወቱ</div>
+        <!-- Row 1: Identity + language + theme -->
+        <div class="header-row status-bar" role="banner" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                <img src="images/logo.png" alt="Siket Logo" style="height:34px;"> 
+                <div class="header-logo-text">
+                    <h1 id="nav-title">ስኬት ሎተሪ</h1>
+                    <div id="nav-subtitle" class="header-subtitle">በኃላፊነት ይጫወቱ</div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button id="lang-toggle" class="lang-toggle">EN</button>
+                <button id="theme-btn" class="theme-toggle" title="Toggle theme">🌙</button>
             </div>
         </div>
-        <div class="header-actions">
-            <!-- Auth: Unauthenticated -->
-            <div id="auth-buttons" class="auth-unauthenticated">
-                <button id="sign-in-btn" class="nav-btn primary lang-en">Sign In</button>
-                <button id="sign-in-btn" class="nav-btn primary lang-am">ይግቡ</button>
-                <button id="register-btn" class="nav-btn lang-en">Register</button>
-                <button id="register-btn" class="nav-btn lang-am">ይመዝገቡ</button>
-            </div>
-            
-            <!-- Auth: Authenticated -->
-            <div id="account-controls" class="auth-authenticated" style="display: none;">
-                <button id="deposit-btn" class="nav-btn primary">
-                    <span class="lang-en">Deposit</span>
-                    <span class="lang-am">አስገባ</span>
-                </button>
-                <div class="balance-container">
-                    <span id="balance-display">****</span>
-                    <button id="balance-toggle" class="eye-icon">👁️</button>
+
+        <!-- Row 2: Balance + actions -->
+        <div class="header-row action-bar" role="navigation" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid rgba(0,0,0,0.06);">
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+                <div id="currency-rate" style="font-size:12px;opacity:0.85;margin-right:8px;">1 EUR = 200 ETB</div>
+                <div class="balance-container" style="display:flex;align-items:center;gap:8px;min-width:0;">
+                    <div id="balance-display" class="balance-text">****</div>
+                    <button id="balance-toggle" class="eye-icon" aria-label="Toggle balance">👁️</button>
                 </div>
-                <button id="my-account-btn" class="nav-btn">
-                    <span class="lang-en">My Account</span>
-                    <span class="lang-am">አካውንቼ</span>
-                </button>
             </div>
-            
-            <nav class="nav-links">
-                <a href="dashboard.html" class="nav-link lang-en">My Tickets</a>
-                <a href="dashboard.html" class="nav-link lang-am">የእኔ ትኬቶች</a>
-                <a href="#about-us" class="nav-link" id="nav-about">
-                    <span class="lang-en">About Us</span>
-                    <span class="lang-am">ስለ እኛ</span>
-                </a>
-            </nav>
-            <div class="header-controls">
-                <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Toggle Dark/Light Mode">🌙</button>
-                <button class="lang-toggle" onclick="toggleLang()" id="lang-btn">EN</button>
-                <a href="https://t.me/Contact_Siketlottery" class="contact-btn" id="contact-btn">ያግኙን</a>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <button id="deposit-btn" class="nav-btn primary"><span class="lang-en">Deposit</span><span class="lang-am">አስገባ</span></button>
+                <button id="my-account-btn" class="nav-btn"><span class="lang-en">My Account</span><span class="lang-am">አካውንት</span></button>
             </div>
         </div>
     </header>
     <div id="toast" class="toast"></div>
 
+    <!-- Registration Modal -->
+    <div id="register-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title lang-en">Register</h3>
+                <h3 class="modal-title lang-am">ይመዝገቡ</h3>
+                <button class="modal-close" onclick="closeRegisterModal()">✕</button>
+            </div>
+            <form id="register-form" class="modal-body" onsubmit="event.preventDefault(); handleRegisterSubmit();">
+                <label class="lang-en">Telegram Username</label>
+                <input id="reg-username" type="text" placeholder="@username" required />
+
+                <label class="lang-en">Phone Number</label>
+                <input id="reg-phone" type="tel" placeholder="+2519xxxxxxx" required />
+
+                <label class="lang-en">Secure PIN (4 digits)</label>
+                <input id="reg-pin" type="password" inputmode="numeric" pattern="\\d{4}" maxlength="4" placeholder="••••" required />
+
+                <div class="modal-actions-right">
+                    <button type="button" onclick="closeRegisterModal()">Cancel</button>
+                    <button type="submit" class="primary">Create Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sign In Modal -->
+    <div id="signin-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title lang-en">Sign In</h3>
+                <h3 class="modal-title lang-am">ይግቡ</h3>
+                <button class="modal-close" onclick="closeSignInModal()">✕</button>
+            </div>
+            <form id="signin-form" class="modal-body" onsubmit="event.preventDefault(); handleSignInSubmit();">
+                <label class="lang-en">Telegram Username</label>
+                <input id="signin-username" type="text" placeholder="@username" required />
+
+                <label class="lang-en">PIN</label>
+                <input id="signin-pin" type="password" inputmode="numeric" maxlength="4" placeholder="••••" required />
+
+                <div class="modal-actions-right">
+                    <button type="button" onclick="closeSignInModal()">Cancel</button>
+                    <button type="submit" class="primary">Sign In</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- My Account: right-side slide-in panel -->
+    <div id="account-panel-overlay" class="panel-overlay" onclick="closeAccountPanel(event)"></div>
+    <aside id="account-modal" class="panel-right" aria-hidden="true">
+        <div class="panel-header">
+            <div>
+                <h3 class="modal-title lang-en">My Account</h3>
+                <h3 class="modal-title lang-am" style="display:none">የኔ ሂሳብ</h3>
+            </div>
+            <div>
+                <button class="modal-close" onclick="closeAccountPanel()">✕</button>
+            </div>
+        </div>
+        <div class="panel-body" id="account-body">
+            <!-- Populated dynamically by renderAccountModal() -->
+        </div>
+    </aside>
+    
+    <!-- Tier selection modal (Gold/Silver/Bronze) -->
+    <div id="tier-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="tier-modal-title">Select Blocks</h3>
+                <button class="modal-close" onclick="closeTierModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="tier-header">
+                    <div>
+                        <div id="tier-name"></div>
+                        <div id="tier-price"></div>
+                    </div>
+                    <div class="tier-header-right">
+                        <div id="tier-selected-count">Selected: 0</div>
+                        <div id="tier-stake">Stake: 0.00 EUR</div>
+                    </div>
+                </div>
+
+                <div id="grid-container">
+                    <div id="trust-label" class="mb-2 text-center">
+                        <div class="lang-en font-semibold">Uniquely Secured Draw</div>
+                        <div class="lang-am font-semibold">በልዩነት የተጠበቀ እጣ</div>
+                    </div>
+                    <div id="grid-main" class="grid-main grid grid-cols-10 gap-1"></div>
+                </div>
+                <p class="legend-text">Legend: <span class="legend-selected">Selected</span> • <span class="legend-sold">Sold</span> • Available</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Betslip bar (appears when user selects blocks) -->
+    <div id="betslip-bar" class="betslip-bar">
+        <div class="betslip-items" id="betslip-items"></div>
+        <div class="betslip-summary">
+            <div id="betslip-stake">Total Stake: 0.00 EUR</div>
+            <div id="betslip-potential">Potential Win: 0.00 EUR</div>
+            <div class="betslip-pay-wrapper"><button class="betslip-button" onclick="proceedToPay()">Pay</button></div>
+        </div>
+    </div>
+
     <main id="home-view">
         <!-- Hero Section -->
-        <section class="hero" onclick="scrollToTickets()" style="cursor: pointer;">
+        <section class="hero" onclick="scrollToTickets()">
             <img src="images/background.jpg" class="hero-img" alt="Luxury Hero Banner">
             <div class="hero-trust">
-                <div class="hero-trust-title">
+                <div class="hero-trust-title trust-animated">
                     <span class="lang-en">Trusted Digital Lottery</span>
                     <span class="lang-am">የታመነ ዲጂታል ሎተሪ</span>
                 </div>
-                <div class="hero-trust-sub">
-                    <span class="lang-en">Secure draws, transparent winners, instant payouts</span>
-                    <span class="lang-am">በልዩነት የተጠበቀ እጣ፣ ግልጽ አሸናፊዎች፣ ፈጣን ክፍያ</span>
+                <div class="hero-trust-sub trust-animated-sub">
+                    <span class="lang-en">Secure draws, transparent winners</span>
+                    <span class="lang-am">በልዩነት የተጠበቀ እጣ፣ ግልጽ አሸናፊዎች</span>
                 </div>
-            </div>
-            <div class="hero-highlight">
-                <div class="hero-highlight-pill">
-                    <div class="hero-highlight-dot"></div>
-                    <div class="hero-highlight-text">
-                        <span class="lang-en">Instant payouts via Telebirr & CBE Birr</span>
-                        <span class="lang-am">ፈጣን ክፍያ በቴሌብር እና CBE ብር</span>
-                    </div>
+                <div class="hero-trust-payouts" style="margin-top:6px;">
+                    <span class="lang-en">Instant payouts via Telebirr & CBE Birr</span>
+                    <span class="lang-am">ፈጣን ክፍያ በቴሌብር እና CBE ብር</span>
                 </div>
             </div>
         </section>
@@ -1865,16 +1435,16 @@
         <!-- Tickets Section -->
         <section class="comp-section" id="ticket-selection">
             <h2 class="comp-title" id="sec-t">አሸናፊ የሚያደረጉዋችሁ እጣዎች</h2>
-            <div style="margin-bottom: 20px;">
-                <button class="btn-buy" onclick="openTier(3)" style="font-size: 14px; padding: 10px 24px;">
+            <div class="section-cta">
+                <button class="btn-buy buy-cta-small" onclick="openTierModal(3)">
                     <span class="lang-en">Buy Ticket</span>
                     <span class="lang-am">ትኬት ይቁረጡ</span>
                 </button>
             </div>
             <div class="comp-grid">
-                <div class="ticket-card" onclick="openTier(3)"><img src="images/golden.png" alt="Gold"><div class="buy-overlay"><button class="btn-buy" id="buy-gold-btn"><span class="lang-en">Buy Gold</span><span class="lang-am">ወርቅ ይግዙ</span></button></div></div>
-                <div class="ticket-card" onclick="openTier(2)"><img src="images/silver.png" alt="Silver"><div class="buy-overlay"><button class="btn-buy" id="buy-silver-btn"><span class="lang-en">Buy Silver</span><span class="lang-am">ብር ይግዙ</span></button></div></div>
-                <div class="ticket-card" onclick="openTier(1)"><img src="images/bronze.png" alt="Bronze"><div class="buy-overlay"><button class="btn-buy" id="buy-bronze-btn"><span class="lang-en">Buy Bronze</span><span class="lang-am">ነሐስ ይግዙ</span></button></div></div>
+                <div class="ticket-card" onclick="openTierModal(3)"><img src="images/golden.png" alt="Gold"><div class="buy-overlay"><button class="btn-buy" id="buy-gold-btn"><span class="lang-en">Buy Gold</span><span class="lang-am">ወርቅ ይግዙ</span></button></div></div>
+                <div class="ticket-card" onclick="openTierModal(2)"><img src="images/silver.png" alt="Silver"><div class="buy-overlay"><button class="btn-buy" id="buy-silver-btn"><span class="lang-en">Buy Silver</span><span class="lang-am">ብር ይግዙ</span></button></div></div>
+                <div class="ticket-card" onclick="openTierModal(1)"><img src="images/bronze.png" alt="Bronze"><div class="buy-overlay"><button class="btn-buy" id="buy-bronze-btn"><span class="lang-en">Buy Bronze</span><span class="lang-am">ነሐስ ይግዙ</span></button></div></div>
             </div>
         </section>
 
@@ -1902,16 +1472,16 @@
             <p class="soon-text" id="soon-b">አዳዲስ አስደሳች የሎተሪ ዕጣዎችን እና ታላላቅ ሽልማቶችን ይዘን እንመጣለን። ይከታተሉን!</p>
             <div class="tier-grid">
                 <div class="tier-card coming-soon">
-                    <div class="coming-soon-text">💎 DIAMOND<br><span style="font-size: 14px;">Coming Soon</span></div>
+                    <div class="coming-soon-text">💎 DIAMOND<br><span>Coming Soon</span></div>
                 </div>
                 <div class="tier-card coming-soon">
-                    <div class="coming-soon-text">✨ PLATINUM<br><span style="font-size: 14px;">Coming Soon</span></div>
+                    <div class="coming-soon-text">✨ PLATINUM<br><span>Coming Soon</span></div>
                 </div>
             </div>
         </section>
 
         <!-- Comment Button Section -->
-        <section style="padding: 20px 15px; text-align: center; background: var(--navy);">
+        <section class="comment-section">
             <a href="https://t.me/Contact_Siketlottery" class="comment-btn" id="comment-btn">💬 Comment</a>
         </section>
 
@@ -1964,8 +1534,8 @@
 
         <footer>
             <div class="disclaimer-card">
-                <p class="lang-en" style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;">Disclaimer</p>
-                <p class="lang-am" style="font-size: 13px; font-weight: bold; margin: 0 0 10px 0; color: #94a3b8;">መግለጫ</p>
+                <p class="lang-en disc-title">Disclaimer</p>
+                <p class="lang-am disc-title">መግለጫ</p>
                 <p class="disc-text lang-en" id="disc-text-en">Siket Lottery members must be 18+. Participants must be residents of Ethiopia. Payments are non-refundable. The draw will be random.</p>
                 <p class="disc-text lang-en">Transparency: Cinematic live draws from 3rd to 1st prize ensure fairness.</p>
                 <p class="disc-text lang-en">Fast Payouts: Winners receive prizes via Telebirr/Cbebirr instantly after the round ends.</p>
@@ -1974,17 +1544,17 @@
                 <p class="disc-text lang-en">Tipping Policy: You are NOT obligated to tip Contact Center workers. Tipping is 100% optional.</p>
                 <p class="disc-text lang-en">Draw Timing: The 3-minute countdown after a sell-out is to allow all buyers time to join the live animation.</p>
                 <p class="disc-text lang-en">Restrictions: Players must be 18+. Play responsibly.</p>
-                <p class="disc-text lang-am" id="disc-text-am">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አይመለስም። ዕጣው በዘፈቀደ የሚወጣ ይሆናል።</p>
+                <p class="disc-text lang-am" id="disc-text-am">የስኬት ሎተሪ አባላት ዕድሜያቸው 18+ መሆን አለበት። ተሳታፊዎች በኢትዮጵያ ነዋሪ መሆን አለባቸው። ክፍያ አይመለስም። ዕጣው በዘፈቀደ ይሆናል።</p>
                 <p class="disc-text lang-am">ግልጽነት፡ እጣዎች ከ3ኛ እስከ 1ኛ ደረጃ ለሁሉም በሚታይ መልኩ ይወጣሉ።</p>
-                <p class="disc-text lang-am">ፈጣን ክፍያ፡ አሸናፊዎች ሽልማታቸውን በቴሌብር/ሲቢኢ በዚያ ጊዜው ይቀበላሉ።</p>
+                <p class="disc-text lang-am">ፈጣን ክፍያ፡ አሸናፊዎች ሽልማታቸውን በቴሌብር እና CBE ብር ወዲያውኑ ይላክልዎታል።</p>
                 <p class="disc-text lang-am">ተከታታይነት፡ በእያንዳንዱ ዙር 100 ቲኬቶች ብቻ ለፈጣን ጨዋታና ብዙ እድል።</p>
-                <p class="disc-text lang-am">የክፍያ ሁኔታ፡ የሽልማት ገንዘብዎን ከገዙበት ተቋም በተለየ ቴሌብር ወይም ሲቢኢ አካውንት ላይ ማግኘት ይችላሉ።</p>
+                <p class="disc-text lang-am">የክፍያ ሁኔታ፡ የሽልማት ገንዘብዎን ከገዙበት ተቋም በተለየ ቴሌብር ወይም CBE አካውንት ላይ ማግኘት ይችላሉ።</p>
                 <p class="disc-text lang-am">የቲፕ ፖሊሲ፡ የመረጃ ማዕከል ሰራተኞችን መታሰቢያ መስጠት አልተግዳዳም። ቲፕ መስጠት 100% የምርጫ ነው።</p>
                 <p class="disc-text lang-am">የዕጣ ጊዜ፡ ሁሉም ቲኬቶች እንደተሸጡ የ3 ደቂቃ ቆይታ ሁሉም ገዢዎች በቀጥታ አኒሜሽኑ እንዲቀላቀሉ ይፈቅዳል።</p>
                 <p class="disc-text lang-am">ክልከላዎች፡ ተጫዋቾች 18+ መሆን አለባቸው። በኃላፊነት ይጫወቱ።</p>
             </div>
-            <p class="lang-en" style="margin-top:30px; font-size:10px; color:#444; text-align:center;">Siket Success &copy; 2026. All Rights Reserved.</p>
-            <p class="lang-am" style="margin-top:30px; font-size:10px; color:#444; text-align:center;">ስኬት ስኬት &copy; 2026. ሁሉም መብቶች የተጠበቁ ናቸው።</p>
+            <p class="lang-en footer-note">Siket Success &copy; 2026. All Rights Reserved.</p>
+            <p class="lang-am footer-note">ስኬት ስኬት &copy; 2026. ሁሉም መብቶች የተጠበቁ ናቸው።</p>
         </footer>
     </div>
 
@@ -2008,34 +1578,7 @@
                 <span class="lang-am">ደቂታት</span>
             </div>
             
-            <div class="payment-options-grid" id="payment-options-grid">
-                <!-- Payment options will be dynamically generated -->
-            </div>
             
-            <form class="deposit-form" id="deposit-form" onsubmit="submitDepositRequest(event)">
-                <div class="form-group">
-                    <label class="lang-en">Deposit Amount (ETB)</label>
-                    <label class="lang-am">የመግቢያ መጠን (ብር)</label>
-                    <input type="number" id="deposit-amount" min="100" required placeholder="100">
-                </div>
-                
-                <div class="form-group">
-                    <label class="lang-en">Transaction Reference</label>
-                    <label class="lang-am">የግብይት ማስረጃ</label>
-                    <input type="text" id="transaction-reference" placeholder="TRX123456789" required>
-                </div>
-                
-                <div class="form-group">
-                    <label class="lang-en">Additional Notes (Optional)</label>
-                    <label class="lang-am">ተጨማማሪ ማስታወሻ (አማራጭ)</label>
-                    <textarea id="deposit-notes" placeholder="Any additional information..."></textarea>
-                </div>
-                
-                <button type="submit" class="submit-deposit-btn" id="submit-deposit-btn">
-                    <span class="lang-en">Send Deposit Request</span>
-                    <span class="lang-am">የመግቢያ ጥያቄ ይላኩ</span>
-                </button>
-            </form>
         </div>
     </div>
 
@@ -2065,9 +1608,9 @@
             
             <form class="deposit-form" id="deposit-form" onsubmit="submitDepositRequest(event)">
                 <div class="form-group">
-                    <label class="lang-en">Deposit Amount (ETB)</label>
-                    <label class="lang-am">የመግቢያ መጠን (ብር)</label>
-                    <input type="number" id="deposit-amount" min="100" required placeholder="100">
+                    <label class="lang-en">Deposit Amount (EUR)</label>
+                    <label class="lang-am">የመግቢያ መጠን (ኢዩሮ)</label>
+                    <input type="number" id="deposit-amount" min="1" required placeholder="1">
                 </div>
                 
                 <div class="form-group">
@@ -2097,15 +1640,15 @@
         <!-- Color Legend -->
         <div class="color-legend">
             <div class="legend-item">
-                <div class="legend-color" style="background: #1d4ed8;"></div>
+                <div class="legend-color legend-available"></div>
                 <span>Available</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: #eab308;"></div>
+                <div class="legend-color legend-selected-color"></div>
                 <span>Selected</span>
             </div>
             <div class="legend-item">
-                <div class="legend-color" style="background: var(--bronze);"></div>
+                <div class="legend-color legend-sold-color"></div>
                 <span>Sold</span>
             </div>
         </div>
@@ -2136,7 +1679,7 @@
         <div class="marketing-banner" id="marketing-banner">
             <div class="marketing-title">
                 <span class="lang-en">🔥 Limited Time Offer!</span>
-                <span class="lang-am">🔥 የገደለ ጊዜ ቅናሽ!</span>
+                <span class="lang-am">🔥 የተወሰነ ጊዜ ቅናሽ!</span>
             </div>
             <div class="marketing-subtitle">
                 <span class="lang-en">Win up to 50,000 ETB this round!</span>
@@ -2223,7 +1766,7 @@
                 </div>
                 <div class="betslip-count">
                     <span id="betslip-count">0</span>
-                    <span id="betslip-total" style="margin-left:6px; font-size:11px; color:#f97316;"></span>
+                    <span id="betslip-total" class="betslip-total"></span>
 
 
 
@@ -2472,6 +2015,18 @@
             const btn = document.getElementById('lang-btn');
             if (btn) btn.innerText = lang === 'am' ? 'EN' : 'አማርኛ';
         })();
+
+        // Auto-open Gold tab on load (user requested)
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const goldTab = document.querySelector('.tier-tab[data-tier="3"]');
+                if (goldTab) {
+                    document.querySelectorAll('.tier-tab').forEach(t => t.classList.remove('active'));
+                    goldTab.classList.add('active');
+                }
+                try { openTierModal(3); } catch (e) { /* ignore */ }
+            }, 360);
+        });
         
         // Set initial language attribute on html element immediately
         document.documentElement.setAttribute('data-lang', lang);
@@ -2482,91 +2037,602 @@
         }
         
         // ============================================
-        // AUTHENTICATION & BALANCE SYSTEM
+        // AUTHENTICATION & BALANCE SYSTEM (Local PIN-based)
+        // - Register with Telegram username, phone, PIN
+        // - 30-day inactivity clears session
+        // - Header toggles for guest/member
         // ============================================
-        
+
+        const STORAGE_USER_KEY = 'siket_users';
+        const STORAGE_CURRENT_KEY = 'siket_current_user';
+        const STORAGE_LASTOPEN_KEY = 'siket_last_open';
+        const SESSION_TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
         let currentUser = null;
         let userBalance = 0;
         let isBalanceVisible = false;
-        
-        function checkAuthenticationState() {
-            if (tg?.initDataUnsafe?.user) {
-                currentUser = tg.initDataUnsafe.user;
-                showAuthenticatedUI();
-                loadUserBalance();
-            } else {
-                showUnauthenticatedUI();
+
+        // --- UI helpers ---
+        function showAuthenticatedUI() {
+            const authButtons = document.getElementById('auth-buttons');
+            const accountControls = document.getElementById('account-controls');
+            if (authButtons) authButtons.style.display = 'none';
+            if (accountControls) accountControls.style.display = 'flex';
+        }
+
+        function showUnauthenticatedUI() {
+            const authButtons = document.getElementById('auth-buttons');
+            const accountControls = document.getElementById('account-controls');
+            if (authButtons) authButtons.style.display = 'flex';
+            if (accountControls) accountControls.style.display = 'none';
+        }
+
+        // --- Modal controls ---
+        function openRegisterModal() { const el = document.getElementById('register-modal'); if (el) el.style.display = 'flex'; }
+        function closeRegisterModal() { const el = document.getElementById('register-modal'); if (el) el.style.display = 'none'; }
+        function openSignInModal() { const el = document.getElementById('signin-modal'); if (el) el.style.display = 'flex'; }
+        function closeSignInModal() { const el = document.getElementById('signin-modal'); if (el) el.style.display = 'none'; }
+        function openAccountModal() { renderAccountModal(); const overlay = document.getElementById('account-panel-overlay'); if (overlay) overlay.classList.add('open'); const p = document.getElementById('account-modal'); if (p) { p.classList.add('open'); p.setAttribute('aria-hidden','false'); } }
+        function closeAccountModal() { closeAccountPanel(); }
+        function closeAccountPanel(e) {
+            if (e && e.target && e.target.id !== 'account-panel-overlay') return; // only close when overlay clicked
+            const overlay = document.getElementById('account-panel-overlay'); if (overlay) overlay.classList.remove('open'); const p = document.getElementById('account-modal'); if (p) { p.classList.remove('open'); p.setAttribute('aria-hidden','true'); }
+        }
+
+        // --- Storage helpers ---
+        function readUsers() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_USER_KEY) || '{}'); } catch(e){ return {}; }
+        }
+        function writeUsers(u) { localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(u)); }
+        function setCurrentUser(username) {
+            currentUser = readUsers()[username] || null;
+            if (currentUser) {
+                localStorage.setItem(STORAGE_CURRENT_KEY, username);
+                localStorage.setItem(STORAGE_LASTOPEN_KEY, Date.now().toString());
             }
         }
-        
-        function showAuthenticatedUI() {
-            document.getElementById('auth-buttons').style.display = 'none';
-            document.getElementById('account-controls').style.display = 'flex';
+        function clearCurrentUser() {
+            currentUser = null;
+            localStorage.removeItem(STORAGE_CURRENT_KEY);
+            localStorage.removeItem(STORAGE_LASTOPEN_KEY);
         }
-        
-        function showUnauthenticatedUI() {
-            document.getElementById('auth-buttons').style.display = 'flex';
-            document.getElementById('account-controls').style.display = 'none';
+
+        // --- Register / Sign-In flows ---
+        function handleRegisterSubmit() {
+            const username = (document.getElementById('reg-username').value || '').trim();
+            const phone = (document.getElementById('reg-phone').value || '').trim();
+            const pin = (document.getElementById('reg-pin').value || '').trim();
+
+            if (!username || !phone || !/^(\+|\d)/.test(phone) || !/^\d{4}$/.test(pin)) {
+                showToast(lang === 'en' ? 'Please provide valid details' : 'እባክዎ ትክክለኛ መረጃ ያስገቡ');
+                return;
+            }
+
+            const users = readUsers();
+            if (users[username]) {
+                showToast(lang === 'en' ? 'Account already exists' : 'አካውንት አለ');
+                return;
+            }
+
+            const id = `user_${Date.now()}`;
+            users[username] = { id, username, phone, pin, balance: 0, history: [] };
+            writeUsers(users);
+            setCurrentUser(username);
+            showAuthenticatedUI();
+            updateBalanceDisplay();
+            closeRegisterModal();
+            showToast(lang === 'en' ? 'Registered' : 'ተመዝግቧል');
         }
-        
+
+        function handleSignInSubmit() {
+            const username = (document.getElementById('signin-username').value || '').trim();
+            const pin = (document.getElementById('signin-pin').value || '').trim();
+
+            const users = readUsers();
+            const u = users[username];
+            if (!u || u.pin !== pin) {
+                showToast(lang === 'en' ? 'Invalid username or PIN' : 'የተሳሳተ መጠሪያ ወይም PIN');
+                return;
+            }
+
+            setCurrentUser(username);
+            userBalance = u.balance || 0;
+            showAuthenticatedUI();
+            updateBalanceDisplay();
+            closeSignInModal();
+            showToast(lang === 'en' ? 'Signed in' : 'ተገብሯል');
+        }
+
+        // --- Account modal render ---
+        function renderAccountModal() {
+            const el = document.getElementById('account-body');
+            if (!currentUser) { el.innerHTML = '<p>No user</p>'; return; }
+            const history = (currentUser.history || []).slice().reverse();
+
+            let historyHtml = '';
+            if (history.length === 0) {
+                historyHtml = `<div style="opacity:0.9;padding:8px 0">${lang==='en'?'No purchase history':'የግዢ ታሪክ የለም'}</div>`;
+            } else {
+                historyHtml = '<div style="display:flex;flex-direction:column;gap:10px;">';
+                history.forEach(entry => {
+                    const date = new Date(entry.timestamp).toLocaleString();
+                    const parts = entry.items.map(it => `${TIER_NAME[it.tier]}: ${it.blocks.length} blocks`).join(' • ');
+                    historyHtml += `<div style="padding:10px;border-radius:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center;"><div style="font-size:13px;color:var(--tg-theme-text-color)"><div style="font-weight:700">${parts}</div><div style="opacity:0.8;font-size:12px">${date}</div></div><div style="font-weight:800;color:var(--accent,#D4AF37)">${entry.total.toFixed(2)} EUR</div></div>`;
+                });
+                historyHtml += '</div>';
+            }
+
+            el.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;align-items:center;gap:12px">
+                        <div style="width:56px;height:56px;border-radius:12px;overflow:hidden;display:flex;align-items:center;justify-content:center;font-weight:800;color:#111">
+                            ${currentUser.avatar ? `<img src="${currentUser.avatar}" alt="avatar" style="width:56px;height:56px;object-fit:cover;">` : `<div style="width:56px;height:56px;background:linear-gradient(135deg,#ddd,#bbb);display:flex;align-items:center;justify-content:center;font-weight:800;color:#111">${(currentUser.username||'U').charAt(0).toUpperCase()}</div>`}
+                        </div>
+                        <div style="flex:1;min-width:0">
+                            <div style="font-weight:800">${currentUser.username}</div>
+                            <div style="opacity:0.8;font-size:13px">${currentUser.phone || ''}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <div style="font-size:12px;color:var(--tg-theme-hint-color)">${lang==='en'?'Balance':'ሂሳብ'}</div>
+                            <div style="font-weight:800">${isBalanceVisible ? (userBalance||0).toFixed(2) + ' EUR' : '****'}</div>
+                        </div>
+                    </div>
+
+                    <div style="display:flex;gap:8px">
+                        <button class="nav-btn primary" onclick="openDepositModal()">${lang==='en'?'Deposit':'አስገባ'}</button>
+                        <button class="nav-btn" onclick="toggleBalanceVisibility()">${isBalanceVisible? (lang==='en'?'Hide':'ደብዛ'):(lang==='en'?'Show':'አሳይ')}</button>
+                        <button class="nav-btn" onclick="logout()">${lang==='en'?'Sign Out':'ይውጡ'}</button>
+                    </div>
+
+                    <hr style="border-color:rgba(255,255,255,0.04)" />
+
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong>${lang==='en'?'Ticket History':'የትኬት ታሪክ'}</strong> <small style="opacity:0.7">${history.length} ${lang==='en'?'entries':'ን'}</small></div>
+                    <div style="max-height:380px;overflow:auto">${historyHtml}</div>
+
+                    <hr style="border-color:rgba(255,255,255,0.04)" />
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <button class="nav-btn" onclick="toggleLang()">${lang==='en'?'Switch Language':'ቋንቋ ቀይር'}</button>
+                        <a href="mailto:support@example.com" class="nav-btn">${lang==='en'?'Support':'ድጋፍ'}</a>
+                    </div>
+                </div>
+            `;
+            updateBalanceDisplay();
+        }
+
+        function logout() {
+            clearCurrentUser();
+            showUnauthenticatedUI();
+            updateBalanceDisplay();
+            closeAccountModal();
+            showToast(lang === 'en' ? 'Signed out' : 'ወገናል');
+        }
+
+        // --- Balance/load functions ---
         async function loadUserBalance() {
+            if (!currentUser) return;
+            // Prefer local user balance if available
+            const users = readUsers();
+            const u = users[currentUser.username];
+            if (u && typeof u.balance !== 'undefined') {
+                userBalance = u.balance;
+                updateBalanceDisplay();
+                return;
+            }
+
+            // Fallback to server call if available
             try {
                 const response = await fetch(`/api/user-balance/${currentUser.id}`);
                 const data = await response.json();
                 userBalance = data.balance || 0;
-                updateBalanceDisplay();
-            } catch (error) {
+            } catch (e) {
                 userBalance = 0;
-                updateBalanceDisplay();
             }
+            updateBalanceDisplay();
         }
-        
+
         function toggleBalanceVisibility() {
             const balanceDisplay = document.getElementById('balance-display');
             const eyeIcon = document.getElementById('balance-toggle');
-            
             isBalanceVisible = !isBalanceVisible;
-            
             if (isBalanceVisible) {
-                balanceDisplay.textContent = `${userBalance.toLocaleString()} ETB`;
+                balanceDisplay.textContent = `${userBalance.toLocaleString()} EUR`;
                 eyeIcon.textContent = '👁️‍🗨️';
             } else {
                 balanceDisplay.textContent = '****';
                 eyeIcon.textContent = '👁️';
             }
-            
             triggerHaptic('light');
         }
-        
+
         function updateBalance(newBalance) {
             userBalance = newBalance;
+            const users = readUsers();
+            if (currentUser && users[currentUser.username]) {
+                users[currentUser.username].balance = newBalance;
+                writeUsers(users);
+            }
             if (isBalanceVisible) {
-                document.getElementById('balance-display').textContent = `${userBalance.toLocaleString()} ETB`;
+                document.getElementById('balance-display').textContent = `${userBalance.toLocaleString()} EUR`;
             }
         }
-        
+
         function updateBalanceDisplay() {
             const balanceDisplay = document.getElementById('balance-display');
-            if (balanceDisplay) {
-                balanceDisplay.textContent = isBalanceVisible ? `${userBalance.toLocaleString()} ETB` : '****';
-            }
+            if (!balanceDisplay) return;
+            balanceDisplay.textContent = isBalanceVisible ? `${userBalance.toLocaleString()} EUR` : '****';
         }
-        
+
         function hasSufficientBalance(amount) {
             return userBalance >= amount;
         }
-        
+
         function showInsufficientFundsNotification(requiredAmount) {
             const message = lang === 'en' 
-                ? `Insufficient funds! You need ${requiredAmount.toLocaleString()} ETB. Would you like to deposit?`
-                : `በቂ ገንዘብ የለዎም! ${requiredAmount.toLocaleString()} ብር ያስፈልጋል፡፡ መግቢያ ይፈልጋል?`;
-            
-            showConfirm(message, (confirmed) => {
-                if (confirmed) {
-                    openDepositModal();
+                ? `Insufficient funds! You need ${requiredAmount.toLocaleString()} EUR. Would you like to deposit?`
+                : `በቂ ገንዘብ የለዎም! ${requiredAmount.toLocaleString()} ኢዩሮ ያስፈልጋል፡፡ መግቢያ ይፈልጋል?`;
+            showConfirm(message, (confirmed) => { if (confirmed) openDepositModal(); });
+        }
+
+        // --- Session management ---
+        function checkSessionOnLoad() {
+            // If Telegram user available, prefer that (populate minimal currentUser)
+            if (tg?.initDataUnsafe?.user) {
+                    const tu = tg.initDataUnsafe.user;
+                    // Map telegram user to local currentUser object for UI
+                    currentUser = { id: `tg_${tu.id}`, username: tu.username || `${tu.first_name}`, phone: tu.phone || '', avatar: (tu.photo_url || tu.photo || null), balance: 0, history: [] };
+                    // Persist minimal Telegram user locally if not present so avatar is available
+                    try {
+                        const users = readUsers();
+                        if (!users[currentUser.username]) {
+                            users[currentUser.username] = currentUser;
+                            writeUsers(users);
+                        }
+                    } catch (e) {}
+                    setCurrentUser(currentUser.username);
+                showAuthenticatedUI();
+                loadUserBalance();
+                return;
+            }
+
+            const username = localStorage.getItem(STORAGE_CURRENT_KEY);
+            const lastOpen = parseInt(localStorage.getItem(STORAGE_LASTOPEN_KEY) || '0', 10);
+            if (!username) { showUnauthenticatedUI(); return; }
+
+            const now = Date.now();
+            if (now - lastOpen > SESSION_TIMEOUT_MS) {
+                // expired
+                clearCurrentUser();
+                showUnauthenticatedUI();
+                showToast(lang === 'en' ? 'Session expired. Please sign in.' : 'የክፍተት ጊዜ ያለፈ ነው። እባክዎ ይግቡ');
+                return;
+            }
+
+            // Restore session
+            const users = readUsers();
+            const u = users[username];
+            if (u) { currentUser = u; userBalance = u.balance || 0; showAuthenticatedUI(); updateBalanceDisplay(); }
+            // update last open
+            localStorage.setItem(STORAGE_LASTOPEN_KEY, now.toString());
+        }
+
+        // Update last-open timestamp on focus/visibility
+        window.addEventListener('focus', () => { if (currentUser) localStorage.setItem(STORAGE_LASTOPEN_KEY, Date.now().toString()); });
+        document.addEventListener('visibilitychange', () => { if (!document.hidden && currentUser) localStorage.setItem(STORAGE_LASTOPEN_KEY, Date.now().toString()); });
+
+        // Hook up header buttons
+        (function bindAuthButtons(){
+            const signInBtns = document.querySelectorAll('.sign-in-btn');
+            signInBtns.forEach(b => b.addEventListener('click', openSignInModal));
+            const registerBtns = document.querySelectorAll('.register-btn');
+            registerBtns.forEach(b => b.addEventListener('click', openRegisterModal));
+            const deposit = document.getElementById('deposit-btn');
+            if (deposit) deposit.addEventListener('click', openDepositModal);
+            const balanceToggle = document.getElementById('balance-toggle');
+            if (balanceToggle) balanceToggle.addEventListener('click', toggleBalanceVisibility);
+            const myAccount = document.getElementById('my-account-btn');
+            if (myAccount) myAccount.addEventListener('click', openAccountModal);
+            // tier tabs wiring
+            const tabs = document.querySelectorAll('.tier-tab');
+            tabs.forEach(t => t.addEventListener('click', (e) => {
+                const tier = parseInt(t.dataset.tier,10);
+                tabs.forEach(x => x.classList.remove('active'));
+                t.classList.add('active');
+                openTierModal(tier);
+            }));
+        })();
+
+        // Run session check immediately
+        checkSessionOnLoad();
+        
+        // ======================
+        // 10x10 Grid Game Engine
+        // ======================
+        const PRICE = { 3: 2.5, 2: 1.5, 1: 0.5 }; // 3:Gold,2:Silver,1:Bronze
+        const TIER_NAME = { 3: 'Gold', 2: 'Silver', 1: 'Bronze' };
+        const EUR_TO_ETB = 200;
+        // Update visible conversion rate in header if present
+        (function(){
+            const el = document.getElementById('currency-rate');
+            if (el) el.textContent = `1 EUR = ${EUR_TO_ETB} ETB`;
+        })();
+        const selectedBlocks = { 3: new Set(), 2: new Set(), 1: new Set() };
+        const soldBlocksCache = { 3: new Set(), 2: new Set(), 1: new Set() };
+        let activeTier = null;
+
+        function openTierModal(tier) {
+            activeTier = tier;
+            document.getElementById('tier-name').textContent = (lang === 'en' ? TIER_NAME[tier] : (tier===3?'ወርቅ': tier===2? 'ብር':'ነሐስ'));
+            document.getElementById('tier-price').textContent = `${PRICE[tier].toFixed(2)} EUR / block`;
+            document.getElementById('tier-modal').style.display = 'flex';
+            generateGrid(tier);
+            updateTierHeader(tier);
+        }
+
+        function closeTierModal() { document.getElementById('tier-modal').style.display = 'none'; activeTier = null; }
+
+        async function fetchSoldBlocks(tier) {
+            try {
+                const res = await fetch(`/api/sold-blocks?tier=${tier}`);
+                if (!res.ok) throw new Error('no');
+                const data = await res.json(); // expect array of indexes 0..99
+                soldBlocksCache[tier] = new Set(data || []);
+                return;
+            } catch (e) {
+                // fallback: randomly mark ~8 sold for demo
+                const set = new Set();
+                while (set.size < 8) set.add(Math.floor(Math.random()*100));
+                soldBlocksCache[tier] = set;
+            }
+        }
+
+        async function generateGrid(tier) {
+            await fetchSoldBlocks(tier);
+            const container = document.getElementById('grid-main');
+            container.innerHTML = '';
+            for (let i=0;i<100;i++) {
+                const cell = document.createElement('div');
+                    cell.className = 'cell available flex items-center justify-center text-xs sm:text-sm font-semibold';
+                cell.dataset.index = i.toString();
+                cell.textContent = (i+1).toString();
+                if (soldBlocksCache[tier].has(i)) {
+                    cell.classList.remove('available');
+                    cell.classList.add('sold');
+                } else if (selectedBlocks[tier].has(i)) {
+                    cell.classList.remove('available');
+                    cell.classList.add('selected');
+                }
+                    cell.addEventListener('click', () => handleCellClick(tier, i, cell));
+                container.appendChild(cell);
+            }
+        }
+
+        function handleCellClick(tier, index, el) {
+            if (soldBlocksCache[tier].has(index)) return;
+                // haptic tap
+                triggerHaptic('impact');
+            if (selectedBlocks[tier].has(index)) {
+                selectedBlocks[tier].delete(index);
+                el.classList.remove('selected');
+                el.classList.add('available');
+            } else {
+                selectedBlocks[tier].add(index);
+                el.classList.remove('available');
+                el.classList.add('selected');
+                // pop & glow animation
+                el.classList.add('pop','glow');
+                setTimeout(() => { el.classList.remove('pop'); }, 220);
+                setTimeout(() => { el.classList.remove('glow'); }, 420);
+            }
+            updateTierHeader(tier);
+            updateBetslip();
+        }
+
+        function updateTierHeader(tier) {
+            const count = selectedBlocks[tier].size;
+            document.getElementById('tier-selected-count').textContent = (lang==='en'?`Selected: ${count}`:`ተመርጧል: ${count}`);
+            const stake = (count * PRICE[tier]);
+            document.getElementById('tier-stake').textContent = (lang==='en'?`Stake: ${stake.toFixed(2)} EUR`:`መጠን: ${stake.toFixed(2)} EUR`);
+        }
+
+        function updateBetslip() {
+            const itemsEl = document.getElementById('betslip-items');
+            const bar = document.getElementById('betslip-bar');
+            itemsEl.innerHTML = '';
+            let totalStake = 0;
+            Object.keys(selectedBlocks).forEach(key => {
+                const tier = parseInt(key,10);
+                const set = selectedBlocks[tier];
+                if (set.size===0) return;
+                const price = PRICE[tier];
+                totalStake += set.size * price;
+                const item = document.createElement('div');
+                item.className = 'betslip-item';
+                item.textContent = `${TIER_NAME[tier]} ${set.size} × ${price.toFixed(2)}€`;
+                itemsEl.appendChild(item);
+            });
+            if (totalStake > 0) {
+                bar.style.display = 'flex';
+                document.getElementById('betslip-stake').textContent = `Total Stake: ${totalStake.toFixed(2)} EUR`;
+                const potential = totalStake * 80; // example multiplier
+                const net = potential * 0.95; // after 5% commission
+                document.getElementById('betslip-potential').textContent = `Potential Win: ${potential.toFixed(2)} EUR (Net ${net.toFixed(2)} EUR)`;
+            } else {
+                bar.style.display = 'none';
+            }
+        }
+
+        // Haptic wrapper: try Telegram WebApp haptic API, fallback to navigator.vibrate
+        function triggerHaptic(kind) {
+            try {
+                const tg = window.Telegram ? window.Telegram.WebApp ?? window.Telegram : window.Telegram;
+                if (tg && tg.hapticFeedback && typeof tg.hapticFeedback === 'object') {
+                    if (kind === 'impact' && tg.hapticFeedback.impactOccurred) tg.hapticFeedback.impactOccurred('light');
+                    if (kind === 'notification' && tg.hapticFeedback.notificationOccurred) tg.hapticFeedback.notificationOccurred('success');
+                    return;
+                }
+                // Older names or different SDKs
+                if (tg && tg.HapticImpact && typeof tg.HapticImpact.impactOccurred === 'function') {
+                    if (kind === 'impact') tg.HapticImpact.impactOccurred('light');
+                }
+            } catch (e) {
+                // ignore
+            }
+            try { if (kind === 'impact') navigator.vibrate?.(10); if (kind === 'notification') navigator.vibrate?.([30,20,30]); } catch(e){}
+        }
+
+        // Draw animation: laser scan across cells and land on winnerIndex (0..99)
+        async function startDrawAnimation(winnerIndex) {
+            const container = document.getElementById('grid-main');
+            if (!container) return;
+            const cells = Array.from(container.querySelectorAll('.cell'));
+            // Build sequence that ends with winnerIndex and contains many steps
+            const seq = [];
+            const totalSteps = 80 + Math.floor(Math.random()*40);
+            for (let i=0;i<totalSteps-1;i++) seq.push(Math.floor(Math.random()*100));
+            seq.push(winnerIndex);
+
+            let prev = null;
+            for (let i=0;i<seq.length;i++) {
+                const idx = seq[i];
+                const el = cells[idx];
+                if (!el) continue;
+                if (prev !== null && cells[prev]) cells[prev].classList.remove('scan');
+                el.classList.add('scan');
+                // play a subtle haptic tick for early steps
+                if (i < seq.length - 4) triggerHaptic('impact');
+
+                // delay increases to decelerate
+                const t = Math.min(100 + Math.pow(i,1.6), 1200);
+                await new Promise(r => setTimeout(r, t));
+                prev = idx;
+            }
+
+            // finalize winner
+            if (prev !== null && cells[prev]) cells[prev].classList.remove('scan');
+            const winnerEl = cells[winnerIndex];
+            if (winnerEl) {
+                winnerEl.classList.add('winner');
+                triggerHaptic('notification');
+                // ensure visible (scroll into view in modal)
+                try { winnerEl.scrollIntoView({behavior:'smooth', block:'center'}); } catch(e){}
+            }
+        }
+
+        // Cinematic carousel optimized for 1st-rank suspense
+        async function startCinematicCarousel(winnerNumber) {
+            const container = document.getElementById('grid-main');
+            if (!container) return;
+            const cells = Array.from(container.querySelectorAll('.cell'));
+            // ensure winnerNumber is visible index 0..99
+            const totalSteps = 200; // start fast, then decelerate across 15s
+            let delay = 20;
+            for (let i=0;i<totalSteps;i++) {
+                const progress = i/totalSteps;
+                // accelerate then decelerate curve (easeOutCubic)
+                delay = 10 + Math.pow(progress, 0.6) * 1200 / (Math.pow(progress+0.01,0.6));
+                const idx = Math.floor(Math.abs(Math.sin(i*3.1415/12))*100) % 100;
+                cells.forEach(c => c.classList.remove('scan'));
+                const el = cells[idx];
+                if (el) el.classList.add('scan');
+                await new Promise(r => setTimeout(r, Math.min(Math.max(delay,12), 800)));
+            }
+            // land on winner with decel clicks for 15s total
+            const clicks = 30;
+            for (let i=0;i<clicks;i++) {
+                const remaining = clicks - i;
+                const stepDelay = 150 + (i*i)*6; // decelerate
+                cells.forEach(c => c.classList.remove('scan'));
+                const el = cells[winnerNumber];
+                if (el) {
+                    el.classList.add('winner');
+                    triggerHaptic('notification');
+                }
+                await new Promise(r => setTimeout(r, stepDelay));
+            }
+            // celebration
+            triggerHaptic('success');
+            launchConfetti();
+        }
+
+        // Confetti - simple canvas particle system
+        function launchConfetti() {
+            const canvas = document.createElement('canvas');
+            canvas.style.position = 'fixed'; canvas.style.left='0'; canvas.style.top='0'; canvas.style.width='100%'; canvas.style.height='100%'; canvas.style.zIndex=99999; canvas.id='confetti-canvas';
+            document.body.appendChild(canvas);
+            const ctx = canvas.getContext('2d');
+            const DPR = window.devicePixelRatio || 1;
+            canvas.width = window.innerWidth * DPR; canvas.height = window.innerHeight * DPR; ctx.scale(DPR,DPR);
+            const particles = [];
+            const colors = ['#D4AF37','#FFD27A','#C5A028','#ffffff'];
+            for (let i=0;i<150;i++) particles.push({ x: Math.random()*window.innerWidth, y: -20-Math.random()*200, vx: (Math.random()-0.5)*6, vy: Math.random()*4+2, r: Math.random()*6+2, color: colors[Math.floor(Math.random()*colors.length)], rot: Math.random()*360, vr: (Math.random()-0.5)*6 });
+            let t0 = null;
+            function frame(ts) {
+                if (!t0) t0 = ts;
+                ctx.clearRect(0,0,canvas.width,canvas.height);
+                particles.forEach(p => {
+                    p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.rot += p.vr;
+                    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180);
+                    ctx.fillStyle = p.color; ctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*0.6); ctx.restore();
+                });
+                // remove offscreen
+                for (let i=particles.length-1;i>=0;i--) if (particles[i].y>window.innerHeight+50) particles.splice(i,1);
+                if (particles.length>0) requestAnimationFrame(frame); else { document.body.removeChild(canvas); }
+            }
+            requestAnimationFrame(frame);
+            setTimeout(()=>{ try { if (canvas.parentNode) canvas.parentNode.removeChild(canvas); } catch(e){} }, 14000);
+        }
+
+        async function proceedToPay() {
+            const totalText = document.getElementById('betslip-stake').textContent || '';
+            const m = totalText.match(/([0-9]+\.[0-9]{2})/);
+            const total = m ? parseFloat(m[1]) : 0;
+            if (!currentUser) { openSignInModal(); return; }
+            if (!hasSufficientBalance(total)) { showInsufficientFundsNotification(total); return; }
+            // Before completing purchase, ensure no lockdown for selected tiers
+            const purchaseTiers = [];
+            Object.keys(selectedBlocks).forEach(k => { if (selectedBlocks[k].size>0) purchaseTiers.push(k); });
+            for (const t of purchaseTiers) {
+                try {
+                    const res = await fetch(`/api/lockdown/${t}`);
+                    const jd = await res.json();
+                    if (jd && jd.lockdown) {
+                        window.location.href = `/draw.html?tier=${t}`;
+                        return;
+                    }
+                } catch(e) { }
+            }
+            // Deduct balance locally
+            updateBalance(userBalance - total);
+
+            // Persist purchase to user history
+            const users = readUsers();
+            const u = users[currentUser.username];
+            const purchase = { timestamp: Date.now(), total: total, items: [] };
+            Object.keys(selectedBlocks).forEach(k => {
+                const tier = parseInt(k,10);
+                const set = selectedBlocks[tier];
+                if (set.size > 0) {
+                    purchase.items.push({ tier, blocks: Array.from(set), stake: set.size * PRICE[tier] });
                 }
             });
+            if (u) {
+                u.history = u.history || [];
+                u.history.push(purchase);
+                u.balance = (u.balance || 0) - total;
+                users[currentUser.username] = u;
+                writeUsers(users);
+                currentUser = u;
+            }
+
+            // Clear selections
+            Object.keys(selectedBlocks).forEach(k => selectedBlocks[k].clear());
+            updateBetslip();
+            // refresh grid visuals
+            if (activeTier) generateGrid(activeTier);
+            showToast(lang==='en'?'Purchase successful':'ግዢ ተሳክቷል');
+            closeTierModal();
         }
+
         
         // Initialize translations on page load
         function initializeTranslations() {
@@ -2613,6 +2679,48 @@
             initializeTranslations();
         }
 
+        // Theme sync with Telegram WebApp and Tailwind's dark utility
+        function syncTheme() {
+            try {
+                const tg = window.Telegram && (window.Telegram.WebApp || window.Telegram);
+                const scheme = tg && tg.colorScheme ? tg.colorScheme : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                document.documentElement.setAttribute('data-theme', scheme === 'dark' ? 'dark' : 'light');
+                if (scheme === 'dark') document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark');
+            } catch (e) { console.error('syncTheme error', e); }
+        }
+        syncTheme();
+        try { if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.onEvent) { window.Telegram.WebApp.onEvent('themeChanged', syncTheme); } } catch(e){}
+
+        // Adjust header offset and grid viewport to avoid header scrolling away
+        function adjustLayoutForHeader() {
+            try {
+                const header = document.querySelector('header');
+                const main = document.querySelector('main') || document.body;
+                if (!header) return;
+                const h = header.offsetHeight + 8;
+                main.style.marginTop = h + 'px';
+                const gridContainer = document.getElementById('grid-container');
+                if (gridContainer) {
+                    gridContainer.style.maxHeight = `calc(100vh - ${h + 80}px)`;
+                    gridContainer.style.overflow = 'auto';
+                }
+            } catch (e) { console.error('adjustLayoutForHeader error', e); }
+        }
+        window.addEventListener('resize', adjustLayoutForHeader);
+        window.addEventListener('load', () => { adjustLayoutForHeader(); setTimeout(adjustLayoutForHeader,300); });
+
+        // Language font scaling: reduce font-size by 10% for Amharic to avoid wrapping issues
+        function applyLangFontScaling() {
+            const isAm = document.documentElement.getAttribute('data-lang') === 'am';
+            document.documentElement.style.lineHeight = '1.5';
+            if (isAm) {
+                document.documentElement.style.fontSize = '90%';
+            } else {
+                document.documentElement.style.fontSize = '';
+            }
+        }
+        applyLangFontScaling();
+
         // Initialize theme (works both in Telegram and normal browser)
         (function(){
             const savedTheme = localStorage.getItem('theme');
@@ -2646,8 +2754,8 @@
                 transparencyText: "ከ3ኛ እስከ 1ኛ ሽልማት ድረስ የሚደረጉ የቀጥታ ዕጣዎች ፍትሃዊነትን ያረጋግጣሉ።",
                 payoutsText: "አሸናፊዎች ዙሩ ከተጠናቀቀ በኋላ በቴሌብር/ሲቢኢ ሽልማታቸውን ወዲያውኑ ይቀበላሉ።",
                 frequencyText: "በእያንዳንዱ ዙር 100 ትኬቶች ብቻ ለፈጣን ጨዋታዎች እና ተጨማሪ ድሎች።",
-                payoutPolicyText: "የሽልማት ገንዘብዎን ከገዙበት አካውንት የተለየ ቴሌብር ወይም ሲቢኢ አካውንት በመጠቀም ማግኘት ይችላሉ።",
-                tippingPolicyText: "የመረጃ ማዕከል ሰራተኞችን ምክር ለመስጠት አላስገዳድም። ምክር መስጠት 100% አማራጭ ነው።",
+                payoutPolicyText: "የሽልማት ገንዘብዎን ከገዙበት ተቋም በተለየ ቴሌብር ወይም ሲቢኢ አካውንት ላይ ማግኘት ይችላሉ።",
+                tippingPolicyText: "የመረጃ ማዕከል ሰራተኞችን ምክር ለመስጠት አልተግዳዳም። ቲፕ መስጠት 100% የምርጫ ነው።",
                 drawTimingText: "ከሽያጭ በኋላ የ3 ደቂቃ ቆይታ ሁሉም ገዢዎች የቀጥታ አኒሜሽን ለመቀላቀል ጊዜ እንዲኖራቸው ነው።",
                 restrictionsText: "ተጫዋቾች 18+ መሆን አለባቸው። በኃላፊነት ይጫወቱ።",
                 askMeBtn: "💬 ጠይቀኝ",
@@ -2672,12 +2780,12 @@
                 platinumComingSoon: "ፕላቲነም - በቅርቡ ይቀርባል",
                 contact: "ያግኙን",
                 transparencyText: "ግልጽነት፡ እጣዎች ከ3ኛ እስከ 1ኛ ደረጃ ለሁሉም በሚታይ መልኩ ይወጣሉ።",
-                payoutsText: "ፈጣን ክፍያ፡ የሽልማት ገንዘብዎ በቴሌብር ወይም በንግድ ባንክ ወዲያውኑ ይላክልዎታል።",
+                payoutsText: "ፈጣን ክፍያ፡ የሽልማት ገንዘብዎ በቴሌብር እና በንግድ ባንክ ወዲያውኑ ይላክልዎታል።",
                 frequencyText: "ተከታታይነት፡ ፈጣን ጨዋታና ብዙ እድል እንዲኖር በአንድ ዙር 100 ቲኬቶች ብቻ።",
                 payoutPolicyText: "የክፍያ ሁኔታ፡ የሽልማት ገንዘብዎን በተለያዩ ባንኮች መቀበል ይችላሉ።",
-                tippingPolicyText: "የቲኬት አጠቃቀም፡ በመረጃ ማዕከል በኩል መጠቀም ምርጫዎ ነው።",
+                tippingPolicyText: "ቲኬት ፖሊሲ፡ የመረጃ ማዕከል በኩል መጠቀም ምርጫዎ ነው።",
                 drawTimingText: "የዕጣ ጊዜ፡ ሁሉም ቲኬቶች እንደተሸጡ የ5 ደቂቃ ቆጠራ ይጀምራል።",
-                restrictionsText: "ክልከላዎች፡ ተጫዋቾች ዕድሜያቸው 18 እና ከዚያ በላይ መሆን አለበት። በኃላፊነት ይጫወቱ።"
+                restrictionsText: "ክልከላዎች፡ ተጫዋቾች ዕድሜያቸው 18 እና ከዚያ በላይ መሆን አለበት። በኃላፊነት ይጫወቱ።",
             },
                 en: { 
                 thT: "Game Type", thR: "Round", thS: "Status", thP: "Price", 
@@ -2788,7 +2896,9 @@
             
             // Update button text immediately
             const btn = document.getElementById('lang-btn');
+            const btn2 = document.getElementById('lang-toggle');
             if (btn) btn.innerText = lang === 'am' ? 'EN' : 'አማርኛ';
+            if (btn2) btn2.innerText = lang === 'am' ? 'EN' : 'አማርኛ';
             
             // Update all translations
             initializeTranslations();
@@ -2814,6 +2924,17 @@
 
 
         async function openTier(id) {
+            // Check global lockdown state first
+            try {
+                const r = await fetch(`/api/lockdown/${id}`);
+                const jd = await r.json();
+                if (jd && jd.lockdown) {
+                    // redirect to cinematic draw arena
+                    const base = (location.origin + '/draw.html').replace(/\/\/$/, '/draw.html');
+                    window.location.href = `/draw.html?tier=${id}`;
+                    return;
+                }
+            } catch (e) { /* ignore */ }
             currentTierId = id;
             selectedNumbersMap.clear();
             updateBetSlip();
@@ -3129,7 +3250,9 @@
                 tg.MainButton.textColor = tg.buttonTextColor;
                 tg.MainButton.show();
             }
-            
+
+            // Start the UI countdown for the payment window
+            try { startCountdown(); } catch (e) { /* ignore if unavailable */ }
             triggerHaptic('medium');
         }
 
@@ -3568,6 +3691,47 @@
             const data = `${currentUser.id}-${currentTierId}-${activePaymentNumber}-${timestamp}-${random}`;
             return await sha256(data);
         }
+
+        // Lightweight fallbacks for functions expected elsewhere
+        function checkAuthenticationState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_CURRENT_KEY);
+                if (saved) {
+                    currentUser = JSON.parse(saved);
+                    showAuthenticatedUI();
+                } else {
+                    currentUser = null;
+                    showUnauthenticatedUI();
+                }
+            } catch (e) {
+                currentUser = null;
+                showUnauthenticatedUI();
+            }
+        }
+
+        function initializeTrustSystem() {
+            // Placeholder: trust system UI setup (no-op safe fallback)
+            return;
+        }
+
+        async function loadWinners(tierId) {
+            try {
+                const grid = document.getElementById('live-winners-grid');
+                if (!grid) return;
+                const res = await fetch(`/api/winners/${tierId}`).catch(() => null);
+                if (!res || !res.ok) return;
+                const data = await res.json();
+                grid.innerHTML = '';
+                (data || []).slice(0, 3).forEach(w => {
+                    const card = document.createElement('div');
+                    card.className = 'winner-card';
+                    card.innerHTML = `<div class="winner-number">#${w.number}</div><div class="winner-tier">${w.tier || ''}</div>`;
+                    grid.appendChild(card);
+                });
+            } catch (e) {
+                console.error('loadWinners error', e);
+            }
+        }
         
         // ============================================
         // EVENT LISTENERS FOR AUTHENTICATION
@@ -3593,29 +3757,27 @@
                 });
             }
             
-            // My Account button
+            // My Account button - open account modal (shows phone & history)
             const myAccountBtn = document.getElementById('my-account-btn');
             if (myAccountBtn) {
                 myAccountBtn.addEventListener('click', function() {
-                    if (currentUser) {
-                        showAlert(`Account: ${currentUser.first_name} ${currentUser.last_name}\nID: ${currentUser.id}\nBalance: ${userBalance.toLocaleString()} ETB`);
-                    }
+                    openAccountModal();
                 });
             }
             
-            // Sign In button
-            const signInBtns = document.querySelectorAll('#sign-in-btn');
+            // Sign In button fallback behavior: open sign-in modal
+            const signInBtns = document.querySelectorAll('.sign-in-btn');
             signInBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
-                    showAlert('Please open this app in Telegram to sign in.', 'info');
+                    openSignInModal();
                 });
             });
             
-            // Register button
-            const registerBtns = document.querySelectorAll('#register-btn');
+            // Register button fallback behavior: open register modal
+            const registerBtns = document.querySelectorAll('.register-btn');
             registerBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
-                    showAlert('Please open this app in Telegram to register.', 'info');
+                    openRegisterModal();
                 });
             });
         });
@@ -3821,25 +3983,62 @@
             const range = end - start;
             const increment = range / (duration / 16);
             let current = start;
-            
+
             const timer = setInterval(() => {
                 current += increment;
                 if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
                     current = end;
                     clearInterval(timer);
                 }
-                element.textContent = isCurrency 
+                element.textContent = isCurrency
                     ? `${Math.floor(current).toLocaleString()} ETB`
                     : Math.floor(current);
             }, 16);
         }
-        
-        // Helper functions for ticket history\n        function loadTicketHistory() {\n            const grid = document.getElementById(" ticket-history-grid\);\n if (!grid) return;\n grid.innerHTML = \\;\n for (let i = 1; i <= 100; i++) {\n const cell = document.createElement(\div\);\n cell.className = \ticket-cell-mini available\;\n if (Math.random() < 0.3) {\n cell.className = \ticket-cell-mini sold\;\n }\n cell.textContent = i;\n grid.appendChild(cell);\n }\n }\n \n function loadRecentWinners() {\n const grid = document.getElementById(\recent-winners-grid\);\n if (!grid) return;\n const winners = [\n { number: 23, tier: \Gold\, prize: 15000 },\n { number: 67, tier: \Silver\, prize: 9000 },\n { number: 45, tier: \Bronze\, prize: 3000 }\n ];\n grid.innerHTML = \\;\n winners.forEach(winner => {\n const card = document.createElement(\div\);\n card.className = \winner-card\;\n card.innerHTML = <div class=\winner-number\>#</div><div class=\winner-tier\> Tier</div><div class=\winner-prize\> ETB</div>;\n grid.appendChild(card);\n });\n }\n \n // Initial load
+
+        // Helper functions for ticket history
+        function loadTicketHistory() {
+            const grid = document.getElementById('ticket-history-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            for (let i = 1; i <= 100; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'ticket-cell-mini available';
+                if (Math.random() < 0.3) {
+                    cell.classList.add('sold');
+                }
+                cell.textContent = i;
+                grid.appendChild(cell);
+            }
+        }
+
+        function loadRecentWinners() {
+            const grid = document.getElementById('recent-winners-grid');
+            if (!grid) return;
+            const winners = [
+                { number: 23, tier: 'Gold', prize: 15000 },
+                { number: 67, tier: 'Silver', prize: 9000 },
+                { number: 45, tier: 'Bronze', prize: 3000 }
+            ];
+            grid.innerHTML = '';
+            winners.forEach(winner => {
+                const card = document.createElement('div');
+                card.className = 'winner-card';
+                card.innerHTML = `
+                    <div class="winner-number">#${winner.number}</div>
+                    <div class="winner-tier">${winner.tier}</div>
+                    <div class="winner-prize">${winner.prize} ETB</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Initial load
         checkAuthenticationState(); // Check authentication first
         loadLeagueData();
         loadLiveWinners();
         loadStatistics();
-        
+
         // Auto-refresh every 30 seconds
         setInterval(() => {
             loadLiveWinners();
