@@ -972,6 +972,28 @@
         .betslip-item { background: rgba(255,255,255,0.03); padding:6px 8px; border-radius:8px; font-weight:600; }
         .betslip-summary { text-align:right; min-width:160px; }
         .betslip-button { background: linear-gradient(135deg,#f97316,#ea580c); color:white; padding:10px 14px; border-radius:10px; border:none; font-weight:800; cursor:pointer; }
+        /* Pulse animation to draw attention when betslip has items */
+        .betslip-button.pulse {
+            animation: betslip-pulse 1200ms ease-in-out infinite;
+            box-shadow: 0 8px 30px rgba(249,115,22,0.18), 0 2px 8px rgba(0,0,0,0.6);
+            transform-origin: center;
+        }
+        @keyframes betslip-pulse {
+            0% { transform: translateY(0) scale(1); }
+            50% { transform: translateY(-4px) scale(1.03); }
+            100% { transform: translateY(0) scale(1); }
+        }
+
+        /* Winner-card shimmer */
+        .winner-card { position:relative; overflow:hidden; }
+        .winner-card.shimmer::after {
+            content: '';
+            position: absolute; inset:0; pointer-events:none;
+            background: linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.04) 45%, rgba(255,255,255,0.12) 55%, transparent 100%);
+            transform: translateX(-120%);
+            animation: shimmer-slide 1800ms linear infinite;
+        }
+        @keyframes shimmer-slide { 0% { transform: translateX(-120%);} 100% { transform: translateX(120%);} }
         
         /* --- ABOUT US SECTION --- */
         .about-section { padding: 34px 16px 40px 16px; background: var(--surface); text-align: left; transition: background 0.3s, color 0.3s; }
@@ -2500,8 +2522,13 @@
                 const potential = totalStake * 80; // example multiplier
                 const net = potential * 0.95; // after 5% commission
                 document.getElementById('betslip-potential').textContent = `Potential Win: ${potential.toFixed(2)} EUR (Net ${net.toFixed(2)} EUR)`;
+                // Animate pay button to attract attention
+                const payBtn = document.querySelector('.betslip-button');
+                if (payBtn) payBtn.classList.add('pulse');
             } else {
                 bar.style.display = 'none';
+                const payBtn = document.querySelector('.betslip-button');
+                if (payBtn) payBtn.classList.remove('pulse');
             }
         }
 
