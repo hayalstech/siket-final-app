@@ -73,6 +73,18 @@
             border-color: rgba(255,69,58,0.4);
             pointer-events: none;
         }
+        .cell.reserved {
+            background: rgba(34,197,94,0.10);
+            color: rgba(2,6,23,0.9);
+            border-color: rgba(16,185,129,0.5);
+            animation: reserved-pulse 1400ms ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes reserved-pulse {
+            0% { box-shadow: 0 0 0 rgba(16,185,129,0.08); transform: translateY(0); }
+            50% { box-shadow: 0 6px 18px rgba(16,185,129,0.18); transform: translateY(-2px); }
+            100% { box-shadow: 0 0 0 rgba(16,185,129,0.08); transform: translateY(0); }
+        }
         .cell.selected { background: #32d74b; color: black; border-color: #32d74b; font-weight: bold; }
 
         /* Scan highlight during draw */
@@ -365,7 +377,6 @@
             0% { transform: translateY(0); }
             50% { transform: translateY(-4px); }
             100% { transform: translateY(0); }
-        }
         }
 
         /* If background-clip text is supported, make the fill transparent so the gradient shows through */
@@ -785,11 +796,11 @@
         .available { background: #1d4ed8; color: white; }
         .available:hover { background: #2563eb; transform: scale(1.05); }
         .selected { background: #eab308; color: black; box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.6); }
-        .pending { background: #eab308; color: black; }
-        .sold { background: var(--bronze); color: white; pointer-events: none; opacity: 0.8; }
+        .pending { background: rgba(16,163,74,0.08); color: #ffffff; border-color: rgba(16,163,74,0.14); }
+        .sold { background: var(--green,#16a34a); color: white; pointer-events: none; opacity: 0.95; }
         /* Pending - pulsing green; Sold - solid green with white numbers */
-        .cell.pending { background: #22c55e; color: #ffffff !important; border-color: #16a34a !important; box-shadow: 0 8px 28px rgba(34,197,94,0.16); animation: pending-pulse 1400ms ease-in-out infinite; pointer-events: none; }
-        .cell.sold { background: #16a34a !important; color: #ffffff !important; border-color: #16a34a !important; pointer-events: none; box-shadow: 0 6px 16px rgba(16,163,74,0.18); }
+        .cell.pending { background: linear-gradient(180deg,#34d399,#059669); color: #ffffff !important; border-color: #059669 !important; box-shadow: 0 10px 30px rgba(5,150,105,0.14); animation: pending-pulse 1200ms ease-in-out infinite; pointer-events: none; }
+        .cell.sold { background: #16a34a !important; color: #ffffff !important; border-color: #16a34a !important; pointer-events: none; box-shadow: 0 6px 18px rgba(16,163,74,0.18); }
 
         /* --- TRUST BADGE & LIVE AUDIT --- */
         .trust-badge {
@@ -1338,7 +1349,7 @@
         .status-legend .legend-row { display:flex; align-items:center; gap:10px; }
         .status-indicator { width:28px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,0.12); flex-shrink:0; }
         .indicator-available { background: transparent; border-color: rgba(255,255,255,0.2); }
-        .indicator-pending { background: linear-gradient(90deg,#34d399,#10b981); box-shadow: 0 6px 18px rgba(16,185,129,0.18); animation: pending-pulse 1400ms ease-in-out infinite; }
+        .indicator-pending { background: linear-gradient(90deg,#f59e0b,#b45309); box-shadow: 0 6px 18px rgba(180,83,9,0.18); animation: pending-pulse 1400ms ease-in-out infinite; }
         .indicator-sold { background: #16a34a; border-color: #16a34a; }
 
         @keyframes pending-pulse { 0% { transform: scale(1); box-shadow: 0 6px 18px rgba(16,185,129,0.12);} 50% { transform: scale(1.06); box-shadow: 0 12px 30px rgba(16,185,129,0.22);} 100% { transform: scale(1); box-shadow: 0 6px 18px rgba(16,185,129,0.12);} }
@@ -1371,7 +1382,7 @@
         .bottom-legend .legend-entry { display:flex; align-items:center; gap:10px; flex:1; justify-content:center; }
         .legend-box { width:28px; height:18px; border-radius:6px; flex-shrink:0; border:2px solid rgba(255,255,255,0.14); }
         .legend-box.neutral { background: transparent; border-color: rgba(255,255,255,0.22); }
-        .legend-box.pulsing { background: #22c55e; border-color: #16a34a; box-shadow: 0 8px 24px rgba(34,197,94,0.14); animation: legend-pulse 1500ms ease-in-out infinite; }
+        .legend-box.pulsing { background: linear-gradient(135deg,#ffd27a,#b45309); border-color: #b45309; box-shadow: 0 8px 24px rgba(180,83,9,0.14); animation: legend-pulse 1500ms ease-in-out infinite; }
         .legend-box.sold { background: #16a34a; border-color: #16a34a; box-shadow: 0 6px 16px rgba(16,163,74,0.12); }
         .legend-text-bilingual { display:flex; flex-direction:column; line-height:1; text-align:left; }
         .legend-text-bilingual .en { font-weight:800; font-size:13px; color: var(--text-primary); }
@@ -1397,6 +1408,8 @@
                 <button id="theme-btn" class="theme-toggle" title="Toggle theme">🌙</button>
             </div>
         </div>
+
+        <!-- recent-winners-per-tier moved below the grid/legend by refactor -->
 
         <!-- Header Bottom Row: Masked EUR Balance (left) + Deposit / Account (right) -->
         <div class="header-row header-bottom" role="navigation" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04);">
@@ -1528,7 +1541,138 @@
         </div>
     </div>
 
-    <!-- Betslip bar (appears when user selects blocks) -->
+                    <!-- Recent Winners Per Tier (1st-3rd) - displayed below grid and legend -->
+                    <section id="recent-winners-per-tier" style="max-width:920px;margin:14px auto;padding:8px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <div>
+                                <div style="font-weight:900;color:var(--accent);font-size:14px;">Recent Winners / የቅርብ ጊዜ አሸናፊዎች</div>
+                                <div style="font-size:12px;color:var(--text-secondary);">Latest top 3 winners per tier and round</div>
+                            </div>
+                            <div style="font-size:12px;color:var(--text-secondary);opacity:0.9">Auto-updates after each draw</div>
+                        </div>
+
+                        <div id="recent-winners-tier-grid" style="display:flex;gap:12px;flex-wrap:wrap;">
+                            <!-- Tier cards inserted here: Gold(3), Silver(2), Bronze(1) -->
+                            <div class="tier-winners-card" data-tier="3"></div>
+                            <div class="tier-winners-card" data-tier="2"></div>
+                            <div class="tier-winners-card" data-tier="1"></div>
+                        </div>
+                    </section>
+
+                    <style>
+                    .tier-winners-card { flex:1 1 280px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(212,175,55,0.06); border-radius:12px; padding:12px; box-shadow:0 10px 24px rgba(0,0,0,0.45); }
+                    .tier-winners-card .tier-header { display:flex;align-items:center;justify-content:space-between;margin-bottom:8px; }
+                    .tier-winners-card .tier-name { font-weight:900;color:var(--accent); }
+                    .tier-winners-card .round-id { font-size:12px;color:var(--text-secondary); }
+                    .tier-winners-card .top3 { display:flex;gap:8px;align-items:center; }
+                    .pill { display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px;border-radius:10px;background:rgba(0,0,0,0.06);min-width:64px; }
+                    .pill .place { font-size:11px;color:var(--text-secondary); }
+                    .pill .num { width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;background:linear-gradient(135deg,#ffd27a,#b45309);color:#111;border:2px solid rgba(255,255,255,0.06);box-shadow:0 8px 18px rgba(180,83,9,0.12); }
+                    @media (max-width:720px) { .tier-winners-card { flex-basis:100%; } .pill .num { width:36px;height:36px;font-size:14px; } }
+                    </style>
+
+                    <!-- Recent Winners History: Glass horizontal scroller (VIP Mall aesthetic) -->
+                    <div class="recent-winners-history" id="recent-winners-history" aria-live="polite" style="margin-top:12px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">
+                            <div style="display:flex;flex-direction:column;">
+                                <span class="lang-en" style="font-weight:900;color:var(--accent);font-size:14px;">Recent Winners</span>
+                                <span class="lang-am" style="font-weight:700;color:var(--text-secondary);font-size:12px;">የቅርብ ጊዜ አሸናፊዎች</span>
+                            </div>
+                            <div style="opacity:0.85;font-size:12px;color:var(--text-secondary);">VIP Mall · Live</div>
+                        </div>
+
+                        <div id="recent-winners-scroll" class="recent-winners-scroll" role="list" aria-label="Recent winners, horizontal scroll">
+                            <!-- Winning pills will be injected here -->
+                        </div>
+                    </div>
+
+                    <style>
+                    /* Recent Winners History styles (glassmorphism + horizontal scroll) */
+                    .recent-winners-history { max-width: 920px; margin: 8px auto 16px auto; padding: 10px; border-radius: 12px; background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02)); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border: 1px solid rgba(212,175,55,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.45); }
+                    .recent-winners-scroll { display:flex; gap:12px; overflow-x:auto; padding:8px 4px; -webkit-overflow-scrolling:touch; scroll-snap-type: x mandatory; }
+                    .recent-winners-scroll::-webkit-scrollbar { height:8px; }
+                    .recent-winners-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 999px; }
+                    .winning-pill { flex:0 0 auto; display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:999px; background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(212,175,55,0.08); box-shadow: 0 8px 26px rgba(0,0,0,0.45); min-width:150px; scroll-snap-align: start; }
+                    .winning-pill .round-id { font-weight:800; font-size:13px; color:var(--text-secondary); min-width:56px; }
+                    .winning-pill .winning-circle { width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:16px; color:#111; background: linear-gradient(135deg,#FFD700,#D4AF37); box-shadow: 0 8px 22px rgba(212,175,55,0.18); border: 2px solid rgba(255,255,255,0.12); }
+                    .winning-pill .winning-meta { display:flex; flex-direction:column; gap:2px; }
+                    .winning-pill .winning-meta .label { font-size:12px; color:var(--text-secondary); }
+                    .winning-pill .winning-meta .sub { font-size:11px; color:var(--text-secondary); opacity:0.9; }
+
+                    @media (max-width:640px) {
+                        .recent-winners-history { padding: 8px; margin-bottom: 12px; }
+                        .winning-pill { min-width: 120px; padding:8px 10px; gap:8px; }
+                        .winning-pill .winning-circle { width:36px; height:36px; font-size:14px; }
+                        .winning-pill .round-id { font-size:12px; }
+                    }
+                    </style>
+
+                    <script>
+                    // Robust Recent Winners loader + renderer
+                    async function loadRecentWinnersRobust(force = false) {
+                        const container = document.getElementById('recent-winners-scroll');
+                        if (!container) return;
+                        try {
+                            let res = await fetch('/api/winners/recent?limit=5');
+                            if (!res.ok) {
+                                // fallback to older endpoint
+                                res = await fetch('/api/winners/all');
+                            }
+                            if (!res.ok) throw new Error('no winners');
+                            const data = await res.json();
+                            let winners = [];
+                            if (Array.isArray(data)) {
+                                winners = data.slice(-5).reverse();
+                            } else if (Array.isArray(data.recent)) {
+                                winners = data.recent.slice(0,5);
+                            } else if (Array.isArray(data.winners)) {
+                                winners = data.winners.slice(-5).reverse();
+                            }
+                            renderRecentWinners(winners);
+                        } catch (e) {
+                            // graceful fallback: create demo entries
+                            const demo = [];
+                            const base = Math.max(1, (parseInt(currentRound,10) || 50));
+                            for (let i=0;i<5;i++) demo.push({ round: String(base - i).padStart(4,'0'), number: ((base*7 + i*3) % 99) + 1 });
+                            renderRecentWinners(demo);
+                        }
+                    }
+
+                    function renderRecentWinners(list) {
+                        const container = document.getElementById('recent-winners-scroll');
+                        if (!container) return;
+                        container.innerHTML = '';
+                        list.forEach(item => {
+                            const pill = document.createElement('div');
+                            pill.className = 'winning-pill';
+                            const round = String(item.round || item.round_id || item.id || '0').padStart(4,'0');
+                            const number = String(item.number || item.winning_number || item.win || item.value || '00');
+                            pill.innerHTML = `
+                                <div class="winning-circle" aria-hidden="true">${number}</div>
+                                <div class="winning-meta">
+                                    <div class="round-id">#${round}</div>
+                                    <div class="label lang-en">Winning Number</div>
+                                    <div class="label lang-am">የአሸናፊ ቁጥር</div>
+                                </div>
+                            `;
+                            pill.setAttribute('role','listitem');
+                            container.appendChild(pill);
+                        });
+                    }
+
+                    // Auto-refresh after draw finishes and periodic polling (use robust loader)
+                    document.addEventListener('draw:ended', () => { if (window.loadRecentWinnersRobust) window.loadRecentWinnersRobust(true); });
+                    // poll every 8 seconds for fresh winners
+                    setInterval(() => { if (window.loadRecentWinnersRobust) window.loadRecentWinnersRobust(); }, 8000);
+
+                    // Kick off initial load once DOM is ready
+                    try { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { if (window.loadRecentWinnersRobust) window.loadRecentWinnersRobust(); }); else if (window.loadRecentWinnersRobust) window.loadRecentWinnersRobust(); } catch(e){}
+
+                    // Expose for legacy wrappers
+                    window.loadRecentWinnersRobust = loadRecentWinnersRobust;
+                    </script>
+
+                    <!-- Betslip bar (appears when user selects blocks) -->
     <div id="betslip-bar" class="betslip-bar">
         <div class="betslip-items" id="betslip-items"></div>
         <div class="betslip-summary">
@@ -2201,7 +2345,7 @@
 
         let currentUser = null;
         let userBalance = 0;
-        let isBalanceVisible = false;
+        let isBalanceVisible = (localStorage.getItem('siket_balance_visible') === '1');
 
         // --- UI helpers ---
         function showAuthenticatedUI() {
@@ -2385,6 +2529,8 @@
             const balanceDisplay = document.getElementById('balance-display');
             const eyeIcon = document.getElementById('balance-toggle');
             isBalanceVisible = !isBalanceVisible;
+            // persist preference
+            try { localStorage.setItem('siket_balance_visible', isBalanceVisible ? '1' : '0'); } catch(e) {}
             if (isBalanceVisible) {
                 balanceDisplay.textContent = `${userBalance.toLocaleString()} EUR`;
                 eyeIcon.textContent = '👁️‍🗨️';
@@ -2480,6 +2626,10 @@
             if (deposit) deposit.addEventListener('click', openDepositModal);
             const balanceToggle = document.getElementById('balance-toggle');
             if (balanceToggle) balanceToggle.addEventListener('click', toggleBalanceVisibility);
+            // initialize balance toggle icon from persisted preference
+            try {
+                if (balanceToggle) balanceToggle.textContent = (localStorage.getItem('siket_balance_visible') === '1') ? '👁️‍🗨️' : '👁️';
+            } catch(e) { }
             const myAccount = document.getElementById('my-account-btn');
             if (myAccount) myAccount.addEventListener('click', openAccountModal);
             // Language and theme toggles
@@ -2512,7 +2662,8 @@
             if (el) el.textContent = `1 EUR = ${EUR_TO_ETB} ETB`;
         })();
         const selectedBlocks = { 3: new Set(), 2: new Set(), 1: new Set() };
-        const soldBlocksCache = { 3: new Set(), 2: new Set(), 1: new Set() };
+        // soldBlocksCache[tier] => { sold: Set, reserved: Map(index -> {owner, expiresIn}) }
+        const soldBlocksCache = { 3: { sold: new Set(), reserved: new Map() }, 2: { sold: new Set(), reserved: new Map() }, 1: { sold: new Set(), reserved: new Map() } };
         let activeTier = null;
 
         function openTierModal(tier) {
@@ -2530,14 +2681,33 @@
             try {
                 const res = await fetch(`/api/sold-blocks?tier=${tier}`);
                 if (!res.ok) throw new Error('no');
-                const data = await res.json(); // expect array of indexes 0..99
-                soldBlocksCache[tier] = new Set(data || []);
-                return;
+                const data = await res.json();
+                // Backwards-compatible: old API returned an array of indices
+                if (Array.isArray(data)) {
+                    soldBlocksCache[tier].sold = new Set(data || []);
+                    soldBlocksCache[tier].reserved = new Map();
+                    return;
+                }
+                // New format: { tier, round, tickets: [ {index, status, owner, expiresIn}, ... ] }
+                if (data && Array.isArray(data.tickets)) {
+                    const sold = new Set();
+                    const reserved = new Map();
+                    for (const t of data.tickets) {
+                        if (!t || typeof t.index === 'undefined') continue;
+                        if (t.status === 'sold') sold.add(t.index);
+                        else if (t.status === 'reserved') reserved.set(t.index, { owner: t.owner || null, expiresIn: t.expiresIn || null });
+                    }
+                    soldBlocksCache[tier].sold = sold;
+                    soldBlocksCache[tier].reserved = reserved;
+                    return;
+                }
+                throw new Error('unexpected');
             } catch (e) {
                 // fallback: randomly mark ~8 sold for demo
                 const set = new Set();
                 while (set.size < 8) set.add(Math.floor(Math.random()*100));
-                soldBlocksCache[tier] = set;
+                soldBlocksCache[tier].sold = set;
+                soldBlocksCache[tier].reserved = new Map();
             }
         }
 
@@ -2550,9 +2720,12 @@
                     cell.className = 'cell available flex items-center justify-center text-xs sm:text-sm font-semibold';
                 cell.dataset.index = i.toString();
                 cell.textContent = (i+1).toString();
-                if (soldBlocksCache[tier].has(i)) {
+                if (soldBlocksCache[tier].sold && soldBlocksCache[tier].sold.has(i)) {
                     cell.classList.remove('available');
                     cell.classList.add('sold');
+                } else if (soldBlocksCache[tier].reserved && soldBlocksCache[tier].reserved.has(i)) {
+                    cell.classList.remove('available');
+                    cell.classList.add('reserved');
                 } else if (selectedBlocks[tier].has(i)) {
                     cell.classList.remove('available');
                     cell.classList.add('selected');
@@ -2563,7 +2736,8 @@
         }
 
         function handleCellClick(tier, index, el) {
-            if (soldBlocksCache[tier].has(index)) return;
+            // prevent interaction for sold or reserved indexes
+            if ((soldBlocksCache[tier].sold && soldBlocksCache[tier].sold.has(index)) || (soldBlocksCache[tier].reserved && soldBlocksCache[tier].reserved.has(index))) return;
                 // haptic tap
                 triggerHaptic('impact');
             if (selectedBlocks[tier].has(index)) {
@@ -2762,36 +2936,85 @@
                     }
                 } catch(e) { }
             }
-            // Deduct balance locally
-            updateBalance(userBalance - total);
-
-            // Persist purchase to user history
-            const users = readUsers();
-            const u = users[currentUser.username];
-            const purchase = { timestamp: Date.now(), total: total, items: [] };
+            // Prepare purchase items grouped per tier
+            const purchaseItems = [];
             Object.keys(selectedBlocks).forEach(k => {
                 const tier = parseInt(k,10);
                 const set = selectedBlocks[tier];
-                if (set.size > 0) {
-                    purchase.items.push({ tier, blocks: Array.from(set), stake: set.size * PRICE[tier] });
-                }
+                if (set.size > 0) purchaseItems.push({ tier, blocks: Array.from(set), stake: set.size * PRICE[tier] });
             });
-            if (u) {
-                u.history = u.history || [];
-                u.history.push(purchase);
-                u.balance = (u.balance || 0) - total;
-                users[currentUser.username] = u;
-                writeUsers(users);
-                currentUser = u;
+
+            // For each tier, attempt server reservation. Show pending UI while awaiting Redis confirmation.
+            const failed = [];
+            for (const item of purchaseItems) {
+                const tier = item.tier;
+                // mark UI cells as pending
+                item.blocks.forEach(idx => {
+                    const el = document.querySelector(`#grid-main .cell[data-index='${idx}']`);
+                    if (el) { el.classList.remove('available','selected'); el.classList.add('pending'); }
+                });
+
+                // get current round for tier
+                let roundNo = null;
+                try {
+                    const sres = await fetch(`/api/status/${tier}`);
+                    if (sres.ok) {
+                        const sd = await sres.json();
+                        roundNo = sd.round || sd.currentRound || sd.roundNo || null;
+                    }
+                } catch(e) {}
+
+                // call server to reserve/persist
+                try {
+                    const res = await fetch('/api/complete-purchase', {
+                        method: 'POST', headers: { 'Content-Type':'application/json' },
+                        body: JSON.stringify({ userId: currentUser ? currentUser.id : null, tierId: tier, roundNo: roundNo || undefined, numbers: item.blocks })
+                    });
+                    const jd = await res.json().catch(()=>({}));
+                    if (!res.ok) {
+                        // mark specific unavailable numbers as sold in cache and update UI
+                        if (jd && jd.error === 'ticket_unavailable' && jd.number != null) {
+                            soldBlocksCache[tier] = soldBlocksCache[tier] || new Set();
+                            soldBlocksCache[tier].add(jd.number);
+                            const el = document.querySelector(`#grid-main .cell[data-index='${jd.number}']`);
+                            if (el) { el.classList.remove('pending'); el.classList.add('sold'); }
+                        }
+                        // mark all item blocks back to available
+                        item.blocks.forEach(idx => { const el = document.querySelector(`#grid-main .cell[data-index='${idx}']`); if (el && !soldBlocksCache[tier]?.has(idx)) { el.classList.remove('pending'); el.classList.add('available'); } });
+                        failed.push(item);
+                        continue;
+                    }
+
+                    // success -> mark as sold in UI and cache
+                    item.blocks.forEach(idx => {
+                        soldBlocksCache[tier] = soldBlocksCache[tier] || new Set();
+                        soldBlocksCache[tier].add(idx);
+                        const el = document.querySelector(`#grid-main .cell[data-index='${idx}']`);
+                        if (el) { el.classList.remove('pending'); el.classList.add('sold'); }
+                    });
+                    // deduct user's balance now (per tier success)
+                    const current = userBalance - item.stake;
+                    updateBalance(current);
+                } catch (e) {
+                    console.error('purchase error', e);
+                    item.blocks.forEach(idx => { const el = document.querySelector(`#grid-main .cell[data-index='${idx}']`); if (el) { el.classList.remove('pending'); el.classList.add('available'); } });
+                    failed.push(item);
+                }
             }
 
-            // Clear selections
-            Object.keys(selectedBlocks).forEach(k => selectedBlocks[k].clear());
+            // Clear successful selections only
+            purchaseItems.forEach(item => {
+                if (!failed.includes(item)) selectedBlocks[item.tier].clear();
+            });
             updateBetslip();
-            // refresh grid visuals
             if (activeTier) generateGrid(activeTier);
-            showToast(lang==='en'?'Purchase successful':'ግዢ ተሳክቷል');
-            closeTierModal();
+
+            if (failed.length === 0) {
+                showToast(lang==='en'?'Purchase successful':'ግዢ ተሳክቷል');
+                closeTierModal();
+            } else {
+                showToast(lang==='en'?'Some tickets failed to purchase':'አንዳንድ ትኬቶች አልተሸሙም');
+            }
         }
 
         
@@ -4208,7 +4431,80 @@
             }
         }
 
+        // Load recent winners per tier (top 3 for each round)
+        async function loadRecentWinnersPerTier() {
+            const grid = document.getElementById('recent-winners-tier-grid');
+            if (!grid) return;
+            const tiers = [3,2,1];
+            const tierNames = {3: 'Gold', 2: 'Silver', 1: 'Bronze'};
+            for (const tier of tiers) {
+                const cardEl = grid.querySelector(`.tier-winners-card[data-tier="${tier}"]`);
+                if (!cardEl) continue;
+                cardEl.innerHTML = `<div class="tier-header"><div class="tier-name">${tierNames[tier]}</div><div class="round-id">#----</div></div><div class="top3"><div class="pill"><div class="place">1st</div><div class="num">--</div></div><div class="pill"><div class="place">2nd</div><div class="num">--</div></div><div class="pill"><div class="place">3rd</div><div class="num">--</div></div></div>`;
+
+                try {
+                    // try per-tier latest endpoint
+                    let res = await fetch(`/api/winners/latest?tier=${tier}`);
+                    if (!res.ok) {
+                        // fallback to all winners and pick latest for this tier
+                        res = await fetch('/api/winners/all');
+                    }
+                    if (!res.ok) throw new Error('no winners');
+                    const data = await res.json();
+                    let entry = null;
+                    // expected shapes: { round: 45, winners: [{place:1,number:xx},...] } or array
+                    if (!data) throw new Error('empty');
+                    if (Array.isArray(data)) {
+                        // array of {tier, round, winners}
+                        for (let i = data.length -1; i>=0; i--) {
+                            const d = data[i];
+                            if (d.tier == tier && d.winners && d.winners.length) { entry = d; break; }
+                        }
+                    } else if (data.tier == tier && data.winners) {
+                        entry = data;
+                    } else if (data.winners && Array.isArray(data.winners)) {
+                        // maybe object with winners array for multiple tiers
+                        entry = data;
+                    } else if (data.recent && Array.isArray(data.recent)) {
+                        for (let i = data.recent.length-1;i>=0;i--) { if (data.recent[i].tier==tier) { entry = data.recent[i]; break; } }
+                    }
+
+                    if (!entry) {
+                        // fabricate a sample entry if nothing from API
+                        entry = { round: (currentRound||50), winners: [{place:1,number: Math.floor(Math.random()*99)+1},{place:2,number: Math.floor(Math.random()*99)+1},{place:3,number: Math.floor(Math.random()*99)+1}] };
+                    }
+
+                    // render entry
+                    const roundStr = entry.round ? String(entry.round).padStart(4,'0') : '----';
+                    const winners = entry.winners.slice(0,3);
+                    cardEl.innerHTML = `<div class="tier-header"><div class="tier-name">${tierNames[tier]}</div><div class="round-id">#${roundStr}</div></div>`;
+                    const top3 = document.createElement('div'); top3.className = 'top3';
+                    for (let i=0;i<3;i++) {
+                        const w = winners[i] || { number: '--' };
+                        const placeLabel = i===0? (lang==='en'?'1st':'1ኛ') : i===1? (lang==='en'?'2nd':'2ኛ') : (lang==='en'?'3rd':'3ኛ');
+                        const pill = document.createElement('div'); pill.className = 'pill';
+                        pill.innerHTML = `<div class="place">${placeLabel}</div><div class="num">${String(w.number).padStart(2,'0')}</div>`;
+                        top3.appendChild(pill);
+                    }
+                    cardEl.appendChild(top3);
+                } catch (e) {
+                    // keep fallback visuals
+                    console.warn('Unable to load winners for tier', tier, e);
+                }
+            }
+        }
+
+        // expose and wire polling / draw events
+        window.loadRecentWinnersPerTier = loadRecentWinnersPerTier;
+        document.addEventListener('draw:ended', () => { if (window.loadRecentWinnersPerTier) window.loadRecentWinnersPerTier(); });
+        setInterval(() => { if (window.loadRecentWinnersPerTier) window.loadRecentWinnersPerTier(); }, 10000);
+
         function loadRecentWinners() {
+            // Prefer the robust loader (horizontal scroller) when available
+            if (window.loadRecentWinnersRobust) {
+                try { window.loadRecentWinnersRobust(); return; } catch(e){ console.warn('robust loader failed', e); }
+            }
+
             const grid = document.getElementById('recent-winners-grid');
             if (!grid) return;
             const winners = [

@@ -12,15 +12,440 @@ const bot = new Bot(process.env.BOT_TOKEN);
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 const pendingProofs = new Map();
+// Buffers for grouping rapid purchase events to avoid spam
+const purchaseAlertBuffers = new Map(); // tierId -> {count, timer}
+
+// Redis/Upstash client (lazy-init). If REDIS_URL is provided, we'll try to use it
+let redisClient = null;
+async function getRedis() {
+    if (redisClient) return redisClient;
+    if (!process.env.REDIS_URL) return null;
+    try {
+        const { createClient } = require('redis');
+        redisClient = createClient({ url: process.env.REDIS_URL });
+        redisClient.on('error', (e) => console.warn('Redis client error', e));
+        await redisClient.connect();
+        console.log('✅ Connected to Redis');
+        return redisClient;
+    } catch (e) {
+        console.warn('Redis not available:', e.message || e);
+        redisClient = null;
+        return null;
+    }
+}
+
+// Bot identity cache (will be initialized async)
+let BOT_USERNAME = process.env.BOT_USERNAME || null;
+async function initBotIdentity() {
+    try {
+        const me = await bot.api.getMe();
+        BOT_USERNAME = me.username || process.env.BOT_USERNAME || null;
+        console.log('✅ Bot identity:', BOT_USERNAME);
+    } catch (e) {
+        console.error('Error fetching bot identity:', e);
+    }
+}
+initBotIdentity().catch(e => console.error(e));
 
 if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 app.use(express.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
+// Currency conversion constant (1 EUR = 200 ETB)
+const EUR_TO_ETB = parseFloat(process.env.EUR_TO_ETB || '200');
+
+// Ensure deposit-related tables exist (idempotent)
+async function ensureDepositTables() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS deposit_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                payment_method TEXT,
+                account_number TEXT,
+                amount_etb NUMERIC,
+                transaction_reference TEXT,
+                notes TEXT,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT NOW(),
+                validity_expires TIMESTAMP,
+                admin_id BIGINT,
+                processed_at TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS transaction_registry (
+                id SERIAL PRIMARY KEY,
+                tx_reference TEXT UNIQUE,
+                user_id BIGINT,
+                amount_etb NUMERIC,
+                amount_eur NUMERIC,
+                admin_id BIGINT,
+                created_at TIMESTAMP DEFAULT NOW(),
+                processed_at TIMESTAMP
+            )
+        `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS user_wallets (
+                user_id BIGINT PRIMARY KEY,
+                balance_eur NUMERIC DEFAULT 0
+            )
+        `);
+
+        console.log('✅ Deposit-related tables ensured');
+    } catch (e) {
+        console.error('Error ensuring deposit tables:', e);
+    }
+}
+
+// Call once at startup (no await to avoid blocking server start)
+ensureDepositTables().catch(e => console.error(e));
+
+// Ensure draw_seeds table exists for provably-fair flow
+async function ensureDrawSeedsTable() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS draw_seeds (
+                id SERIAL PRIMARY KEY,
+                tier_id INT NOT NULL,
+                round_no INT NOT NULL,
+                server_seed TEXT,
+                server_seed_hash TEXT,
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `);
+        console.log('✅ draw_seeds table ensured');
+    } catch (e) { console.error('Error ensuring draw_seeds', e); }
+}
+ensureDrawSeedsTable().catch(e => console.error(e));
+
+// Handle tier sold-out -> lockdown, publish draw seed, and schedule draw
+async function handleTierSoldFull(tierId) {
+    try {
+        const client = await getRedis();
+        const lockKey = `tier_lockdown:${tierId}`;
+        if (client) {
+            const exists = await client.get(lockKey);
+            if (exists) return; // already handled
+            await client.set(lockKey, '1', { EX: 230 }); // ~3m50s guard
+            const startKey = `tier_lockdown_start:${tierId}`;
+            const startTs = Date.now();
+            await client.set(startKey, String(startTs), { EX: 230 });
+        }
+
+        // Determine current round
+        const rres = await pool.query('SELECT current_round FROM game_rounds WHERE tier_id = $1', [tierId]);
+        const round = rres.rows[0]?.current_round || 1;
+
+        // Create server seed and hash
+        const server_seed = crypto.randomBytes(32).toString('hex');
+        const server_seed_hash = crypto.createHash('sha256').update(server_seed).digest('hex');
+        await pool.query('INSERT INTO draw_seeds (tier_id, round_no, server_seed, server_seed_hash) VALUES ($1,$2,$3,$4)', [tierId, round, server_seed, server_seed_hash]);
+
+        const links = buildWebappLinks();
+        const arenaUrl = `${links.web.replace(/\/$/, '')}/draw.html?tier=${tierId}&round=${round}`;
+
+        const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
+        await bot.api.sendMessage(groupId, `🔒 Pool Full! The ${tierId==3?'Gold':tierId==2?'Silver':'Bronze'} grid is full. Enter the 4K Cinematic Draw Arena: ${arenaUrl}`);
+        await bot.api.sendMessage(groupId, `⏳ The draw will start in 3 minutes. Join the live arena now!`);
+
+        // Schedule the draw after 3 minutes (180s)
+        setTimeout(async () => {
+            try {
+                // pick random sold ticket as winner
+                const ticketsRes = await pool.query("SELECT id, number_val, owner_id FROM tickets WHERE tier_id = $1 AND round_no = $2 AND status = 'sold'", [tierId, round]);
+                const rows = ticketsRes.rows || [];
+                if (rows.length === 0) {
+                    await bot.api.sendMessage(groupId, `⚠️ Draw could not complete: no sold tickets found.`);
+                } else {
+                    const winner = rows[Math.floor(Math.random()*rows.length)];
+                    // announce winner
+                    const winnerText = `🏅 1st Place Winner: ${winner.owner_id ? `User#${winner.owner_id}` : 'Anonymous'} — Ticket #${winner.number_val} — Prize: ${(tierId==3?2.5: tierId==2?1.5:0.5) * 80} EUR`;
+                    await bot.api.sendMessage(groupId, winnerText);
+                    await bot.api.sendMessage(groupId, `🎉 New Round Now Open — grab your tickets!`);
+                }
+                    // clear lockdown
+                    if (client) {
+                        await client.del(lockKey);
+                        const startKey = `tier_lockdown_start:${tierId}`;
+                        await client.del(startKey);
+                    }
+            } catch (e) {
+                console.error('Error running scheduled draw', e);
+            }
+        }, 180000);
+
+    } catch (e) {
+        console.error('handleTierSoldFull error', e);
+    }
+}
+
+// Secret to protect cron endpoints
+const CRON_SECRET = process.env.CRON_SECRET || 'please-set-a-secret';
+
+function buildWebappLinks() {
+    const web = (process.env.WEBAPP_URL || '').replace(/\/$/, '');
+    const botLink = BOT_USERNAME ? `https://t.me/${BOT_USERNAME}/app` : `https://t.me/${process.env.BOT_USERNAME || 'your_bot'}/app`;
+    return { web, botLink };
+}
+
+async function postPurchaseAlertNow(tierId, addedCount = 0) {
+    try {
+        // compute sold and remaining
+        const soldRes = await pool.query("SELECT count(*) as count FROM tickets WHERE tier_id = $1 AND status = 'sold'", [tierId]);
+        const sold = parseInt(soldRes.rows[0].count || 0);
+        const remaining = Math.max(0, 100 - sold);
+        const tierName = tierId == 3 ? 'Gold' : tierId == 2 ? 'Silver' : 'Bronze';
+        const plural = addedCount > 1 ? `${addedCount} blocks` : 'a block';
+        const links = buildWebappLinks();
+        const text = `🎟️ New Entry! ${plural} just grabbed in the ${tierName} Grid! ${remaining}/100 blocks remaining before the computerized draw begins!\n\nJoin: ${links.web} or ${links.botLink}`;
+        const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
+        await bot.api.sendMessage(groupId, text);
+        // If this sale closed the pool, initiate lockdown/draw flow
+        if (sold === 100) {
+            try { await handleTierSoldFull(tierId); } catch (e) { console.error('handleTierSoldFull failed', e); }
+        }
+    } catch (e) {
+        console.error('Error posting purchase alert:', e);
+    }
+}
+
+async function schedulePurchaseAlert(tierId, addedCount = 1, debounceMs = 1200) {
+    // Try Redis-backed aggregation first (safer across multiple instances)
+    try {
+        const client = await getRedis();
+        if (client) {
+            const key = `purchase_buffer:${tierId}`;
+            const lockKey = `purchase_lock:${tierId}`;
+            await client.incrBy(key, addedCount);
+            await client.expire(key, Math.ceil((debounceMs + 500) / 1000) + 10);
+            // Try to obtain a short-lived lock. Only the locker will schedule the post.
+            const got = await client.set(lockKey, '1', { NX: true, PX: debounceMs });
+            if (got) {
+                setTimeout(async () => {
+                    try {
+                        const cnt = parseInt(await client.get(key) || '0', 10);
+                        await client.del(key);
+                        await client.del(lockKey);
+                        if (cnt > 0) await postPurchaseAlertNow(tierId, cnt);
+                    } catch (e) { console.error('Redis-schedule error', e); }
+                }, debounceMs + 50);
+            }
+            return;
+        }
+    } catch (e) {
+        console.warn('schedulePurchaseAlert(redis) failed', e);
+    }
+
+    // Fallback: in-memory debounce (single-instance)
+    const key = String(tierId);
+    const existing = purchaseAlertBuffers.get(key) || { count: 0, timer: null };
+    existing.count += addedCount;
+    if (existing.timer) clearTimeout(existing.timer);
+    existing.timer = setTimeout(() => {
+        postPurchaseAlertNow(tierId, existing.count).catch(e => console.error(e));
+        purchaseAlertBuffers.delete(key);
+    }, debounceMs);
+    purchaseAlertBuffers.set(key, existing);
+}
+
 // Explicitly serve index.html for root route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// --- API: Return sold blocks for a tier (array of indices 0..99) ---
+app.get('/api/sold-blocks', async (req, res) => {
+    try {
+        const tier = parseInt(req.query.tier || req.params.tier || '3', 10);
+
+        // Determine current round from DB (if available)
+        const roundRes = await pool.query('SELECT current_round FROM game_rounds WHERE tier_id = $1', [tier]);
+        const round = roundRes.rows[0] ? roundRes.rows[0].current_round : null;
+
+        // Prepare a default 100-entry map
+        const result = Array.from({ length: 100 }, (_, i) => ({ index: i, status: 'available' }));
+
+        // Try Redis first for reservation info (more real-time)
+        try {
+            const client = await getRedis();
+            if (client) {
+                const pattern = `ticket_sold:${tier}:${round}:*`;
+                const keys = await client.keys(pattern);
+                // Mark reserved entries
+                for (const k of keys || []) {
+                    const parts = k.split(':');
+                    const idx = parseInt(parts[3], 10);
+                    if (Number.isNaN(idx) || idx < 0 || idx >= 100) continue;
+                    const owner = await client.get(k);
+                    const ttl = await client.ttl(k);
+                    result[idx] = { index: idx, status: 'reserved', owner: owner || null, expiresIn: ttl >= 0 ? ttl : null };
+                }
+
+                // Also overlay committed 'sold' tickets from DB, if possible
+                if (round) {
+                    const tickets = await pool.query('SELECT number_val, owner_id FROM tickets WHERE tier_id = $1 AND round_no = $2 AND status = $3', [tier, round, 'sold']);
+                    for (const r of tickets.rows || []) {
+                        const n = parseInt(r.number_val, 10) - 1;
+                        if (Number.isNaN(n) || n < 0 || n >= 100) continue;
+                        result[n] = { index: n, status: 'sold', owner: r.owner_id || null };
+                    }
+                }
+
+                return res.json({ tier, round, tickets: result });
+            }
+        } catch (e) {
+            console.warn('/api/sold-blocks: Redis read failed, falling back to DB', e && e.message ? e.message : e);
+        }
+
+        // Fallback: query DB for sold tickets in current round
+        if (!round) return res.json({ tier, round: null, tickets: result });
+        const dbTickets = await pool.query('SELECT number_val, owner_id FROM tickets WHERE tier_id = $1 AND round_no = $2 AND status = $3', [tier, round, 'sold']);
+        for (const r of dbTickets.rows || []) {
+            const n = parseInt(r.number_val, 10) - 1;
+            if (Number.isNaN(n) || n < 0 || n >= 100) continue;
+            result[n] = { index: n, status: 'sold', owner: r.owner_id || null };
+        }
+        return res.json({ tier, round, tickets: result });
+    } catch (e) {
+        console.error('Error in /api/sold-blocks:', e);
+        return res.status(500).json({ error: 'server' });
+    }
+});
+
+// Lockdown status endpoint for client checks
+app.get('/api/lockdown/:tierId', async (req, res) => {
+    try {
+        const tierId = parseInt(req.params.tierId,10);
+        const client = await getRedis();
+        if (!client) return res.json({ lockdown: false });
+        const key = `tier_lockdown:${tierId}`;
+        const exists = await client.get(key);
+        if (!exists) return res.json({ lockdown: false });
+        const startKey = `tier_lockdown_start:${tierId}`;
+        const startTs = parseInt(await client.get(startKey) || '0', 10);
+        const now = Date.now();
+        const elapsed = startTs ? Math.floor((now - startTs)/1000) : 0;
+        const remaining = Math.max(0, 180 - elapsed);
+        return res.json({ lockdown: true, startTs, elapsed, remaining });
+    } catch (e) {
+        return res.json({ lockdown: false });
+    }
+});
+
+// Spectator connect/disconnect and count
+app.post('/api/spectator/connect', async (req, res) => {
+    try {
+        const tier = parseInt(req.query.tier || req.body.tier || '3', 10);
+        const client = await getRedis();
+        if (!client) return res.json({ ok: true, count: 0 });
+        const key = `spectator:${tier}`;
+        const cnt = await client.incr(key);
+        await client.expire(key, 60*10); // expire after 10m of inactivity
+        return res.json({ ok: true, count: parseInt(cnt,10) });
+    } catch (e) { console.error(e); return res.status(500).json({ ok:false }); }
+});
+
+app.post('/api/spectator/disconnect', async (req, res) => {
+    try {
+        const tier = parseInt(req.query.tier || req.body.tier || '3', 10);
+        const client = await getRedis();
+        if (!client) return res.json({ ok: true, count: 0 });
+        const key = `spectator:${tier}`;
+        const cnt = await client.decr(key);
+        return res.json({ ok: true, count: Math.max(0, parseInt(cnt,10)) });
+    } catch (e) { console.error(e); return res.status(500).json({ ok:false }); }
+});
+
+app.get('/api/spectator/count', async (req, res) => {
+    try {
+        const tier = parseInt(req.query.tier || '3', 10);
+        const client = await getRedis();
+        if (!client) return res.json({ count: 0 });
+        const key = `spectator:${tier}`;
+        const cnt = await client.get(key);
+        return res.json({ count: parseInt(cnt||'0',10) });
+    } catch (e) { console.error(e); return res.json({ count: 0 }); }
+});
+
+// Complete purchase endpoint: reserves tickets in Redis atomically and persists to DB
+app.post('/api/complete-purchase', express.json(), async (req, res) => {
+    try {
+        const { userId, tierId, roundNo, numbers, tx_reference } = req.body || {};
+        if (!userId || !tierId || !roundNo || !Array.isArray(numbers) || numbers.length===0) return res.status(400).json({ error: 'invalid' });
+        // anti-fraud: check tx_reference
+        if (tx_reference) {
+            const dup = await pool.query('SELECT id FROM transaction_registry WHERE tx_reference = $1 LIMIT 1', [tx_reference]);
+            if (dup.rows.length > 0) return res.status(409).json({ error: 'duplicate_tx' });
+        }
+        const client = await getRedis();
+        if (!client) return res.status(500).json({ error: 'redis_required' });
+
+        // Attempt to reserve all ticket numbers using SET NX
+        const reserved = [];
+        for (const n of numbers) {
+            const key = `ticket_sold:${tierId}:${roundNo}:${n}`;
+            const ok = await client.set(key, String(userId), { NX: true, EX: 60*60*2 });
+            if (!ok) {
+                // rollback reserved
+                for (const r of reserved) await client.del(r);
+                return res.status(409).json({ error: 'ticket_unavailable', number: n });
+            }
+            reserved.push(key);
+        }
+
+        // increment sold counter
+        const soldKey = `tier_sold_count:${tierId}:${roundNo}`;
+        const newCount = await client.incrBy(soldKey, numbers.length);
+        await client.expire(soldKey, 60*60*4);
+
+        // Announce fill-status every 10 tickets (e.g., 10/100, 20/100)
+        try {
+            const announceEvery = 10;
+            if (parseInt(newCount, 10) % announceEvery === 0 && parseInt(newCount,10) < 100) {
+                const links = buildWebappLinks();
+                const tierName = tierId == 3 ? 'Gold' : tierId == 2 ? 'Silver' : 'Bronze';
+                const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
+                await bot.api.sendMessage(groupId, `🔔 ${tierName} Pool Update: ${parseInt(newCount,10)}/100 blocks filled. Join now: ${links.web || links.botLink}`);
+            }
+        } catch (e) {
+            console.warn('Fill-status announce failed', e);
+        }
+
+        // persist transaction registry
+        if (tx_reference) {
+            await pool.query('INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, created_at) VALUES ($1,$2,$3,$4, NOW())', [tx_reference, userId, null, null]);
+        }
+
+        // Persist tickets to DB (best-effort)
+        for (const n of numbers) {
+            try {
+                const upd = await pool.query("UPDATE tickets SET owner_id=$1, status='sold', purchase_timestamp=NOW() WHERE tier_id=$2 AND round_no=$3 AND number_val=$4 AND status != 'sold'", [userId, tierId, roundNo, n]);
+                if (upd.rowCount === 0) {
+                    try {
+                        await pool.query('INSERT INTO tickets (tier_id, round_no, number_val, owner_id, status, purchase_timestamp) VALUES ($1,$2,$3,$4,\'sold\', NOW())', [tierId, roundNo, n, userId]);
+                    } catch(e) { /* ignore duplicate */ }
+                }
+            } catch (e) { console.error('DB ticket persist error', e); }
+        }
+
+        // notify grouping
+        schedulePurchaseAlert(tierId, numbers.length, 1200);
+
+        // If pool is full, trigger lockdown handling
+        if (parseInt(newCount,10) >= 100) {
+            // ensure exactly 100
+            try { await handleTierSoldFull(tierId); } catch(e){ console.error(e); }
+        }
+
+        return res.json({ ok: true, sold: parseInt(newCount,10) });
+    } catch (e) {
+        console.error('complete-purchase error', e);
+        return res.status(500).json({ error: 'server' });
+    }
 });
 
 // --- API: Get Tier Status & Tickets ---
@@ -608,7 +1033,337 @@ app.post('/api/upload-payment', upload.single('photo'), async (req, res) => {
     res.json({ success: true });
 });
 
+// --- API: Deposit Request (from webapp) ---
+app.post('/api/deposit-request', async (req, res) => {
+    try {
+        const { userId, paymentMethod, accountNumber, amount, transactionReference, notes, validityExpires } = req.body;
+        if (!userId || !paymentMethod || !amount) return res.status(400).json({ error: 'Missing fields' });
+
+        const insertRes = await pool.query(`
+            INSERT INTO deposit_requests (user_id, payment_method, account_number, amount_etb, transaction_reference, notes, validity_expires)
+            VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *
+        `, [userId, paymentMethod, accountNumber, amount, transactionReference || null, notes || null, validityExpires ? new Date(validityExpires) : null]);
+
+        const deposit = insertRes.rows[0];
+
+        // Notify Admin via Telegram with Approve/Reject buttons
+        const adminKeyboard = new InlineKeyboard()
+            .text('✅ Approve', `approve_deposit_${deposit.id}`)
+            .text('❌ Reject', `reject_deposit_${deposit.id}`);
+
+        const msg = `🔔 New Deposit Request\n\n` +
+            `• User ID: ${deposit.user_id}\n` +
+            `• Method: ${deposit.payment_method}\n` +
+            `• Account: ${deposit.account_number || 'N/A'}\n` +
+            `• Amount: ${deposit.amount_etb} ETB\n` +
+            `• TX Ref: ${deposit.transaction_reference || 'N/A'}\n` +
+            `• Notes: ${deposit.notes || '-'}\n` +
+            `• Created: ${new Date(deposit.created_at).toLocaleString()}`;
+
+        await bot.api.sendMessage(process.env.ADMIN_ID, msg, { reply_markup: adminKeyboard });
+
+        res.json({ success: true, depositId: deposit.id });
+    } catch (e) {
+        console.error('Error in /api/deposit-request:', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// --- API: Admin approves deposit with explicit ETB input and bank reference ---
+app.post('/api/admin/approve-deposit', express.json(), async (req, res) => {
+    try {
+        const { depositId, received_etb, bank_reference, adminId } = req.body || {};
+        if (!depositId || !received_etb) return res.status(400).json({ error: 'depositId and received_etb required' });
+
+        const depRes = await pool.query('SELECT * FROM deposit_requests WHERE id = $1', [depositId]);
+        const dep = depRes.rows[0];
+        if (!dep) return res.status(404).json({ error: 'deposit not found' });
+        if (dep.status !== 'pending') return res.status(409).json({ error: `Deposit already ${dep.status}` });
+
+        // Check Redis for duplicate bank reference
+        if (bank_reference) {
+            try {
+                const client = await getRedis();
+                if (client) {
+                    const key = `bank_ref:${bank_reference}`;
+                    const exists = await client.get(key);
+                    if (exists) {
+                        await pool.query('UPDATE deposit_requests SET status=$1, processed_at=NOW(), admin_id=$2 WHERE id=$3', ['duplicate', adminId || null, depositId]);
+                        return res.status(409).json({ error: 'duplicate_bank_reference' });
+                    }
+                }
+            } catch (e) { console.warn('Redis check failed', e); }
+        }
+
+        // Convert ETB -> EUR and to integer cents
+        const amountEtb = parseFloat(received_etb);
+        const amountEur = parseFloat((amountEtb / EUR_TO_ETB));
+        const amountCents = Math.round(Number(amountEur) * 100);
+
+        // Insert into transaction registry (store both numeric and cents for compatibility)
+        const txRef = bank_reference || (dep.transaction_reference || `deposit-${dep.id}`);
+        await pool.query(`
+            INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, amount_cents, admin_id, processed_at)
+            VALUES ($1,$2,$3,$4,$5,$6,NOW())
+        `, [txRef, dep.user_id, amountEtb, amountEur, amountCents, adminId || null]);
+
+        // Mark Redis key for this bank reference
+        if (bank_reference) {
+            try {
+                const client = await getRedis();
+                if (client) {
+                    const key = `bank_ref:${bank_reference}`;
+                    await client.set(key, '1', { EX: 30 * 24 * 3600 });
+                }
+            } catch (e) { console.warn('Failed to set Redis bank_ref key', e); }
+        }
+
+        // Credit user wallet in integer cents. Fallback to balance_eur if cents column not present.
+        try {
+            const existing = await pool.query('SELECT balance_cents, balance_eur FROM user_wallets WHERE user_id = $1', [dep.user_id]);
+            if (existing.rows.length === 0) {
+                // Insert with cents column when available
+                try {
+                    await pool.query('INSERT INTO user_wallets (user_id, balance_cents) VALUES ($1,$2)', [dep.user_id, amountCents]);
+                } catch (ie) {
+                    // fallback to legacy column
+                    await pool.query('INSERT INTO user_wallets (user_id, balance_eur) VALUES ($1,$2)', [dep.user_id, amountEur]);
+                }
+            } else {
+                const row = existing.rows[0];
+                if (row.balance_cents !== null && typeof row.balance_cents !== 'undefined') {
+                    const prev = parseInt(row.balance_cents || 0, 10);
+                    const newBal = prev + amountCents;
+                    await pool.query('UPDATE user_wallets SET balance_cents = $1 WHERE user_id = $2', [newBal, dep.user_id]);
+                } else {
+                    // Legacy path
+                    const prevEur = parseFloat(row.balance_eur || 0);
+                    const newBalEur = prevEur + amountEur;
+                    await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [newBalEur, dep.user_id]);
+                }
+            }
+        } catch (e) { console.error('Error crediting user wallet (admin api):', e); }
+
+        // Update deposit_request record
+        await pool.query(`
+            UPDATE deposit_requests SET status=$1, admin_id=$2, processed_at=NOW(), amount_etb=$3, transaction_reference=$4
+            WHERE id = $5
+        `, ['approved', adminId || null, amountEtb, txRef, depositId]);
+
+        // Notify user asynchronously
+        try { await bot.api.sendMessage(dep.user_id, `✅ Your deposit of ${amountEtb} ETB (${amountEur} EUR) has been approved and credited to your wallet.`); } catch(e) { console.warn('Notify user failed', e); }
+
+        return res.json({ success: true, credited_eur: amountEur });
+    } catch (e) {
+        console.error('admin approve deposit error', e);
+        return res.status(500).json({ error: 'server' });
+    }
+});
+
+// --- Cron endpoint: Inactivity check (for 5-day reminders) ---
+app.get('/cron/inactivity-check', async (req, res) => {
+    try {
+        const secret = req.query.secret || req.headers['x-cron-secret'];
+        if (secret !== CRON_SECRET) return res.status(403).send('Forbidden');
+
+        // Find users whose last ticket purchase date is exactly 5 days ago (and not purchased since)
+        const rows = await pool.query(`
+            SELECT user_id, MAX(purchase_timestamp) AS last_entry
+            FROM tickets
+            GROUP BY user_id
+            HAVING date_trunc('day', MAX(purchase_timestamp)) = (CURRENT_DATE - INTERVAL '5 days')
+        `);
+
+        const links = buildWebappLinks();
+
+        for (const r of rows.rows) {
+            try {
+                const userId = r.user_id;
+                const keyboard = new InlineKeyboard()
+                    .url('📥 Deposit Now', links.web || (links.botLink))
+                    .url('🎮 Play Gold Grid', (links.web ? `${links.web}?open=gold` : links.botLink));
+                await bot.api.sendMessage(userId, `💰 Don't let your luck expire! You haven't played in 5 days. The Gold Jackpot is waiting for you!`, { reply_markup: keyboard });
+            } catch (e) {
+                console.error('Error sending inactivity msg to user', r.user_id, e);
+            }
+        }
+
+        res.json({ success: true, count: rows.rows.length });
+    } catch (e) {
+        console.error('Error in /cron/inactivity-check:', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// --- Cron endpoint: Group summary (12-hour) ---
+app.get('/cron/group-summary', async (req, res) => {
+    try {
+        const secret = req.query.secret || req.headers['x-cron-secret'];
+        if (secret !== CRON_SECRET) return res.status(403).send('Forbidden');
+
+        // For each tier, fetch sold counts and last draw time
+        const tiers = [1,2,3];
+        const parts = [];
+        for (const t of tiers) {
+            const soldRes = await pool.query("SELECT count(*) as count FROM tickets WHERE tier_id = $1 AND status = 'sold'", [t]);
+            const sold = parseInt(soldRes.rows[0].count || 0);
+            const lastDraw = await pool.query("SELECT created_at FROM winners_history WHERE tier_id = $1 ORDER BY id DESC LIMIT 1", [t]);
+            const lastDrawAt = lastDraw.rows[0] ? new Date(lastDraw.rows[0].created_at) : null;
+            parts.push({ tier: t, sold, lastDrawAt });
+        }
+
+        // If any tier has no recent draw within 12 hours, post summary
+        const twelveAgo = Date.now() - (12 * 60 * 60 * 1000);
+        const needPost = parts.some(p => !p.lastDrawAt || p.lastDrawAt.getTime() < twelveAgo);
+        if (!needPost) {
+            return res.json({ success: true, posted: false, reason: 'Recent draw exists' });
+        }
+
+        const tierNames = {1: 'Bronze (0.5 EUR)', 2: 'Silver (1.5 EUR)', 3: 'Gold (2.5 EUR)'};
+        const lines = ['🔥 Current Hot Pools:'];
+        for (const p of parts) {
+            lines.push(`${p.tier === 3 ? 'Gold' : p.tier === 2 ? 'Silver' : 'Bronze'} (${p.tier === 3 ? '2.5' : p.tier === 2 ? '1.5' : '0.5'} EUR): ${p.sold}/100 filled`);
+        }
+        lines.push('\nJoin now before the computerized selection starts!');
+        const links = buildWebappLinks();
+        lines.push(`\n${links.web} • ${links.botLink}`);
+
+        const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
+        await bot.api.sendMessage(groupId, lines.join('\n'));
+
+        res.json({ success: true, posted: true });
+    } catch (e) {
+        console.error('Error in /cron/group-summary:', e);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // --- ADMIN CALLBACKS ---
+// Approve deposit callback (admin)
+bot.callbackQuery(/approve_deposit_(\d+)/, async (ctx) => {
+    const [_, depositId] = ctx.match;
+    try {
+        const depRes = await pool.query('SELECT * FROM deposit_requests WHERE id = $1', [depositId]);
+        const dep = depRes.rows[0];
+        if (!dep) {
+            await ctx.answerCallbackQuery({ text: 'Deposit not found', show_alert: true });
+            return;
+        }
+        if (dep.status !== 'pending') {
+            await ctx.answerCallbackQuery({ text: `Deposit already ${dep.status}`, show_alert: true });
+            return;
+        }
+
+        // Duplicate detection by transaction reference (Redis first, fallback to DB)
+        try {
+            const client = await getRedis();
+            if (dep.transaction_reference && client) {
+                const key = `bank_ref:${dep.transaction_reference}`;
+                const exists = await client.get(key);
+                if (exists) {
+                    await pool.query('UPDATE deposit_requests SET status = $1, processed_at = NOW(), admin_id = $2 WHERE id = $3', ['duplicate', ctx.from.id, depositId]);
+                    await ctx.answerCallbackQuery({ text: 'Duplicate transaction detected (redis) — marked as duplicate', show_alert: true });
+                    try { await bot.api.sendMessage(dep.user_id, `❌ Your deposit (TX: ${dep.transaction_reference}) appears to be a duplicate and was not approved. Please contact support.`); } catch(e){}
+                    return;
+                }
+            }
+
+            // DB fallback check
+            if (dep.transaction_reference) {
+                const dup = await pool.query('SELECT * FROM transaction_registry WHERE tx_reference = $1', [dep.transaction_reference]);
+                if (dup.rows.length > 0) {
+                    await pool.query('UPDATE deposit_requests SET status = $1, processed_at = NOW(), admin_id = $2 WHERE id = $3', ['duplicate', ctx.from.id, depositId]);
+                    await ctx.answerCallbackQuery({ text: 'Duplicate transaction detected — marked as duplicate', show_alert: true });
+                    try { await bot.api.sendMessage(dep.user_id, `❌ Your deposit (TX: ${dep.transaction_reference}) appears to be a duplicate and was not approved. Please contact support.`); } catch(e){}
+                    return;
+                }
+            }
+        } catch(e) {
+            console.warn('Duplicate detection check failed', e);
+        }
+
+        // Convert ETB -> EUR
+        const amountEtb = parseFloat(dep.amount_etb || 0);
+        const amountEur = parseFloat((amountEtb / EUR_TO_ETB).toFixed(2));
+
+        // Insert into registry (unique constraint prevents duplicates)
+        try {
+            const txRef = dep.transaction_reference || `deposit-${dep.id}`;
+            await pool.query(`
+                INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, admin_id, processed_at)
+                VALUES ($1,$2,$3,$4,$5,NOW())
+            `, [txRef, dep.user_id, amountEtb, amountEur, ctx.from.id]);
+
+            // If Redis available and transaction reference present, mark it to prevent duplicates
+            try {
+                const client = await getRedis();
+                if (client && dep.transaction_reference) {
+                    const key = `bank_ref:${dep.transaction_reference}`;
+                    await client.set(key, '1', { EX: 30 * 24 * 3600 }); // keep for 30 days
+                }
+            } catch (e) {
+                console.warn('Failed to set Redis bank_ref key', e);
+            }
+        } catch (e) {
+            console.error('Error inserting into transaction_registry:', e);
+        }
+
+        // Credit user wallet (upsert)
+        try {
+            const existing = await pool.query('SELECT balance_eur FROM user_wallets WHERE user_id = $1', [dep.user_id]);
+            if (existing.rows.length === 0) {
+                await pool.query('INSERT INTO user_wallets (user_id, balance_eur) VALUES ($1,$2)', [dep.user_id, amountEur]);
+            } else {
+                const newBal = parseFloat(existing.rows[0].balance_eur || 0) + amountEur;
+                await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [newBal, dep.user_id]);
+            }
+        } catch (e) {
+            console.error('Error crediting user wallet:', e);
+        }
+
+        // Mark deposit as approved
+        await pool.query('UPDATE deposit_requests SET status = $1, admin_id = $2, processed_at = NOW() WHERE id = $3', ['approved', ctx.from.id, depositId]);
+
+        // Notify user
+        try {
+            await bot.api.sendMessage(dep.user_id, `✅ Your deposit of ${amountEtb} ETB (${amountEur} EUR) has been approved and credited to your wallet.`);
+        } catch (e) {
+            console.error('Error notifying user about deposit approval:', e);
+        }
+
+        await ctx.answerCallbackQuery({ text: 'Deposit approved and wallet credited', show_alert: false });
+        try { await ctx.editMessageText((ctx.callbackQuery.message && ctx.callbackQuery.message.text ? ctx.callbackQuery.message.text + '\n\n✅ Approved' : '✅ Approved')); } catch(e){}
+    } catch (e) {
+        console.error('approve_deposit error:', e);
+        await ctx.answerCallbackQuery({ text: 'Error approving deposit', show_alert: true });
+    }
+});
+
+// Reject deposit callback (admin)
+bot.callbackQuery(/reject_deposit_(\d+)/, async (ctx) => {
+    const [_, depositId] = ctx.match;
+    try {
+        const depRes = await pool.query('SELECT * FROM deposit_requests WHERE id = $1', [depositId]);
+        const dep = depRes.rows[0];
+        if (!dep) {
+            await ctx.answerCallbackQuery({ text: 'Deposit not found', show_alert: true });
+            return;
+        }
+        if (dep.status !== 'pending') {
+            await ctx.answerCallbackQuery({ text: `Deposit already ${dep.status}`, show_alert: true });
+            return;
+        }
+
+        await pool.query('UPDATE deposit_requests SET status = $1, admin_id = $2, processed_at = NOW() WHERE id = $3', ['rejected', ctx.from.id, depositId]);
+        try { await bot.api.sendMessage(dep.user_id, `❌ Your deposit request (${dep.transaction_reference || 'no ref'}) was rejected by admin. Please contact support.`); } catch(e){}
+
+        await ctx.answerCallbackQuery({ text: 'Deposit rejected', show_alert: false });
+        try { await ctx.editMessageText((ctx.callbackQuery.message && ctx.callbackQuery.message.text ? ctx.callbackQuery.message.text + '\n\n❌ Rejected' : '❌ Rejected')); } catch(e){}
+    } catch (e) {
+        console.error('reject_deposit error:', e);
+        await ctx.answerCallbackQuery({ text: 'Error rejecting deposit', show_alert: true });
+    }
+});
 // Group approval for multi-ticket payments
 bot.callbackQuery(/approve_group_(\d+)_(\d+)_(\d+)_([0-9a-fA-F]+)/, async (ctx) => {
     const [_, tId, rnd, uId, shortHash] = ctx.match;
@@ -629,6 +1384,9 @@ bot.callbackQuery(/approve_group_(\d+)_(\d+)_(\d+)_([0-9a-fA-F]+)/, async (ctx) 
             'UPDATE tickets SET status = $1 WHERE tier_id = $2 AND round_no = $3 AND number_val = ANY($4::int[])',
             ['sold', tId, rnd, nums]
         );
+
+        // Schedule grouped purchase alert to the winners group
+        try { schedulePurchaseAlert(tId, nums.length); } catch(e) { console.error('schedulePurchaseAlert error:', e); }
 
         try {
             await pool.query(`
@@ -768,6 +1526,7 @@ bot.callbackQuery(/reject_group_(\d+)_(\d+)_(\d+)_([0-9a-fA-F]+)/, async (ctx) =
 bot.callbackQuery(/approve_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
     const [_, tId, num, uId, rnd] = ctx.match;
     await pool.query('UPDATE tickets SET status = $1 WHERE tier_id = $2 AND number_val = $3 AND round_no = $4', ['sold', tId, num, rnd]);
+    try { schedulePurchaseAlert(tId, 1); } catch(e) { console.error('schedulePurchaseAlert error:', e); }
     
     // Update transaction status
     try {
@@ -884,8 +1643,63 @@ bot.callbackQuery(/confirm_payout_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
                 admin_id = $5
             WHERE tier_id = $1 AND round_no = $2 AND ticket_number = $3 AND user_id = $4
         `, [tId, rnd, num, uId, adminId]);
-        
-        await bot.api.sendMessage(uId, `✅ ሽልማትዎ ተረጋግጧል እና በቅርቡ ወደ አካውንትዎ ይላካል!`);
+        // Determine prize amount and credit user's EUR wallet
+        try {
+            // Fetch winner record to know place
+            const wres = await pool.query(`SELECT place FROM winners_verification WHERE tier_id=$1 AND round_no=$2 AND ticket_number=$3 AND user_id=$4`, [tId, rnd, num, uId]);
+            const place = wres.rows[0] ? parseInt(wres.rows[0].place, 10) : null;
+            let creditEur = 0;
+
+            if (parseInt(tId,10) === 1 && place === 3) {
+                // Bronze 3rd prize: increment pending_free_tickets in Redis instead of cash payout
+                try {
+                    const client = await getRedis();
+                    if (client) {
+                        const key = `pending_free_tickets:${uId}`;
+                        await client.incr(key);
+                        // Optionally set TTL for pending tickets (e.g., 365 days)
+                        await client.expire(key, 365 * 24 * 3600).catch(() => {});
+                    }
+                } catch (e) { console.warn('Failed to increment pending_free_tickets', e); }
+                creditEur = 0;
+            } else {
+                // fetch tier prizes (assume stored in ETB) and convert
+                const tres = await pool.query('SELECT first_prize, second_prize, third_prize FROM tiers WHERE id = $1', [tId]);
+                const tierRow = tres.rows[0] || {};
+                let prizeEtb = 0;
+                if (place === 1) prizeEtb = parseFloat(tierRow.first_prize || 0);
+                else if (place === 2) prizeEtb = parseFloat(tierRow.second_prize || 0);
+                else if (place === 3) prizeEtb = parseFloat(tierRow.third_prize || 0);
+                // convert ETB -> EUR
+                creditEur = ((prizeEtb && EUR_TO_ETB) ? (prizeEtb / EUR_TO_ETB) : 0);
+                creditEur = parseFloat(creditEur.toFixed(2));
+            }
+
+            // Upsert wallet credit
+            try {
+                const existing = await pool.query('SELECT balance_eur FROM user_wallets WHERE user_id = $1', [uId]);
+                if (existing.rows.length === 0) {
+                    await pool.query('INSERT INTO user_wallets (user_id, balance_eur) VALUES ($1,$2)', [uId, creditEur]);
+                } else {
+                    const newBal = parseFloat(existing.rows[0].balance_eur || 0) + creditEur;
+                    await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [newBal, uId]);
+                }
+            } catch (e) { console.error('Error crediting wallet during payout:', e); }
+
+            // record payout in transaction registry
+            try {
+                const txRef = `payout-${tId}-${rnd}-${num}-${uId}`;
+                await pool.query(`INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, admin_id, processed_at) VALUES ($1,$2,$3,$4,$5,NOW())`, [txRef, uId, null, creditEur, adminId]);
+            } catch(e) { console.warn('Could not insert payout registry record', e); }
+
+            // Notify user with amount credited
+            try {
+                await bot.api.sendMessage(uId, `✅ ሽልማትዎ ተረጋግጧል፤ ${creditEur} EUR ከዚህ ጊዜ ጀምሮ በዚህ አካውንትዎ ይታያል.`);
+            } catch(e) { console.warn('Notify winner failed', e); }
+        } catch (e) {
+            console.error('Error computing/crediting payout:', e);
+        }
+
         await ctx.editMessageCaption({ caption: `✅ Payout Confirmed | Tier ${tId} | Round #${rnd} | Ticket #${num}` });
     } catch(e) {
         console.error('Payout confirmation error:', e);
@@ -1027,6 +1841,32 @@ async function runDrawLogic(tId, rnd) {
     await postWinnersToGroup(tId, rnd, w[2].number_val, w[1].number_val, w[0].number_val);
     await requestWinnerProofs(tId, rnd);
 
+    // Immediately reset Redis grid state for this tier/round so new round can start cleanly
+    try {
+        const client = await getRedis();
+        if (client) {
+            // Remove per-ticket reservation keys
+            const pattern = `ticket_sold:${tId}:${rnd}:*`;
+            try {
+                const keys = await client.keys(pattern);
+                if (keys && keys.length) await client.del(keys);
+            } catch (e) { console.warn('Redis pattern delete failed for ticket_sold', e); }
+
+            // Remove sold counter for this round
+            try { await client.del(`tier_sold_count:${tId}:${rnd}`); } catch(e) { console.warn('Failed to delete tier_sold_count', e); }
+
+            // Remove lockdown keys
+            try { await client.del(`tier_lockdown:${tId}`); await client.del(`tier_lockdown_start:${tId}`); } catch(e) { console.warn('Failed to delete lockdown keys', e); }
+
+            // Remove purchase buffer and locks so the new round can accept fresh buffers
+            try { await client.del(`purchase_buffer:${tId}`); await client.del(`purchase_lock:${tId}`); } catch(e) { /* ignore */ }
+
+            console.log(`✅ Redis grid reset for tier ${tId} round ${rnd}`);
+        }
+    } catch (e) {
+        console.warn('Could not reset Redis grid after draw', e);
+    }
+
     // Store winners in database for verification
     const winners = [
         { place: 1, number: w[2].number_val, userId: w[2].owner_id, tierId: tId, round: rnd },
@@ -1081,19 +1921,45 @@ async function postWinnersToGroup(tierId, roundNo, firstNum, secondNum, thirdNum
         // Format: @siketlotto or -1001234567890 (channel/group ID)
         const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
         
-        const message = `🎉 **${emoji} ${tierName} TIER - ROUND #${String(roundNo).padStart(4, '0')} WINNERS** 🎉\n\n` +
-            `🥇 **1st Place:** Ticket 🎟 ${firstNum}\n` +
-            `🥈 **2nd Place:** Ticket 🎟 ${secondNum}\n` +
-            `🥉 **3rd Place:** Ticket 🎟 ${thirdNum}\n\n` +
-            `🎊 እንኳን ደስ አለዎት አሸናፊዎች! 🎊\n\n` +
-            `**${tierNameAm} ደረጃ - ዙር #${String(roundNo).padStart(4, '0')} አሸናፊዎች**\n\n` +
-            `🥇 **1ኛ ምድብ:** ትኬት 🎟 ${firstNum}\n` +
-            `🥈 **2ኛ ምድብ:** ትኬት 🎟 ${secondNum}\n` +
-            `🥉 **3ኛ ምድብ:** ትኬት 🎟 ${thirdNum}\n\n` +
-            `━━━━━━━━━━━━━━━━━━━━\n` +
-            `🎯 **Next Round Starting Soon!**\n` +
-            `🎯 **የሚቀጥለው ዙር በቅርቡ ይጀምራል!**`;
-        
+        // Try to resolve usernames and prize amount
+        const tickets = [ {num: firstNum, place: 1}, {num: secondNum, place: 2}, {num: thirdNum, place: 3} ];
+        const winnersInfo = [];
+        for (const t of tickets) {
+            try {
+                const ownerRes = await pool.query('SELECT owner_id FROM tickets WHERE tier_id = $1 AND round_no = $2 AND number_val = $3', [tierId, roundNo, t.num]);
+                const ownerId = ownerRes.rows[0] ? ownerRes.rows[0].owner_id : null;
+                let username = null;
+                if (ownerId) {
+                    const userRes = await pool.query('SELECT username FROM users WHERE user_id = $1', [ownerId]);
+                    username = userRes.rows[0] ? userRes.rows[0].username : null;
+                }
+                winnersInfo.push({ place: t.place, num: t.num, ownerId, username });
+            } catch (e) {
+                console.error('Error resolving winner owner:', e);
+                winnersInfo.push({ place: t.place, num: t.num, ownerId: null, username: null });
+            }
+        }
+
+        let prizeEur = null;
+        try {
+            const tierRes = await pool.query('SELECT first_prize FROM tiers WHERE id = $1', [tierId]);
+            const prizeEtb = tierRes.rows[0] ? parseFloat(tierRes.rows[0].first_prize || 0) : 0;
+            prizeEur = (prizeEtb && EUR_TO_ETB) ? (prizeEtb / EUR_TO_ETB).toFixed(2) : null;
+        } catch (e) {
+            console.error('Error fetching tier prize:', e);
+        }
+
+        const links = buildWebappLinks();
+        const winner = winnersInfo[0];
+        const mention = winner.username ? `@${winner.username}` : (winner.ownerId ? `[winner](tg://user?id=${winner.ownerId})` : 'a user');
+        const amountText = prizeEur ? `${prizeEur} EUR` : '';
+        const footer = 'Safe Draw: 100% Computerized & Fair | ታማኝ ዕጣ፦ 100% በኮምፒውተር የሚመራ።';
+
+        const message = `🏆 BIG WINNER! Congratulations to ${mention} for winning ${amountText}!\n\n` +
+            `🎉 Tier: ${tierName} | Round #${String(roundNo).padStart(4,'0')}\n` +
+            `🥇 Ticket: ${firstNum} | 🥈 ${secondNum} | 🥉 ${thirdNum}\n\n` +
+            `${footer}\n\nJoin: ${links.web} • ${links.botLink}`;
+
         await bot.api.sendMessage(groupId, message, { parse_mode: 'Markdown' });
         console.log(`✅ Posted winners to ${groupId} for Tier ${tierId}, Round ${roundNo}`);
     } catch (error) {

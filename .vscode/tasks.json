@@ -1,0 +1,38 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Stress Test Suite",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"tests/stress_test.js"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Run Stress Test Suite",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"tests/stress_test.js"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Run Stress Test Suite",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"tests/stress_test.js"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}
