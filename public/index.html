@@ -1357,6 +1357,27 @@
             .status-legend { right: 50%; transform: translateX(50%); top: auto; bottom: 110px; min-width: 86%; padding: 12px; }
             .status-tooltip { right: 12px; left: 12px; transform: none; bottom: calc(100% + 8px); top: auto; }
         }
+
+        /* --- BOTTOM GRID LEGEND (High-end Glassmorphism) --- */
+        .bottom-legend {
+            display:flex; align-items:center; justify-content:space-between; gap:12px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+            -webkit-backdrop-filter: blur(8px) saturate(1.05); backdrop-filter: blur(8px) saturate(1.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 10px 12px; border-radius: 12px; width: 100%; max-width: 920px; margin: 12px auto 0 auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+            color: var(--text-primary);
+        }
+        .bottom-legend .legend-entry { display:flex; align-items:center; gap:10px; flex:1; justify-content:center; }
+        .legend-box { width:28px; height:18px; border-radius:6px; flex-shrink:0; border:2px solid rgba(255,255,255,0.14); }
+        .legend-box.neutral { background: transparent; border-color: rgba(255,255,255,0.22); }
+        .legend-box.pulsing { background: #22c55e; border-color: #16a34a; box-shadow: 0 8px 24px rgba(34,197,94,0.14); animation: legend-pulse 1500ms ease-in-out infinite; }
+        .legend-box.sold { background: #16a34a; border-color: #16a34a; box-shadow: 0 6px 16px rgba(16,163,74,0.12); }
+        .legend-text-bilingual { display:flex; flex-direction:column; line-height:1; text-align:left; }
+        .legend-text-bilingual .en { font-weight:800; font-size:13px; color: var(--text-primary); }
+        .legend-text-bilingual .am { font-weight:700; font-size:12px; color: var(--text-secondary); opacity:0.95; }
+        @keyframes legend-pulse { 0% { transform: scale(1); box-shadow: 0 6px 14px rgba(34,197,94,0.12); } 50% { transform: scale(1.06); box-shadow: 0 12px 28px rgba(34,197,94,0.22); } 100% { transform: scale(1); box-shadow: 0 6px 14px rgba(34,197,94,0.12); } }
+        @media (max-width:640px) { .bottom-legend { padding: 10px; gap:8px; } .legend-text-bilingual .en { font-size:12px; } .legend-text-bilingual .am { font-size:11px; } }
     </style>
 </head>
 <body data-theme="dark">
@@ -1486,7 +1507,23 @@
                     </div>
                     <div id="grid-main" class="grid-main grid grid-cols-10 gap-1"></div>
                 </div>
-                <p class="legend-text">Legend: <span class="legend-selected">Selected</span> • <span class="legend-sold">Sold</span> • Available</p>
+                <!-- High-end bilingual legend (replaces plain legend text) -->
+                <div class="modal-legend" aria-hidden="false" style="margin-top:12px;">
+                    <div class="bottom-legend" role="list" aria-label="Ticket status legend">
+                        <div class="legend-entry" role="listitem">
+                            <span class="legend-box neutral" aria-hidden="true"></span>
+                            <span class="legend-text-bilingual"><span class="en">Available</span><span class="am">የሚገኘው</span></span>
+                        </div>
+                        <div class="legend-entry" role="listitem">
+                            <span class="legend-box pulsing" aria-hidden="true"></span>
+                            <span class="legend-text-bilingual"><span class="en">Pending</span><span class="am">በመጠባበቅ ላይ</span></span>
+                        </div>
+                        <div class="legend-entry" role="listitem">
+                            <span class="legend-box sold" aria-hidden="true"></span>
+                            <span class="legend-text-bilingual"><span class="en">Sold</span><span class="am">የተያዘ</span></span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1849,6 +1886,22 @@
         
         <div id="grid-main" class="grid"></div>
         
+        <!-- Bottom bilingual legend (under grid) -->
+        <div class="bottom-legend" id="bottom-legend" aria-hidden="false">
+            <div class="legend-entry">
+                <span class="legend-box neutral" aria-hidden="true"></span>
+                <span class="legend-text-bilingual"><span class="en">Available</span><span class="am">የሚገኘው</span></span>
+            </div>
+            <div class="legend-entry">
+                <span class="legend-box pulsing" aria-hidden="true"></span>
+                <span class="legend-text-bilingual"><span class="en">Pending</span><span class="am">በመጠባበቅ ላይ</span></span>
+            </div>
+            <div class="legend-entry">
+                <span class="legend-box sold" aria-hidden="true"></span>
+                <span class="legend-text-bilingual"><span class="en">Sold</span><span class="am">የተያዘ</span></span>
+            </div>
+        </div>
+
         <!-- Winner Feed -->
         <div class="winner-feed">
             <div class="winner-feed-title" id="winner-title">Recent Winners</div>
