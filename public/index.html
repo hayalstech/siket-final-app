@@ -1297,6 +1297,51 @@
         body, header, main, footer, .cell, .nav-link, .nav-btn, .lang-toggle, .balance-text, .header-logo h1, .header-subtitle, .betslip-bar, .league-row, .league-body, .ticket-card, .desire-banner, .about-section {
             color: #ffffff !important;
         }
+
+        /* --- STATUS LEGEND (Floating, Bilingual) --- */
+        .status-legend {
+            position: absolute;
+            right: 12px;
+            top: 140px; /* placed below header/prize banner to avoid overlap */
+            z-index: 1200;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03));
+            backdrop-filter: blur(8px) saturate(1.1);
+            -webkit-backdrop-filter: blur(8px) saturate(1.1);
+            border: 1px solid rgba(212,175,55,0.12);
+            padding: 10px 12px;
+            border-radius: 12px;
+            min-width: 220px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.45);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            color: var(--text-primary);
+            font-family: 'Noto Sans Ethiopic', 'Inter', sans-serif;
+            font-size: 13px;
+        }
+
+        .status-legend .legend-row { display:flex; align-items:center; gap:10px; }
+        .status-indicator { width:28px; height:22px; border-radius:6px; border:2px solid rgba(255,255,255,0.12); flex-shrink:0; }
+        .indicator-available { background: transparent; border-color: rgba(255,255,255,0.2); }
+        .indicator-pending { background: linear-gradient(90deg,#34d399,#10b981); box-shadow: 0 6px 18px rgba(16,185,129,0.18); animation: pending-pulse 1400ms ease-in-out infinite; }
+        .indicator-sold { background: #16a34a; border-color: #16a34a; }
+
+        @keyframes pending-pulse { 0% { transform: scale(1); box-shadow: 0 6px 18px rgba(16,185,129,0.12);} 50% { transform: scale(1.06); box-shadow: 0 12px 30px rgba(16,185,129,0.22);} 100% { transform: scale(1); box-shadow: 0 6px 18px rgba(16,185,129,0.12);} }
+
+        .legend-label { display:flex; flex-direction:column; line-height:1; }
+        .legend-label .en { font-weight:800; font-size:13px; color: var(--text-primary); }
+        .legend-label .am { font-weight:700; font-size:12px; color: var(--text-secondary); opacity:0.95; }
+
+        .status-legend .info-btn { margin-left:auto; background:transparent; border:none; color:var(--text-primary); cursor:pointer; font-size:16px; }
+
+        .status-tooltip { position:absolute; right: calc(12px + 100%); top: 8px; transform: translateX(-8px); min-width:220px; background: rgba(2,6,23,0.92); color: #fff; padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.06); box-shadow: 0 8px 30px rgba(0,0,0,0.6); display:none; z-index:1300; font-size:13px; }
+        .status-tooltip.visible { display:block; }
+
+        /* Responsive: move legend to bottom center on small screens and avoid overlapping prize banner */
+        @media (max-width: 640px) {
+            .status-legend { right: 50%; transform: translateX(50%); top: auto; bottom: 110px; min-width: 86%; padding: 12px; }
+            .status-tooltip { right: 12px; left: 12px; transform: none; bottom: calc(100% + 8px); top: auto; }
+        }
     </style>
 </head>
 <body data-theme="dark">
@@ -1660,6 +1705,34 @@
             <div class="legend-item">
                 <div class="legend-color legend-sold-color"></div>
                 <span>Sold</span>
+            </div>
+        </div>
+
+        <!-- Floating bilingual status legend (replaces simple color-legend) -->
+        <div class="status-legend" id="status-legend" role="region" aria-label="Ticket status legend">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <strong style="font-size:14px;color:var(--accent);">Status</strong>
+                <button class="info-btn" id="legend-info-btn" title="Info">ℹ️</button>
+            </div>
+
+            <div class="legend-row">
+                <div class="status-indicator indicator-available" aria-hidden="true"></div>
+                <div class="legend-label"><span class="en">Available</span><span class="am">ዝግጁ</span></div>
+            </div>
+
+            <div class="legend-row">
+                <div class="status-indicator indicator-pending" aria-hidden="true"></div>
+                <div class="legend-label"><span class="en">Pending</span><span class="am">በመጠባበቅ ላይ</span></div>
+            </div>
+
+            <div class="legend-row">
+                <div class="status-indicator indicator-sold" aria-hidden="true"></div>
+                <div class="legend-label"><span class="en">Sold</span><span class="am">የተያዘ</span></div>
+            </div>
+
+            <div class="status-tooltip" id="status-tooltip" role="tooltip">
+                <strong style="display:block;margin-bottom:6px;">How this works</strong>
+                <div style="font-size:13px;line-height:1.2;">Numbers turn green once a ticket is successfully secured. Pulse means the system is verifying your balance.</div>
             </div>
         </div>
         
@@ -3818,6 +3891,45 @@
                 loadWinners(currentTierId);
             }
         }, 10000);
+
+        // Legend tooltip interactions: hover and touch-friendly
+        (function setupLegendTooltip(){
+            const infoBtn = document.getElementById('legend-info-btn');
+            const tooltip = document.getElementById('status-tooltip');
+            if (!infoBtn || !tooltip) return;
+
+            let hideTimer = null;
+            function show() {
+                clearTimeout(hideTimer);
+                tooltip.classList.add('visible');
+            }
+            function hide(){
+                hideTimer = setTimeout(() => tooltip.classList.remove('visible'), 250);
+            }
+
+            infoBtn.addEventListener('mouseenter', show);
+            infoBtn.addEventListener('focus', show);
+            infoBtn.addEventListener('mouseleave', hide);
+            infoBtn.addEventListener('blur', hide);
+
+            // touch: toggle on tap
+            infoBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (tooltip.classList.contains('visible')) {
+                    tooltip.classList.remove('visible');
+                } else {
+                    tooltip.classList.add('visible');
+                    setTimeout(() => tooltip.classList.remove('visible'), 5000);
+                }
+            });
+
+            // Hide tooltip when tapping outside
+            document.addEventListener('click', (e) => {
+                if (!tooltip.contains(e.target) && !infoBtn.contains(e.target)) {
+                    tooltip.classList.remove('visible');
+                }
+            }, { passive: true });
+        })();
 
         // Load live winners from all tiers
         async function loadLiveWinners() {
