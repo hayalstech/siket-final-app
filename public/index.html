@@ -385,6 +385,16 @@
             color: transparent;
         }
 
+        /* Vice Versa Theme logic: light mode surfaces become white with dark text */
+        :root[data-theme="light"] footer,
+        :root[data-theme="light"] .soon-section,
+        :root[data-theme="light"] .comp-section,
+        :root[data-theme="light"] .league-container {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            border-color: rgba(15,23,42,0.06) !important;
+        }
+
         @media (max-width: 640px) {
             .hero-trust-title { font-size: 28px; }
             .hero-trust-sub { font-size: 13px; }
@@ -777,7 +787,10 @@
         .selected { background: #eab308; color: black; box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.6); }
         .pending { background: #eab308; color: black; }
         .sold { background: var(--bronze); color: white; pointer-events: none; opacity: 0.8; }
-        
+        /* Pending - pulsing green; Sold - solid green with white numbers */
+        .cell.pending { background: #22c55e; color: #ffffff !important; border-color: #16a34a !important; box-shadow: 0 8px 28px rgba(34,197,94,0.16); animation: pending-pulse 1400ms ease-in-out infinite; pointer-events: none; }
+        .cell.sold { background: #16a34a !important; color: #ffffff !important; border-color: #16a34a !important; pointer-events: none; box-shadow: 0 6px 16px rgba(16,163,74,0.18); }
+
         /* --- TRUST BADGE & LIVE AUDIT --- */
         .trust-badge {
             display: flex;
@@ -982,6 +995,8 @@
             50% { transform: translateY(-4px) scale(1.03); }
             100% { transform: translateY(0) scale(1); }
         }
+
+        @keyframes pending-pulse { 0% { transform: scale(1); box-shadow: 0 6px 18px rgba(34,197,94,0.12);} 50% { transform: scale(1.06); box-shadow: 0 12px 30px rgba(34,197,94,0.22);} 100% { transform: scale(1); box-shadow: 0 6px 18px rgba(34,197,94,0.12);} }
 
         /* Winner-card shimmer */
         .winner-card { position:relative; overflow:hidden; }
@@ -1347,33 +1362,33 @@
 <body data-theme="dark">
 
     <header>
-        <!-- Row 1: Identity + language + theme -->
-        <div class="header-row status-bar" role="banner" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;">
+        <!-- Header Top Row: Logo/Name (left) + Lang/Theme (right) -->
+        <div class="header-row header-top" role="banner" style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">
             <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-                <img src="images/logo.png" alt="Siket Logo" style="height:34px;"> 
-                <div class="header-logo-text">
+                <img src="images/logo.png" alt="Siket Logo" style="height:36px;border-radius:6px;"> 
+                <div class="header-logo-text" style="min-width:0;">
                     <h1 id="nav-title">ስኬት ሎተሪ</h1>
                     <div id="nav-subtitle" class="header-subtitle">በኃላፊነት ይጫወቱ</div>
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;">
-                <button id="lang-toggle" class="lang-toggle">EN</button>
+                <button id="lang-toggle" class="lang-toggle" aria-label="Toggle language">EN</button>
                 <button id="theme-btn" class="theme-toggle" title="Toggle theme">🌙</button>
             </div>
         </div>
 
-        <!-- Row 2: Balance + actions -->
-        <div class="header-row action-bar" role="navigation" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-top:1px solid rgba(0,0,0,0.06);">
-            <div style="display:flex;align-items:center;gap:8px;min-width:0;">
-                <div id="currency-rate" style="font-size:12px;opacity:0.85;margin-right:8px;">1 EUR = 200 ETB</div>
+        <!-- Header Bottom Row: Masked EUR Balance (left) + Deposit / Account (right) -->
+        <div class="header-row header-bottom" role="navigation" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04);">
+            <div style="display:flex;align-items:center;gap:10px;min-width:0;">
+                <div id="currency-rate" style="font-size:12px;opacity:0.9;margin-right:8px;">1 EUR = 200 ETB</div>
                 <div class="balance-container" style="display:flex;align-items:center;gap:8px;min-width:0;">
-                    <div id="balance-display" class="balance-text">****</div>
+                    <div id="balance-display" class="balance-text">**** EUR</div>
                     <button id="balance-toggle" class="eye-icon" aria-label="Toggle balance">👁️</button>
                 </div>
             </div>
-            <div style="display:flex;align-items:center;gap:8px;">
-                <button id="deposit-btn" class="nav-btn primary"><span class="lang-en">Deposit</span><span class="lang-am">አስገባ</span></button>
-                <button id="my-account-btn" class="nav-btn"><span class="lang-en">My Account</span><span class="lang-am">አካውንት</span></button>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <button id="deposit-btn" class="nav-btn primary" aria-label="Deposit"><span class="lang-en">Deposit</span><span class="lang-am">አስገባ</span></button>
+                <button id="my-account-btn" class="nav-btn" aria-label="Account">👤</button>
             </div>
         </div>
     </header>
