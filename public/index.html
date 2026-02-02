@@ -2666,10 +2666,9 @@
         // ======================
         // 10x10 Grid Game Engine
         // ======================
-        const PRICE = { 3: 2.5, 2: 1.5, 1: 0.5 }; // 3:Gold,2:Silver,1:Bronze
-        // Siket price rule in cents
+        // Siket price rule in cents (source of truth)
         const PRICE_CENTS = { 3: 250, 2: 150, 1: 50 };
-        const PRICE = { 3: PRICE_CENTS[3]/100, 2: PRICE_CENTS[2]/100, 1: PRICE_CENTS[1]/100 };
+        const PRICE = { 3: PRICE_CENTS[3] / 100, 2: PRICE_CENTS[2] / 100, 1: PRICE_CENTS[1] / 100 };
         const TIER_NAME = { 3: 'Gold', 2: 'Silver', 1: 'Bronze' };
         const EUR_TO_ETB = 200;
         // Update visible conversion rate in header if present
@@ -3373,6 +3372,8 @@
             loadWinners(id);
             
             renderGrid(data);
+            // Start monitoring countdown/lockdown for this tier (starts cinematic countdown when full)
+            try { monitorCountdown(id); } catch(e) { console.warn('monitorCountdown failed', e); }
         }
         
         // Create fallback tickets when API fails
@@ -3695,15 +3696,17 @@
             }
         }
 
-        function startCountdown() {
+        function startCountdown(seconds = 300, options = {}) {
             const timerEl = document.getElementById('countdown-timer');
             const submitBtn = document.getElementById('submit-btn');
             
             if (countdownInterval) {
                 clearInterval(countdownInterval);
             }
-            
-            countdownSeconds = 300; // Reset to 5 minutes
+            // If caller provided seconds, use it. Otherwise default previously used 300s
+            countdownSeconds = typeof seconds === 'number' ? seconds : 300;
+
+            const cinematic = options.cinematic === true;
             
             countdownInterval = setInterval(() => {
                 const minutes = Math.floor(countdownSeconds / 60);
@@ -3712,6 +3715,12 @@
                 
                 if(countdownSeconds <= 0) {
                     clearInterval(countdownInterval);
+                    timerEl.textContent = '00:00';
+                    if (cinematic) {
+                        // Redirect to draw arena when cinematic countdown ends
+                        window.location.href = `/draw.html?tier=${currentTierId}`;
+                        return;
+                    }
                     timerEl.textContent = 'Time Expired';
                     submitBtn.disabled = true;
                     setTimeout(() => {
@@ -3719,6 +3728,86 @@
                     }, 2000);
                 }
                 countdownSeconds--;
+            }, 1000);
+        }
+
+        // Poll backend for countdown/lockdown status and start cinematic countdown immediately when sell-out detected
+        let monitorInterval = null;
+        async function monitorCountdown(tierId) {
+            if (monitorInterval) clearInterval(monitorInterval);
+            // Poll immediately and then every 3 seconds
+            async function check() {
+                try {
+                    const res = await fetch(`/api/countdown/${tierId}`);
+                    if (!res.ok) return;
+                    const jd = await res.json();
+                    if (jd && jd.isFull) {
+                        // Compute remaining seconds: if lockdown was started server-side, prefer that, otherwise compute from countdownStart
+                        let remaining = 180;
+                        if (jd.countdownStart) {
+                            const startTs = new Date(jd.countdownStart).getTime();
+                            const elapsed = Math.floor((Date.now() - startTs)/1000);
+                            remaining = Math.max(0, 180 - elapsed);
+                        }
+
+                        // Show bilingual lockdown overlay
+                        showLockdownOverlay(remaining, tierId, jd.seedHash || null);
+
+                        // Start cinematic countdown (use remaining seconds)
+                        startCountdown(remaining, { cinematic: true });
+                        // Stop polling while in lockdown
+                        if (monitorInterval) { clearInterval(monitorInterval); monitorInterval = null; }
+                    }
+                } catch (e) { /* ignore */ }
+            }
+            await check();
+            monitorInterval = setInterval(check, 3000);
+        }
+
+        function showLockdownOverlay(remainingSeconds, tierId, seedHash) {
+            // create overlay if not exists
+            let ov = document.getElementById('lockdown-overlay');
+            if (!ov) {
+                ov = document.createElement('div');
+                ov.id = 'lockdown-overlay';
+                ov.style.position = 'fixed';
+                ov.style.left = '0';
+                ov.style.top = '0';
+                ov.style.width = '100%';
+                ov.style.height = '100%';
+                ov.style.display = 'flex';
+                ov.style.alignItems = 'center';
+                ov.style.justifyContent = 'center';
+                ov.style.zIndex = '2000';
+                ov.style.backdropFilter = 'blur(6px)';
+                ov.style.padding = '20px';
+                document.body.appendChild(ov);
+            }
+            ov.innerHTML = `
+                <div style="max-width:720px;width:100%;background:var(--surface-strong);border-radius:12px;padding:20px;text-align:center;color:var(--text-primary);">
+                    <div style="font-size:22px;font-weight:800;margin-bottom:8px;">
+                        <span class="lang-en">Draw Lockdown — Cinematic Countdown</span>
+                        <span class="lang-am">የስራ ዝግጅት — ሲነማቲክ ጊዜ ብዛት</span>
+                    </div>
+                    <div id="lockdown-countdown" style="font-size:48px;font-weight:900;margin:12px 0;">${String(Math.floor(remainingSeconds/60)).padStart(2,'0')}:${String(remainingSeconds%60).padStart(2,'0')}</div>
+                    <div style="font-size:14px;opacity:0.9;margin-bottom:12px;">
+                        <span class="lang-en">The draw will begin in</span>
+                        <span class="lang-am">ድራዉ በዚህ ያለው ጊዜ ይጀምራል</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--text-secondary);">
+                        <div class="lang-en">Seed Hash: ${seedHash || 'TBD'}</div>
+                        <div class="lang-am">የቅንጅት ሐሽ፦ ${seedHash || 'እስካሁን አልታወቀም'}</div>
+                    </div>
+                </div>
+            `;
+
+            // Update overlay countdown every second
+            let sec = remainingSeconds;
+            const overlayTimer = setInterval(() => {
+                sec--;
+                const el = document.getElementById('lockdown-countdown');
+                if (el) el.textContent = `${String(Math.floor(Math.max(0,sec)/60)).padStart(2,'0')}:${String(Math.max(0,sec)%60).padStart(2,'0')}`;
+                if (sec <= 0) { clearInterval(overlayTimer); }
             }, 1000);
         }
 

@@ -149,8 +149,11 @@ async function handleTierSoldFull(tierId) {
         const arenaUrl = `${links.web.replace(/\/$/, '')}/draw.html?tier=${tierId}&round=${round}`;
 
         const groupId = process.env.WINNERS_GROUP_ID || '@siketlotto';
-        await bot.api.sendMessage(groupId, `🔒 Pool Full! The ${tierId==3?'Gold':tierId==2?'Silver':'Bronze'} grid is full. Enter the 4K Cinematic Draw Arena: ${arenaUrl}`);
-        await bot.api.sendMessage(groupId, `⏳ The draw will start in 3 minutes. Join the live arena now!`);
+        // Bilingual lockdown announcement (English + Amharic)
+        const enMsg = `🔒 Pool Full! The ${tierId==3?'Gold':tierId==2?'Silver':'Bronze'} grid is full. Enter the 4K Cinematic Draw Arena: ${arenaUrl}\n⏳ The draw will start in 3 minutes. Join the live arena now!`;
+        const amMsg = `🔒 እስር ያለው ፑል! ${tierId==3?'ወርቅ':tierId==2?'ብር':'ነሐስ'} ግሪድ ተሞሏል። ወደ 4K ሲነማቲክ ድራው አራና ይግቡ፦ ${arenaUrl}\n⏳ ድራው በ3 ደቂቃ ውስጥ ይጀምራል። አሁን ይሳተፉ!`;
+        try { await bot.api.sendMessage(groupId, enMsg); } catch(e) { console.warn('announce en failed', e); }
+        try { await bot.api.sendMessage(groupId, amMsg); } catch(e) { console.warn('announce am failed', e); }
 
         // Do NOT schedule draws with setTimeout (incompatible with serverless).
         // Instead, a separate draw worker or scheduled cron should call `/api/trigger-draw`.
@@ -1866,6 +1869,20 @@ async function runDrawLogic(tId, rnd) {
         }
     }
 
+    // Special prize handling: Bronze tier 3rd place => 1 voucher (consumed later as 2 free tickets)
+    try {
+        const bronzeThird = winners.find(w => w.place === 3 && w.tierId === 1);
+        if (bronzeThird && bronzeThird.userId) {
+            const client = await getRedis();
+            if (client) {
+                const key = `pending_free_tickets:${bronzeThird.userId}`;
+                const prev = parseInt(await client.get(key) || '0', 10);
+                await client.set(key, String(prev + 1), { EX: 60 * 60 * 24 * 60 }); // keep for 60 days
+                console.log(`Awarded 1 free-ticket-voucher to user ${bronzeThird.userId}`);
+            }
+        }
+    } catch (e) { console.warn('Failed to award bronze voucher', e); }
+
     // Animation sequence: 3rd at 0s, 2nd at 5s, 1st at 10s, each displayed for 3s
     // Animation completes at ~13 seconds (10s delay + 3s display for 1st place)
     // Wait 30 seconds AFTER animation ends (at 43 seconds total), then send winner notifications
@@ -1913,6 +1930,95 @@ app.post('/api/trigger-draw', express.json(), async (req, res) => {
         return res.json({ ok: true });
     } catch (e) {
         console.error('trigger-draw error', e);
+        return res.status(500).json({ error: 'server' });
+    }
+});
+
+// Admin HTTP route: credit ETB amount as EUR cents to user's internal wallet
+app.post('/api/admin/credit-etb', express.json(), async (req, res) => {
+    try {
+        const secret = req.headers['x-admin-secret'] || req.query.secret || req.body.secret;
+        if (!process.env.ADMIN_SECRET) return res.status(500).json({ error: 'admin_secret_not_configured' });
+        if (secret !== process.env.ADMIN_SECRET) return res.status(403).json({ error: 'forbidden' });
+
+        const { user_id, tx_reference, amount_etb } = req.body || {};
+        if (!user_id || !tx_reference || !amount_etb) return res.status(400).json({ error: 'missing_params' });
+
+        // Duplicate detection (Redis first)
+        try {
+            const client = await getRedis();
+            if (client) {
+                const key = `bank_ref:${tx_reference}`;
+                const exists = await client.get(key);
+                if (exists) return res.status(409).json({ error: 'duplicate_tx' });
+            }
+        } catch (e) {
+            console.warn('Redis duplicate check failed', e);
+        }
+
+        // DB duplicate check
+        const dup = await pool.query('SELECT id FROM transaction_registry WHERE tx_reference = $1 LIMIT 1', [tx_reference]);
+        if (dup.rows.length > 0) return res.status(409).json({ error: 'duplicate_tx' });
+
+        // Compute EUR amount using floor conversion rule and cents
+        const amountEtb = parseFloat(amount_etb || 0);
+        const amountEurInteger = Math.floor(amountEtb / EUR_TO_ETB); // floor per requirement
+        const amountCents = Math.max(0, parseInt(amountEurInteger, 10) * 100);
+
+        // Insert into transaction_registry with amount_cents if column exists
+        try {
+            const colRes = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name='transaction_registry' AND column_name='amount_cents'");
+            const hasAmountCents = colRes.rows.length > 0;
+            if (hasAmountCents) {
+                await pool.query(`INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, amount_cents, admin_id, processed_at) VALUES ($1,$2,$3,$4,$5,$6,NOW())`, [tx_reference, user_id, amountEtb, amountEurInteger, amountCents, null]);
+            } else {
+                await pool.query(`INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, admin_id, processed_at) VALUES ($1,$2,$3,$4,$5,NOW())`, [tx_reference, user_id, amountEtb, amountEurInteger, null]);
+            }
+        } catch (e) {
+            console.error('Error inserting into transaction_registry (admin route):', e);
+            return res.status(500).json({ error: 'db_error' });
+        }
+
+        // Mark Redis reference to avoid duplicates across instances
+        try {
+            const client = await getRedis();
+            if (client) {
+                const key = `bank_ref:${tx_reference}`;
+                await client.set(key, '1', { EX: 30 * 24 * 3600 });
+            }
+        } catch (e) { console.warn('Failed to set Redis bank_ref key (admin route)', e); }
+
+        // Credit user wallet in cents if supported, otherwise fallback to balance_eur
+        try {
+            const colRes2 = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name='user_wallets' AND column_name='balance_cents'");
+            const hasBalanceCents = colRes2.rows.length > 0;
+            if (hasBalanceCents) {
+                const exists = await pool.query('SELECT balance_cents FROM user_wallets WHERE user_id = $1', [user_id]);
+                if (exists.rows.length === 0) {
+                    await pool.query('INSERT INTO user_wallets (user_id, balance_cents) VALUES ($1,$2)', [user_id, amountCents]);
+                } else {
+                    const newBal = (parseInt(exists.rows[0].balance_cents || 0, 10) + amountCents);
+                    await pool.query('UPDATE user_wallets SET balance_cents = $1 WHERE user_id = $2', [newBal, user_id]);
+                }
+            } else {
+                // legacy fallback to numeric EUR
+                const exists = await pool.query('SELECT balance_eur FROM user_wallets WHERE user_id = $1', [user_id]);
+                const eurVal = amountEurInteger;
+                if (exists.rows.length === 0) {
+                    await pool.query('INSERT INTO user_wallets (user_id, balance_eur) VALUES ($1,$2)', [user_id, eurVal]);
+                } else {
+                    const newBal = parseFloat(exists.rows[0].balance_eur || 0) + eurVal;
+                    await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [newBal, user_id]);
+                }
+            }
+        } catch (e) {
+            console.error('Error crediting wallet (admin route):', e);
+            return res.status(500).json({ error: 'wallet_error' });
+        }
+
+        return res.json({ ok: true, credited_cents: amountCents, credited_eur: amountEurInteger });
+    } catch (e) {
+        console.error('admin credit-etb error', e);
         return res.status(500).json({ error: 'server' });
     }
 });
@@ -2027,12 +2133,20 @@ async function postWinnersToGroup(tierId, roundNo, firstNum, secondNum, thirdNum
         const amountText = prizeEur ? `${prizeEur} EUR` : '';
         const footer = 'Safe Draw: 100% Computerized & Fair | ታማኝ ዕጣ፦ 100% በኮምፒውተር የሚመራ።';
 
-        const message = `🏆 BIG WINNER! Congratulations to ${mention} for winning ${amountText}!\n\n` +
-            `🎉 Tier: ${tierName} | Round #${String(roundNo).padStart(4,'0')}\n` +
-            `🥇 Ticket: ${firstNum} | 🥈 ${secondNum} | 🥉 ${thirdNum}\n\n` +
-            `${footer}\n\nJoin: ${links.web} • ${links.botLink}`;
+            const messageEn = `🏆 BIG WINNER! Congratulations to ${mention} for winning ${amountText}!\n\n` +
+                `🎉 Tier: ${tierName} | Round #${String(roundNo).padStart(4,'0')}\n` +
+                `🥇 Ticket: ${firstNum} | 🥈 ${secondNum} | 🥉 ${thirdNum}\n\n` +
+                `${footer}\n\nJoin: ${links.web} • ${links.botLink}`;
 
-        await bot.api.sendMessage(groupId, message, { parse_mode: 'Markdown' });
+            const messageAm = `🏆 ዋና አሸናፊ! እንኳን ደስ አለዎት ${mention} ለሽልማት ${amountText}!\n\n` +
+                `🎉 ደረጃ: ${tierNameAm} | ዙር #${String(roundNo).padStart(4,'0')}\n` +
+                `🥇 ትኬት: ${firstNum} | 🥈 ${secondNum} | 🥉 ${thirdNum}\n\n` +
+                `የታማኝነት፦ 100% በኮምፒውተር እና ፈር ነው | ታማኝ ዕጣ፦ 100% በኮምፒውተር እና ፈር\n\n` +
+                `ተጫዋቾች ይቀላቀሉ፦ ${links.web} • ${links.botLink}`;
+
+            // Post English then Amharic (Telegram clients will surface according to user prefs)
+            try { await bot.api.sendMessage(groupId, messageEn, { parse_mode: 'Markdown' }); } catch(e) { console.warn('post winners en failed', e); }
+            try { await bot.api.sendMessage(groupId, messageAm, { parse_mode: 'Markdown' }); } catch(e) { console.warn('post winners am failed', e); }
         console.log(`✅ Posted winners to ${groupId} for Tier ${tierId}, Round ${roundNo}`);
     } catch (error) {
         console.error('Error posting winners to group:', error);
