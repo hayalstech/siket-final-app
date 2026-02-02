@@ -85,6 +85,14 @@
             50% { box-shadow: 0 6px 18px rgba(16,185,129,0.18); transform: translateY(-2px); }
             100% { box-shadow: 0 0 0 rgba(16,185,129,0.08); transform: translateY(0); }
         }
+        /* Enforce sold = solid green (override older red styles) */
+        .grid-main .cell.sold, .cell.sold {
+            background: #15803d !important;
+            color: #ffffff !important;
+            border-color: #15803d !important;
+            pointer-events: none;
+            box-shadow: 0 6px 18px rgba(16,163,74,0.18);
+        }
         .cell.selected { background: #32d74b; color: black; border-color: #32d74b; font-weight: bold; }
 
         /* Scan highlight during draw */
@@ -221,10 +229,12 @@
         /* --- HEADER --- */
         header {
             position: fixed; top: 0; width: 100%; z-index: 1000;
-            /* Soft gold gradient for premium header */
-            --header-start: #D4AF37;
-            --header-end: #C5A028;
-            background: linear-gradient(90deg,var(--header-start),var(--header-end));
+            /* Header background image */
+            background-image: url('images/header.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            /* subtle dark overlay for contrast */
             -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
             padding: 10px 14px; display: block; gap:6px;
             border-bottom: 1px solid rgba(0,0,0,0.12);
@@ -232,7 +242,10 @@
             padding-top: calc(10px + env(safe-area-inset-top));
             max-height: 112px;
             overflow: hidden;
+            color: #ffffff !important;
         }
+        /* Ensure all header children use white text for readability */
+        header, header * { color: #ffffff !important; }
         .header-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
         .status-bar { padding-bottom:6px; }
         .action-bar { padding-top:6px; }
@@ -2654,6 +2667,9 @@
         // 10x10 Grid Game Engine
         // ======================
         const PRICE = { 3: 2.5, 2: 1.5, 1: 0.5 }; // 3:Gold,2:Silver,1:Bronze
+        // Siket price rule in cents
+        const PRICE_CENTS = { 3: 250, 2: 150, 1: 50 };
+        const PRICE = { 3: PRICE_CENTS[3]/100, 2: PRICE_CENTS[2]/100, 1: PRICE_CENTS[1]/100 };
         const TIER_NAME = { 3: 'Gold', 2: 'Silver', 1: 'Bronze' };
         const EUR_TO_ETB = 200;
         // Update visible conversion rate in header if present

@@ -152,31 +152,8 @@ async function handleTierSoldFull(tierId) {
         await bot.api.sendMessage(groupId, `🔒 Pool Full! The ${tierId==3?'Gold':tierId==2?'Silver':'Bronze'} grid is full. Enter the 4K Cinematic Draw Arena: ${arenaUrl}`);
         await bot.api.sendMessage(groupId, `⏳ The draw will start in 3 minutes. Join the live arena now!`);
 
-        // Schedule the draw after 3 minutes (180s)
-        setTimeout(async () => {
-            try {
-                // pick random sold ticket as winner
-                const ticketsRes = await pool.query("SELECT id, number_val, owner_id FROM tickets WHERE tier_id = $1 AND round_no = $2 AND status = 'sold'", [tierId, round]);
-                const rows = ticketsRes.rows || [];
-                if (rows.length === 0) {
-                    await bot.api.sendMessage(groupId, `⚠️ Draw could not complete: no sold tickets found.`);
-                } else {
-                    const winner = rows[Math.floor(Math.random()*rows.length)];
-                    // announce winner
-                    const winnerText = `🏅 1st Place Winner: ${winner.owner_id ? `User#${winner.owner_id}` : 'Anonymous'} — Ticket #${winner.number_val} — Prize: ${(tierId==3?2.5: tierId==2?1.5:0.5) * 80} EUR`;
-                    await bot.api.sendMessage(groupId, winnerText);
-                    await bot.api.sendMessage(groupId, `🎉 New Round Now Open — grab your tickets!`);
-                }
-                    // clear lockdown
-                    if (client) {
-                        await client.del(lockKey);
-                        const startKey = `tier_lockdown_start:${tierId}`;
-                        await client.del(startKey);
-                    }
-            } catch (e) {
-                console.error('Error running scheduled draw', e);
-            }
-        }, 180000);
+        // Do NOT schedule draws with setTimeout (incompatible with serverless).
+        // Instead, a separate draw worker or scheduled cron should call `/api/trigger-draw`.
 
     } catch (e) {
         console.error('handleTierSoldFull error', e);
@@ -1095,10 +1072,10 @@ app.post('/api/admin/approve-deposit', express.json(), async (req, res) => {
             } catch (e) { console.warn('Redis check failed', e); }
         }
 
-        // Convert ETB -> EUR and to integer cents
+        // Convert ETB -> EUR using floor per Siket rule (Admin inputs ETB received -> Math.floor(ETB / EUR_TO_ETB) EUR)
         const amountEtb = parseFloat(received_etb);
-        const amountEur = parseFloat((amountEtb / EUR_TO_ETB));
-        const amountCents = Math.round(Number(amountEur) * 100);
+        const amountEurInt = Math.floor(amountEtb / EUR_TO_ETB);
+        const amountCents = Math.round(Number(amountEurInt) * 100);
 
         // Insert into transaction registry (store both numeric and cents for compatibility)
         const txRef = bank_reference || (dep.transaction_reference || `deposit-${dep.id}`);
@@ -1438,7 +1415,8 @@ bot.callbackQuery(/approve_group_(\d+)_(\d+)_(\d+)_([0-9a-fA-F]+)/, async (ctx) 
             for (let p of players.rows) {
                 await bot.api.sendMessage(p.owner_id, "🔔 ከ5 ደቂቃ በኋላ ዕጣው ይወጣል! መልካም ዕድል!");
             }
-            setTimeout(() => runDrawLogic(tId, rnd), 300000);
+            // Use external trigger for draw (cron/worker) which will check lockdown_start and run draw logic
+            try { await handleTierSoldFull(tId); } catch(e) { console.error('handleTierSoldFull failed', e); }
         }
 
         const originalCaption = ctx.callbackQuery && ctx.callbackQuery.message && ctx.callbackQuery.message.caption
@@ -1575,7 +1553,8 @@ bot.callbackQuery(/approve_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
         for(let p of players.rows) {
             await bot.api.sendMessage(p.owner_id, "🔔 ከ5 ደቂቃ በኋላ ዕጣው ይወጣል! መልካም ዕድል!");
         }
-        setTimeout(() => runDrawLogic(tId, rnd), 300000); // 5 Mins countdown
+        // Use external trigger for draw (cron/worker) which will check lockdown_start and run draw logic
+        try { await handleTierSoldFull(tId); } catch(e) { console.error('handleTierSoldFull failed', e); }
     }
     
     // Send approval message (default to Amharic, can be enhanced with language detection)
@@ -1906,6 +1885,99 @@ async function runDrawLogic(tId, rnd) {
         await bot.api.sendMessage(process.env.ADMIN_ID, `🔄 **ROUND #${nextR} STARTED**\nTier ${tId} is now accepting tickets for Round #${nextR}`);
     }, 60000); // 60 seconds total
 }
+
+// Trigger draw endpoint - to be called by a cron/worker after lockdown period has elapsed
+app.post('/api/trigger-draw', express.json(), async (req, res) => {
+    try {
+        const { tierId } = req.body || {};
+        const secret = req.headers['x-cron-secret'] || req.query.secret || req.body.secret;
+        if (CRON_SECRET && secret !== CRON_SECRET) return res.status(403).json({ error: 'forbidden' });
+        if (!tierId) return res.status(400).json({ error: 'tierId required' });
+
+        const client = await getRedis();
+        if (!client) return res.status(500).json({ error: 'redis_required' });
+        const startKey = `tier_lockdown_start:${tierId}`;
+        const startTs = parseInt(await client.get(startKey) || '0', 10);
+        if (!startTs) return res.status(400).json({ error: 'not_in_lockdown' });
+        const now = Date.now();
+        const elapsed = Math.floor((now - startTs) / 1000);
+        if (elapsed < 180) return res.status(400).json({ error: 'not_ready', remaining: 180 - elapsed });
+
+        // Determine round and ensure draw has not already been run
+        const rres = await pool.query('SELECT current_round FROM game_rounds WHERE tier_id = $1', [tierId]);
+        const round = rres.rows[0]?.current_round || 1;
+        const already = await pool.query('SELECT COUNT(*) as count FROM winners_history WHERE tier_id = $1 AND round_no = $2', [tierId, round]);
+        if (parseInt(already.rows[0].count || 0, 10) > 0) return res.json({ ok: true, message: 'draw_already_done' });
+
+        await runDrawLogic(tierId, round);
+        return res.json({ ok: true });
+    } catch (e) {
+        console.error('trigger-draw error', e);
+        return res.status(500).json({ error: 'server' });
+    }
+});
+
+// Start round endpoint: consumes pending_free_tickets and auto-allocates 2 blocks per voucher
+app.post('/api/start-round', express.json(), async (req, res) => {
+    try {
+        const { tierId } = req.body || {};
+        const secret = req.headers['x-cron-secret'] || req.query.secret || req.body.secret;
+        if (CRON_SECRET && secret !== CRON_SECRET) return res.status(403).json({ error: 'forbidden' });
+        if (!tierId) return res.status(400).json({ error: 'tierId required' });
+
+        const client = await getRedis();
+        if (!client) return res.status(500).json({ error: 'redis_required' });
+
+        // Advance round in DB
+        const rres = await pool.query('SELECT current_round FROM game_rounds WHERE tier_id = $1', [tierId]);
+        let nextR = (rres.rows[0] ? parseInt(rres.rows[0].current_round) : 1) + 1;
+        if (nextR <= 0) nextR = 1;
+        await pool.query('UPDATE game_rounds SET current_round = $1 WHERE tier_id = $2', [nextR, tierId]);
+
+        // Initialize tickets for new round (best-effort)
+        for (let n = 1; n <= 100; n++) {
+            try { await pool.query('INSERT INTO tickets (tier_id, number_val, status, round_no) VALUES ($1,$2,\'available\',$3)', [tierId, n, nextR]); } catch(e) { /* ignore */ }
+        }
+
+        // Consume pending_free_tickets keys: pattern pending_free_tickets:{userId}
+        const keys = await client.keys('pending_free_tickets:*');
+        for (const k of keys || []) {
+            try {
+                const userId = k.split(':')[1];
+                const cnt = parseInt(await client.get(k) || '0', 10);
+                if (cnt <= 0) { await client.del(k); continue; }
+
+                // For each voucher, allocate 2 available blocks
+                for (let v = 0; v < cnt; v++) {
+                    const allocated = [];
+                    for (let i = 1; i <= 100 && allocated.length < 2; i++) {
+                        const tkey = `ticket_sold:${tierId}:${nextR}:${i}`;
+                        const ok = await client.set(tkey, String(userId), { NX: true, EX: 60*60*24 });
+                        if (ok) allocated.push(i);
+                    }
+                    if (allocated.length > 0) {
+                        // Persist tickets as sold in DB
+                        for (const num of allocated) {
+                            try {
+                                await pool.query("UPDATE tickets SET owner_id=$1, status='sold', purchase_timestamp=NOW(), round_no=$3 WHERE tier_id=$2 AND number_val=$4 AND round_no=$3", [userId, tierId, nextR, num]);
+                            } catch(e) {
+                                try { await pool.query('INSERT INTO tickets (tier_id, round_no, number_val, owner_id, status, purchase_timestamp) VALUES ($1,$2,$3,$4,\'sold\', NOW())', [tierId, nextR, num, userId]); } catch(e2) { /* ignore dupes */ }
+                            }
+                        }
+                    }
+                }
+
+                // Remove key after allocation
+                await client.del(k);
+            } catch (e) { console.warn('start-round allocate error for key', k, e); }
+        }
+
+        return res.json({ ok: true, round: nextR });
+    } catch (e) {
+        console.error('start-round error', e);
+        return res.status(500).json({ error: 'server' });
+    }
+});
 
 // Post winners to Telegram group/channel instantly
 async function postWinnersToGroup(tierId, roundNo, firstNum, secondNum, thirdNum) {
