@@ -2125,33 +2125,59 @@ const isProduction = process.env.NODE_ENV === 'production' || !!process.env.REND
 // Keep Awake
 setInterval(() => { if (domain) axios.get(domain).catch(() => {}); }, 300000);
 
-if (domain && (isProduction || process.env.USE_WEBHOOK === 'true')) {
-    // Webhook Mode (Production)
-    // Ensure domain starts with https://
-    const safeDomain = domain.startsWith('http') ? domain : `https://${domain}`;
-    const webhookUrl = safeDomain.endsWith('/') ? `${safeDomain}webhook` : `${safeDomain}/webhook`;
-    
-    app.use('/webhook', webhookCallback(bot, 'express'));
-    
-    app.listen(port, async () => {
-        console.log(`🌐 Siket Production Server Live on port ${port}`);
-        console.log(`🔗 Webhook URL: ${webhookUrl}`);
-        try {
-            // Delete any previous webhook to ensure clean state
-            await bot.api.deleteWebhook({ drop_pending_updates: true });
-            await bot.api.setWebhook(webhookUrl);
-            console.log("✅ Webhook set successfully");
-        } catch (e) {
-            console.error("❌ Failed to set webhook:", e);
-        }
-    });
+// Decide deployment mode: serverless (Vercel) or conventional server
+const isVercel = !!process.env.VERCEL || process.env.DEPLOY_TARGET === 'vercel';
+const useWebhook = domain && (isProduction || process.env.USE_WEBHOOK === 'true' || isVercel);
+const webhookPath = isVercel ? '/api/webhook' : '/webhook';
+
+if (useWebhook) {
+    // Webhook Mode: mount webhook at appropriate path
+    app.use(webhookPath, webhookCallback(bot, 'express'));
+
+    // Compute webhook URL: prefer explicit WEBHOOK_URL env var (useful on Vercel), else derive from domain
+    const explicitWebhook = process.env.WEBHOOK_URL || process.env.TELEGRAM_WEBHOOK_URL;
+    const safeDomain = domain ? (domain.startsWith('http') ? domain : `https://${domain}`) : null;
+    const derivedWebhook = safeDomain ? (safeDomain.replace(/\/$/, '') + webhookPath) : null;
+    const webhookUrl = explicitWebhook || derivedWebhook;
+
+    if (isVercel) {
+        // Serverless: do not call app.listen() or bot.start(). Set webhook if provided, export `app` for the platform.
+        (async () => {
+            if (webhookUrl) {
+                try {
+                    await bot.api.deleteWebhook({ drop_pending_updates: true });
+                    await bot.api.setWebhook(webhookUrl);
+                    console.log('✅ Webhook set successfully:', webhookUrl);
+                } catch (e) {
+                    console.error('❌ Failed to set webhook on Vercel cold start:', e);
+                }
+            } else {
+                console.warn('⚠️ Vercel detected but no WEBHOOK_URL or domain provided — webhook not set.');
+            }
+        })();
+
+        // Export Express app so Vercel/Serverless can attach the handler
+        try { module.exports = app; } catch (e) { /* ignore if not supported */ }
+        console.log('⚡ Running in serverless mode — webhook mounted at', webhookPath);
+    } else {
+        // Regular server process: listen and set webhook on startup
+        app.listen(port, async () => {
+            console.log(`🌐 Siket Production Server Live on port ${port}`);
+            if (webhookUrl) console.log(`🔗 Webhook URL: ${webhookUrl}`);
+            try {
+                await bot.api.deleteWebhook({ drop_pending_updates: true });
+                if (webhookUrl) await bot.api.setWebhook(webhookUrl);
+                console.log('✅ Webhook configured');
+            } catch (e) { console.error('❌ Failed to configure webhook:', e); }
+        });
+    }
 } else {
     // Long Polling Mode (Development / Local)
     app.listen(port, () => console.log(`🌐 Siket Dev Server Live on port ${port}`));
-    
-    // Clear any webhook first
+
+    // Clear any webhook first and start long polling
     bot.api.deleteWebhook({ drop_pending_updates: true }).then(() => {
-        console.log("🔄 Webhooks cleared, starting long polling...");
+        console.log('🔄 Webhooks cleared, starting long polling...');
         bot.start({
             drop_pending_updates: true,
             onStart: (botInfo) => {
@@ -2159,11 +2185,11 @@ if (domain && (isProduction || process.env.USE_WEBHOOK === 'true')) {
             }
         }).catch(e => {
             if (e.message && e.message.includes('409')) {
-                console.error("❌ CONFLICT ERROR: Another instance of the bot is running.");
-                console.error("👉 Please stop the other instance (local terminal or other deployment).");
+                console.error('❌ CONFLICT ERROR: Another instance of the bot is running.');
+                console.error('👉 Please stop the other instance (local terminal or other deployment).');
             } else {
-                console.error("❌ Bot start error:", e);
+                console.error('❌ Bot start error:', e);
             }
         });
-    }).catch(e => console.error("Error clearing webhook:", e));
+    }).catch(e => console.error('Error clearing webhook:', e));
 }
