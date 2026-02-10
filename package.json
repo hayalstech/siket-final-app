@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Siket Lottery Telegram Mini App",
   "main": "bot.js",
+  "engines": { "node": ">=18.x" },
   "scripts": {
     "start": "node bot.js",
     "test": "node tests/stress_test.js"

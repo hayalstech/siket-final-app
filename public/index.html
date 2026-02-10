@@ -256,11 +256,11 @@
         .header-subtitle { color: var(--tg-theme-hint-color, var(--text-secondary)) !important; text-shadow:none !important; }
         .nav-link { color: var(--tg-theme-text-color, var(--text-primary)) !important; }
         .nav-link:hover { background: rgba(0,0,0,0.04); }
-        .nav-btn, .lang-toggle, .contact-btn { color: var(--tg-theme-button-text-color, var(--text-primary)) !important; background: var(--tg-theme-button-color, transparent) !important; }
-        .balance-text { color: var(--tg-theme-text-color, var(--text-primary)) !important; }
+        .nav-btn, .lang-toggle, .contact-btn { color: #FFFFFF !important; background: rgba(0,0,0,0.2) !important; }
+        .balance-text { color: #FFFFFF !important; }
         .header-logo { display: flex; align-items: center; gap: 10px; }
         .header-logo img { height: 30px; }
-        .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; color: var(--tg-theme-text-color, var(--text-primary)); text-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .header-logo h1 { font-size: 14px; margin: 0; text-transform: uppercase; font-weight: 900; letter-spacing: 1px; color: #FFFFFF; text-shadow: 0 1px 3px rgba(0,0,0,0.2); }
         .header-logo-text { display: flex; flex-direction: column; }
         .header-subtitle { font-size: 11px; margin: 2px 0 0 0; font-weight: 600; color: var(--tg-theme-hint-color, var(--text-secondary)); text-shadow: none; }
         
@@ -410,6 +410,7 @@
         }
 
         /* Vice Versa Theme logic: light mode surfaces become white with dark text */
+        /* Theme Vice-Versa: Light mode footer/midnight = white bg, dark-charcoal text */
         :root[data-theme="light"] footer,
         :root[data-theme="light"] .soon-section,
         :root[data-theme="light"] .comp-section,
@@ -418,6 +419,11 @@
             color: #0f172a !important;
             border-color: rgba(15,23,42,0.06) !important;
         }
+        :root[data-theme="light"] footer .disc-text,
+        :root[data-theme="light"] footer .footer-note,
+        :root[data-theme="light"] footer .footer-rate,
+        :root[data-theme="light"] footer .disc-title { color: #1e293b !important; }
+        .footer-rate { font-size: 13px; font-weight: 700; margin-bottom: 8px; opacity: 0.95; }
 
         @media (max-width: 640px) {
             .hero-trust-title { font-size: 28px; }
@@ -504,6 +510,22 @@
         .hero:hover .hero-img { transform: scale(1.04); opacity: 1; }
 
         /* --- DESIRE BANNER --- */
+        /* Entrance animations: fade-in-up for jackpot banners and pricing tiers */
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .comp-section.entrance,
+        .league-container.entrance,
+        .tier-card.entrance,
+        .ticket-card.entrance {
+            opacity: 0;
+            animation: fade-in-up 0.6s ease-out forwards;
+        }
+        .tier-card.entrance:nth-child(1), .ticket-card.entrance:nth-child(1) { animation-delay: 0.1s; }
+        .tier-card.entrance:nth-child(2), .ticket-card.entrance:nth-child(2) { animation-delay: 0.2s; }
+        .tier-card.entrance:nth-child(3), .ticket-card.entrance:nth-child(3) { animation-delay: 0.3s; }
+        .league-container.entrance { animation-delay: 0.15s; }
         .desire-banner {
             width: 100%;
             margin: 0;
@@ -1424,17 +1446,17 @@
 
         <!-- recent-winners-per-tier moved below the grid/legend by refactor -->
 
-        <!-- Header Bottom Row: Masked EUR Balance (left) + Deposit / Account (right) -->
+        <!-- Header Bottom Row: Masked EUR Balance (left) + Deposit / Withdraw / Account (right). 1 EUR = 200 ETB moved to footer. -->
         <div class="header-row header-bottom" role="navigation" style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-top:1px solid rgba(255,255,255,0.04);">
             <div style="display:flex;align-items:center;gap:10px;min-width:0;">
-                <div id="currency-rate" style="font-size:12px;opacity:0.9;margin-right:8px;">1 EUR = 200 ETB</div>
-                <div class="balance-container" style="display:flex;align-items:center;gap:8px;min-width:0;">
+                <div id="balance-area" class="balance-container" style="display:flex;align-items:center;gap:8px;min-width:0;">
                     <div id="balance-display" class="balance-text">**** EUR</div>
                     <button id="balance-toggle" class="eye-icon" aria-label="Toggle balance">👁️</button>
                 </div>
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
                 <button id="deposit-btn" class="nav-btn primary" aria-label="Deposit"><span class="lang-en">Deposit</span><span class="lang-am">አስገባ</span></button>
+                <button id="withdraw-btn" class="nav-btn primary" aria-label="Withdraw"><span class="lang-en">Withdraw</span><span class="lang-am">አውጣ</span></button>
                 <button id="my-account-btn" class="nav-btn" aria-label="Account">👤</button>
             </div>
         </div>
@@ -1745,7 +1767,7 @@
         </section>
 
         <!-- Tickets Section -->
-        <section class="comp-section" id="ticket-selection">
+        <section class="comp-section entrance" id="ticket-selection">
             <h2 class="comp-title" id="sec-t">አሸናፊ የሚያደረጉዋችሁ እጣዎች</h2>
             <div class="section-cta">
                 <button class="btn-buy buy-cta-small" onclick="openTierModal(3)">
@@ -1755,13 +1777,13 @@
             </div>
             <div class="comp-grid">
                 <div class="ticket-card" onclick="openTierModal(3)"><img src="images/golden.png" alt="Gold"><div class="buy-overlay"><button class="btn-buy" id="buy-gold-btn"><span class="lang-en">Buy Gold</span><span class="lang-am">ወርቅ ይግዙ</span></button></div></div>
-                <div class="ticket-card" onclick="openTierModal(2)"><img src="images/silver.png" alt="Silver"><div class="buy-overlay"><button class="btn-buy" id="buy-silver-btn"><span class="lang-en">Buy Silver</span><span class="lang-am">ብር ይግዙ</span></button></div></div>
-                <div class="ticket-card" onclick="openTierModal(1)"><img src="images/bronze.png" alt="Bronze"><div class="buy-overlay"><button class="btn-buy" id="buy-bronze-btn"><span class="lang-en">Buy Bronze</span><span class="lang-am">ነሐስ ይግዙ</span></button></div></div>
+                <div class="ticket-card entrance" onclick="openTierModal(2)"><img src="images/silver.png" alt="Silver"><div class="buy-overlay"><button class="btn-buy" id="buy-silver-btn"><span class="lang-en">Buy Silver</span><span class="lang-am">ብር ይግዙ</span></button></div></div>
+                <div class="ticket-card entrance" onclick="openTierModal(1)"><img src="images/bronze.png" alt="Bronze"><div class="buy-overlay"><button class="btn-buy" id="buy-bronze-btn"><span class="lang-en">Buy Bronze</span><span class="lang-am">ነሐስ ይግዙ</span></button></div></div>
             </div>
         </section>
 
         <!-- Lotteries Status Section -->
-        <section class="league-container">
+        <section class="league-container entrance">
             <h2 class="comp-title" id="league-t">የዕጣዎች ሁኔታ</h2>
             <table class="league-table">
                 <thead>
@@ -1865,6 +1887,7 @@
                 <p class="disc-text lang-am">የዕጣ ጊዜ፡ ሁሉም ቲኬቶች እንደተሸጡ የ3 ደቂቃ ቆይታ ሁሉም ገዢዎች በቀጥታ አኒሜሽኑ እንዲቀላቀሉ ይፈቅዳል።</p>
                 <p class="disc-text lang-am">ክልከላዎች፡ ተጫዋቾች 18+ መሆን አለባቸው። በኃላፊነት ይጫወቱ።</p>
             </div>
+            <p class="footer-rate" id="footer-currency-rate">1 EUR = 200 ETB</p>
             <p class="lang-en footer-note">Siket Success &copy; 2026. All Rights Reserved.</p>
             <p class="lang-am footer-note">ስኬት ስኬት &copy; 2026. ሁሉም መብቶች የተጠበቁ ናቸው።</p>
         </footer>
@@ -1891,6 +1914,55 @@
             </div>
             
             
+        </div>
+    </div>
+
+    <!-- Withdrawal Modal -->
+    <div class="deposit-modal" id="withdraw-modal">
+        <div class="deposit-content">
+            <div class="deposit-header">
+                <h3 class="lang-en">Withdraw Funds</h3>
+                <h3 class="lang-am">ገንዘብ አውጣ</h3>
+                <button class="deposit-close" onclick="closeWithdrawModal()">&times;</button>
+            </div>
+
+            <div style="margin-bottom:12px;font-size:13px;">
+                <div class="lang-en">Available balance:</div>
+                <div class="lang-am">ቀሪ ተመን:</div>
+                <div id="withdraw-available" style="font-weight:700;margin-top:4px;">
+                    <!-- Filled dynamically: e.g. 2000 ETB (10.00 EUR) -->
+                </div>
+            </div>
+
+            <form id="withdraw-form" onsubmit="event.preventDefault(); submitWithdrawRequest();">
+                <label class="lang-en" for="withdraw-amount-etb">Amount (ETB)</label>
+                <label class="lang-am" for="withdraw-amount-etb">መጠን (ብር)</label>
+                <input id="withdraw-amount-etb" type="number" min="1" step="1" required placeholder="200" />
+
+                <label class="lang-en" style="margin-top:12px;">Method</label>
+                <label class="lang-am" style="margin-top:12px;">ዘዴ</label>
+                <select id="withdraw-method" required>
+                    <option value="">-- Select --</option>
+                    <option value="telebirr">Telebirr</option>
+                    <option value="cbe_birr">CBE Birr</option>
+                </select>
+
+                <label class="lang-en" for="withdraw-full-name" style="margin-top:12px;">Account Holder Full Name</label>
+                <label class="lang-am" for="withdraw-full-name" style="margin-top:12px;">ሙሉ ስም</label>
+                <input id="withdraw-full-name" type="text" required placeholder="Full Name" />
+
+                <label class="lang-en" for="withdraw-account" style="margin-top:12px;">Account / Phone Number</label>
+                <label class="lang-am" for="withdraw-account" style="margin-top:12px;">የአካውንት / ስልክ ቁጥር</label>
+                <input id="withdraw-account" type="tel" required placeholder="+2519xxxxxxx" />
+
+                <div class="modal-actions-right" style="margin-top:16px;">
+                    <button type="button" onclick="closeWithdrawModal()">Cancel</button>
+                    <button type="submit" class="primary">
+                        <span class="lang-en">Submit Withdrawal</span>
+                        <span class="lang-am">የመውጣት ጥያቄ ላክ</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -2572,6 +2644,34 @@
             balanceDisplay.textContent = isBalanceVisible ? `${userBalance.toLocaleString()} EUR` : '****';
         }
 
+        // Press-and-hold balance: temporarily show both EUR and ETB, then revert to EUR-only
+        function showDetailedBalance() {
+            const balanceDisplay = document.getElementById('balance-display');
+            if (!balanceDisplay || !isBalanceVisible) return;
+            const eur = userBalance || 0;
+            const etb = eur * EUR_TO_ETB;
+            balanceDisplay.textContent = `${eur.toLocaleString()} EUR | ${etb.toLocaleString()} ETB`;
+        }
+
+        function attachBalancePressHandlers() {
+            const area = document.getElementById('balance-area');
+            if (!area) return;
+            const start = (e) => {
+                e.preventDefault();
+                showDetailedBalance();
+            };
+            const end = (e) => {
+                e && e.preventDefault();
+                updateBalanceDisplay();
+            };
+            area.addEventListener('mousedown', start);
+            area.addEventListener('mouseup', end);
+            area.addEventListener('mouseleave', end);
+            area.addEventListener('touchstart', start, { passive: false });
+            area.addEventListener('touchend', end, { passive: false });
+            area.addEventListener('touchcancel', end, { passive: false });
+        }
+
         function hasSufficientBalance(amount) {
             return userBalance >= amount;
         }
@@ -2671,9 +2771,9 @@
         const PRICE = { 3: PRICE_CENTS[3] / 100, 2: PRICE_CENTS[2] / 100, 1: PRICE_CENTS[1] / 100 };
         const TIER_NAME = { 3: 'Gold', 2: 'Silver', 1: 'Bronze' };
         const EUR_TO_ETB = 200;
-        // Update visible conversion rate in header if present
+        // Update visible conversion rate in footer
         (function(){
-            const el = document.getElementById('currency-rate');
+            const el = document.getElementById('footer-currency-rate');
             if (el) el.textContent = `1 EUR = ${EUR_TO_ETB} ETB`;
         })();
         const selectedBlocks = { 3: new Set(), 2: new Set(), 1: new Set() };
@@ -2979,19 +3079,21 @@
                     }
                 } catch(e) {}
 
-                // call server to reserve/persist
+                // call server to reserve/persist (backend expects ticket numbers 1-100, grid uses index 0-99)
                 try {
+                    const numbers1to100 = item.blocks.map(idx => idx + 1);
                     const res = await fetch('/api/complete-purchase', {
                         method: 'POST', headers: { 'Content-Type':'application/json' },
-                        body: JSON.stringify({ userId: currentUser ? currentUser.id : null, tierId: tier, roundNo: roundNo || undefined, numbers: item.blocks })
+                        body: JSON.stringify({ userId: currentUser ? currentUser.id : null, tierId: tier, roundNo: roundNo || undefined, numbers: numbers1to100 })
                     });
                     const jd = await res.json().catch(()=>({}));
                     if (!res.ok) {
-                        // mark specific unavailable numbers as sold in cache and update UI
+                        // mark specific unavailable numbers as sold in cache and update UI (jd.number is 1-100)
                         if (jd && jd.error === 'ticket_unavailable' && jd.number != null) {
+                            const idx = typeof jd.number === 'number' ? jd.number - 1 : parseInt(jd.number, 10) - 1;
                             soldBlocksCache[tier] = soldBlocksCache[tier] || new Set();
-                            soldBlocksCache[tier].add(jd.number);
-                            const el = document.querySelector(`#grid-main .cell[data-index='${jd.number}']`);
+                            soldBlocksCache[tier].add(idx);
+                            const el = document.querySelector(`#grid-main .cell[data-index='${idx}']`);
                             if (el) { el.classList.remove('pending'); el.classList.add('sold'); }
                         }
                         // mark all item blocks back to available
@@ -4011,6 +4113,111 @@
             
             triggerHaptic('light');
         }
+
+        function openWithdrawModal() {
+            if (!currentUser) {
+                showAlert('Please sign in to request withdrawal.', 'error');
+                return;
+            }
+            const modal = document.getElementById('withdraw-modal');
+            if (!modal) return;
+
+            // Compute available balance in ETB for display (read-only)
+            const eur = userBalance || 0;
+            const etb = eur * EUR_TO_ETB;
+            const availEl = document.getElementById('withdraw-available');
+            if (availEl) {
+                availEl.textContent = `${etb.toLocaleString()} ETB (${eur.toLocaleString()} EUR)`;
+            }
+
+            // Prefill full name and account from current user if available
+            const nameInput = document.getElementById('withdraw-full-name');
+            const acctInput = document.getElementById('withdraw-account');
+            if (currentUser) {
+                if (nameInput && !nameInput.value) {
+                    nameInput.value = currentUser.fullName || currentUser.username || '';
+                }
+                if (acctInput && !acctInput.value) {
+                    acctInput.value = currentUser.phone || '';
+                }
+            }
+
+            modal.classList.add('active');
+            triggerHaptic('medium');
+        }
+
+        function closeWithdrawModal() {
+            const modal = document.getElementById('withdraw-modal');
+            if (modal) {
+                modal.classList.remove('active');
+            }
+            const form = document.getElementById('withdraw-form');
+            if (form) form.reset();
+            triggerHaptic('light');
+        }
+
+        async function submitWithdrawRequest() {
+            if (!currentUser) {
+                showAlert('Please sign in to request withdrawal.', 'error');
+                return;
+            }
+            const amountInput = document.getElementById('withdraw-amount-etb');
+            const methodSel = document.getElementById('withdraw-method');
+            const fullNameInput = document.getElementById('withdraw-full-name');
+            const accountInput = document.getElementById('withdraw-account');
+            if (!amountInput || !methodSel || !fullNameInput || !accountInput) return;
+
+            const amountEtb = parseFloat(amountInput.value || '0');
+            if (!Number.isFinite(amountEtb) || amountEtb <= 0) {
+                showAlert('Please enter a valid ETB amount.', 'error');
+                return;
+            }
+
+            // Compute available ETB from current EUR balance
+            const eur = userBalance || 0;
+            const maxEtb = eur * EUR_TO_ETB;
+            if (amountEtb > maxEtb) {
+                showAlert('Requested amount exceeds available balance.', 'error');
+                return;
+            }
+
+            const method = methodSel.value;
+            if (!method) {
+                showAlert('Please select Telebirr or CBE Birr.', 'error');
+                return;
+            }
+
+            const fullName = fullNameInput.value.trim();
+            const accountNumber = accountInput.value.trim();
+            if (!fullName || !accountNumber) {
+                showAlert('Full name and account number are required.', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/withdraw-request', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        userId: currentUser.id,
+                        amount_etb: amountEtb,
+                        method,
+                        fullName,
+                        accountNumber
+                    })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    showAlert(data.error || 'Withdrawal request failed.', 'error');
+                    return;
+                }
+                showToast('Withdrawal request submitted.', 'success');
+                closeWithdrawModal();
+            } catch (e) {
+                console.error('submitWithdrawRequest error', e);
+                showAlert('Withdrawal request failed. Please try again.', 'error');
+            }
+        }
         
         function renderPaymentOptions() {
             const grid = document.getElementById('payment-options-grid');
@@ -4231,6 +4438,7 @@
             // Initialize all systems
             initializeDepositSystem();
             initializeTrustSystem();
+            attachBalancePressHandlers();
             
             // Balance toggle
             const balanceToggle = document.getElementById('balance-toggle');
@@ -4243,6 +4451,14 @@
             if (depositBtn) {
                 depositBtn.addEventListener('click', function() {
                     openDepositModal();
+                });
+            }
+
+            // Withdraw button
+            const withdrawBtn = document.getElementById('withdraw-btn');
+            if (withdrawBtn) {
+                withdrawBtn.addEventListener('click', function() {
+                    openWithdrawModal();
                 });
             }
             

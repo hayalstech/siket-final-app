@@ -83,6 +83,25 @@
             color: var(--accent);
             word-break: break-all;
         }
+        .safe-draw-badge {
+            display: inline-block;
+            margin: 16px 0;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.35), rgba(255, 122, 47, 0.25));
+            border: 2px solid rgba(255, 211, 106, 0.8);
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 800;
+            color: #FFD36A;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            animation: safe-draw-pulse 1.5s ease-in-out infinite;
+            box-shadow: 0 0 24px rgba(255, 211, 106, 0.3);
+        }
+        @keyframes safe-draw-pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 24px rgba(255, 211, 106, 0.3); opacity: 1; }
+            50% { transform: scale(1.04); box-shadow: 0 0 32px rgba(255, 211, 106, 0.5); opacity: 0.95; }
+        }
         .back-btn {
             position: fixed;
             top: 20px;
@@ -121,7 +140,8 @@
     
     <div class="container">
         <div class="tier-badge" id="tier-name">Loading...</div>
-        <div class="countdown-display" id="countdown">00:00</div>
+        <div class="safe-draw-badge">Safe Draw / በልዩነት የተጠበቀ እጣ</div>
+        <div class="countdown-display" id="countdown">03:00</div>
         <div class="status-text lang-en" id="status-en">Preparing for draw...</div>
         <div class="status-text lang-am" id="status-am">ዕጣውን ለመውጣት እየተዘጋጀ ነው...</div>
         
@@ -161,9 +181,8 @@
                 }
                 
                 if (data.countdownStart) {
-                    targetTime = new Date(data.countdownStart).getTime() + (5 * 60 * 1000); // 5 minutes
+                    targetTime = new Date(data.countdownStart).getTime() + (180 * 1000); // 3 minutes (180s)
                 }
-                
                 if (data.seedHash) {
                     document.getElementById('seed-info').style.display = 'block';
                     document.getElementById('seed-hash').textContent = data.seedHash;

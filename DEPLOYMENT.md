@@ -14,8 +14,9 @@
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# Telegram
-TELEGRAM_BOT_TOKEN=your_bot_token
+# Telegram (use either BOT_TOKEN or TELEGRAM_BOT_TOKEN)
+BOT_TOKEN=your_bot_token
+# or: TELEGRAM_BOT_TOKEN=your_bot_token
 ADMIN_ID=123456789 (get from @userinfobot)
 
 # Database
@@ -24,8 +25,10 @@ DATABASE_URL=your_database_url
 # Redis (Essential!)
 REDIS_URL=redis://default:password@host.upstash.io:6379
 
-# Webhook
-WEBHOOK_URL=https://siket-final-app.vercel.app/api/webhook
+# Webhook (required on Vercel so the bot receives Telegram updates)
+WEBHOOK_URL=https://your-project.vercel.app/api/webhook
+# Optional: app URL for “keep awake” and derived webhook
+# WEBAPP_URL=https://your-project.vercel.app
 ```
 
 ## Getting Required Values

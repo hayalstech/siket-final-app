@@ -8,7 +8,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const path = require('path');
 
-const bot = new Bot(process.env.BOT_TOKEN);
+const bot = new Bot(process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN);
 const app = express();
 const upload = multer({ dest: 'uploads/' });
 const pendingProofs = new Map();
@@ -52,8 +52,10 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
-// Currency conversion constant (1 EUR = 200 ETB)
-const EUR_TO_ETB = parseFloat(process.env.EUR_TO_ETB || '200');
+// Currency conversion constant (1 EUR = 200 ETB).
+// Prefer generic EUR_RATE, fallback to legacy EUR_TO_ETB, then hard-coded 200.
+const EUR_RATE = parseFloat(process.env.EUR_RATE || process.env.EUR_TO_ETB || '200');
+const EUR_TO_ETB = EUR_RATE;
 
 // Ensure deposit-related tables exist (idempotent)
 async function ensureDepositTables() {
@@ -101,8 +103,32 @@ async function ensureDepositTables() {
     }
 }
 
+// Withdrawal-related table (for users requesting cash-out)
+async function ensureWithdrawalTables() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS withdrawal_requests (
+                id SERIAL PRIMARY KEY,
+                user_id BIGINT NOT NULL,
+                amount_cents BIGINT NOT NULL,
+                method TEXT NOT NULL, -- 'telebirr' or 'cbe_birr'
+                full_name TEXT NOT NULL,
+                account_number TEXT NOT NULL,
+                status TEXT DEFAULT 'pending',
+                created_at TIMESTAMP DEFAULT NOW(),
+                processed_at TIMESTAMP,
+                admin_id BIGINT
+            )
+        `);
+        console.log('✅ Withdrawal-related tables ensured');
+    } catch (e) {
+        console.error('Error ensuring withdrawal tables:', e);
+    }
+}
+
 // Call once at startup (no await to avoid blocking server start)
 ensureDepositTables().catch(e => console.error(e));
+ensureWithdrawalTables().catch(e => console.error(e));
 
 // Ensure draw_seeds table exists for provably-fair flow
 async function ensureDrawSeedsTable() {
@@ -351,7 +377,8 @@ app.get('/api/spectator/count', async (req, res) => {
     } catch (e) { console.error(e); return res.json({ count: 0 }); }
 });
 
-// Complete purchase endpoint: reserves tickets in Redis atomically and persists to DB
+// Complete purchase endpoint: reserves tickets in Redis atomically (SADD sold_blocks),
+// persists to DB, and deducts the total ticket cost from the user's wallet (in cents).
 app.post('/api/complete-purchase', express.json(), async (req, res) => {
     try {
         const { userId, tierId, roundNo, numbers, tx_reference } = req.body || {};
@@ -364,23 +391,54 @@ app.post('/api/complete-purchase', express.json(), async (req, res) => {
         const client = await getRedis();
         if (!client) return res.status(500).json({ error: 'redis_required' });
 
-        // Attempt to reserve all ticket numbers using SET NX
-        const reserved = [];
-        for (const n of numbers) {
-            const key = `ticket_sold:${tierId}:${roundNo}:${n}`;
-            const ok = await client.set(key, String(userId), { NX: true, EX: 60*60*2 });
-            if (!ok) {
-                // rollback reserved
-                for (const r of reserved) await client.del(r);
-                return res.status(409).json({ error: 'ticket_unavailable', number: n });
+        // --- Wallet check: ensure user has enough balance for all requested tickets ---
+        const centsPerTicket = (typeof PRICE_CENTS_BY_TIER !== 'undefined'
+            ? (PRICE_CENTS_BY_TIER[tierId] ?? PRICE_CENTS_BY_TIER[3])
+            : 250);
+        const totalCents = centsPerTicket * numbers.length;
+        try {
+            const balRow = await pool.query('SELECT balance_cents, balance_eur FROM user_wallets WHERE user_id = $1', [userId]);
+            let balanceCents = 0;
+            if (balRow.rows.length) {
+                const r = balRow.rows[0];
+                if (r.balance_cents != null) {
+                    balanceCents = parseInt(r.balance_cents, 10);
+                } else if (r.balance_eur != null) {
+                    balanceCents = Math.round(parseFloat(r.balance_eur || 0) * 100);
+                }
             }
-            reserved.push(key);
+            if (balanceCents < totalCents) {
+                return res.status(400).json({ error: 'insufficient_balance' });
+            }
+        } catch (e) {
+            console.error('Balance check failed in /api/complete-purchase:', e);
+            return res.status(500).json({ error: 'wallet_check_failed' });
         }
 
-        // increment sold counter
+        // Atomic block purchase: use SADD on sold_blocks set (independent key per tier/round)
+        const soldBlocksKey = `sold_blocks:${tierId}:${roundNo}`;
+        const added = [];
+        for (const n of numbers) {
+            const member = String(n);
+            const isNew = await client.sAdd(soldBlocksKey, member);
+            if (!isNew) {
+                // Block already sold or pending — rollback and return 409 Conflict
+                for (const m of added) await client.sRem(soldBlocksKey, m);
+                return res.status(409).json({ error: 'ticket_unavailable', message: 'Block already sold or pending', number: n });
+            }
+            added.push(member);
+        }
+        await client.expire(soldBlocksKey, 60*60*4);
+
+        // Keep ticket_sold keys for backward compat with sold-blocks API
+        for (const n of numbers) {
+            const key = `ticket_sold:${tierId}:${roundNo}:${n}`;
+            await client.set(key, String(userId), { EX: 60*60*4 });
+        }
+
+        const newCount = await client.scard(soldBlocksKey);
         const soldKey = `tier_sold_count:${tierId}:${roundNo}`;
-        const newCount = await client.incrBy(soldKey, numbers.length);
-        await client.expire(soldKey, 60*60*4);
+        await client.set(soldKey, String(newCount), { EX: 60*60*4 });
 
         // Announce fill-status every 10 tickets (e.g., 10/100, 20/100)
         try {
@@ -412,6 +470,30 @@ app.post('/api/complete-purchase', express.json(), async (req, res) => {
             } catch (e) { console.error('DB ticket persist error', e); }
         }
 
+        // After successful reservation + DB persist, deduct wallet balance atomically in DB
+        try {
+            const balRow = await pool.query('SELECT balance_cents, balance_eur FROM user_wallets WHERE user_id = $1', [userId]);
+            if (balRow.rows.length) {
+                const r = balRow.rows[0];
+                if (r.balance_cents != null) {
+                    const prev = parseInt(r.balance_cents, 10);
+                    const newBal = Math.max(0, prev - totalCents);
+                    await pool.query('UPDATE user_wallets SET balance_cents = $1 WHERE user_id = $2', [newBal, userId]);
+                } else {
+                    const prevEur = parseFloat(r.balance_eur || 0);
+                    const newBalEur = prevEur - (totalCents / 100);
+                    await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [newBalEur, userId]);
+                }
+            } else {
+                // If wallet row didn't exist but we let purchase pass, create negative/zero row as guard
+                const eurVal = Math.max(0, -(totalCents / 100));
+                await pool.query('INSERT INTO user_wallets (user_id, balance_eur) VALUES ($1,$2) ON CONFLICT (user_id) DO NOTHING', [userId, eurVal]);
+            }
+        } catch (e) {
+            console.error('Wallet deduction failed in /api/complete-purchase:', e);
+            // We do NOT roll back tickets here, but log hard for investigation.
+        }
+
         // notify grouping
         schedulePurchaseAlert(tierId, numbers.length, 1200);
 
@@ -425,6 +507,74 @@ app.post('/api/complete-purchase', express.json(), async (req, res) => {
     } catch (e) {
         console.error('complete-purchase error', e);
         return res.status(500).json({ error: 'server' });
+    }
+});
+
+// Single-ticket purchase alias (fixes 'ትኬት ይቁረጡ' / Buy Ticket routing — hits same atomic logic)
+// Siket price rule in cents (source of truth for EUR/ETB)
+const PRICE_CENTS_BY_TIER = { 3: 250, 2: 150, 1: 50 };
+app.post('/api/purchase-ticket', express.json(), async (req, res) => {
+    try {
+        const { userId, tierId, ticketNumber, price, paymentMethod, transactionHash } = req.body || {};
+        if (!userId || !tierId || (ticketNumber === undefined && ticketNumber !== 0)) return res.status(400).json({ success: false, message: 'userId, tierId, ticketNumber required' });
+        const num = parseInt(ticketNumber, 10);
+        if (Number.isNaN(num) || num < 1 || num > 100) return res.status(400).json({ success: false, message: 'ticketNumber must be 1–100' });
+
+        const roundRes = await pool.query('SELECT current_round FROM game_rounds WHERE tier_id = $1', [tierId]);
+        const roundNo = roundRes.rows[0]?.current_round ?? 1;
+
+        if (paymentMethod === 'internal_balance') {
+            const cents = PRICE_CENTS_BY_TIER[tierId] ?? 250;
+            const row = await pool.query('SELECT balance_cents, balance_eur FROM user_wallets WHERE user_id = $1', [userId]);
+            let balanceCents = 0;
+            if (row.rows.length) {
+                const r = row.rows[0];
+                if (r.balance_cents != null) balanceCents = parseInt(r.balance_cents, 10);
+                else balanceCents = Math.round(parseFloat(r.balance_eur || 0) * 100);
+            }
+            if (balanceCents < cents) return res.status(400).json({ success: false, message: 'Insufficient balance' });
+        }
+
+        const client = await getRedis();
+        if (!client) return res.status(500).json({ success: false, message: 'redis_required' });
+
+        const soldBlocksKey = `sold_blocks:${tierId}:${roundNo}`;
+        const member = String(num);
+        const isNew = await client.sAdd(soldBlocksKey, member);
+        if (!isNew) return res.status(409).json({ success: false, message: 'Block already sold or pending', error: 'ticket_unavailable' });
+
+        await client.expire(soldBlocksKey, 60*60*4);
+        await client.set(`ticket_sold:${tierId}:${roundNo}:${num}`, String(userId), { EX: 60*60*4 });
+        const newCount = await client.scard(soldBlocksKey);
+        await client.set(`tier_sold_count:${tierId}:${roundNo}`, String(newCount), { EX: 60*60*4 });
+
+        if (paymentMethod === 'internal_balance') {
+            const cents = PRICE_CENTS_BY_TIER[tierId] ?? 250;
+            const row = await pool.query('SELECT balance_cents, balance_eur FROM user_wallets WHERE user_id = $1', [userId]);
+            if (row.rows.length) {
+                const r = row.rows[0];
+                if (r.balance_cents != null) {
+                    const prev = parseInt(r.balance_cents, 10);
+                    await pool.query('UPDATE user_wallets SET balance_cents = $1 WHERE user_id = $2', [prev - cents, userId]);
+                } else {
+                    const prevEur = parseFloat(r.balance_eur || 0);
+                    await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [prevEur - cents/100, userId]);
+                }
+            }
+        }
+
+        try {
+            const upd = await pool.query("UPDATE tickets SET owner_id=$1, status='sold', purchase_timestamp=NOW() WHERE tier_id=$2 AND round_no=$3 AND number_val=$4 AND status != 'sold'", [userId, tierId, roundNo, num]);
+            if (upd.rowCount === 0) await pool.query('INSERT INTO tickets (tier_id, round_no, number_val, owner_id, status, purchase_timestamp) VALUES ($1,$2,$3,$4,\'sold\', NOW())', [tierId, roundNo, num, userId]);
+        } catch (e) { console.error('DB ticket persist (purchase-ticket)', e); }
+
+        schedulePurchaseAlert(tierId, 1, 1200);
+        if (newCount >= 100) try { await handleTierSoldFull(tierId); } catch(e){ console.error(e); }
+
+        return res.json({ success: true, sold: newCount });
+    } catch (e) {
+        console.error('purchase-ticket error', e);
+        return res.status(500).json({ success: false, message: 'server' });
     }
 });
 
@@ -490,6 +640,24 @@ app.get('/api/statistics', async (req, res) => {
     } catch (err) {
         console.error('Error fetching statistics:', err);
         res.status(500).send(err.message);
+    }
+});
+
+// --- API: Get User Balance (for header display) ---
+app.get('/api/user-balance/:userId', async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        if (!userId) return res.status(400).json({ error: 'userId required' });
+        const row = await pool.query(`
+            SELECT balance_cents, balance_eur FROM user_wallets WHERE user_id = $1
+        `, [userId]);
+        if (!row.rows.length) return res.json({ balance: 0, balance_cents: 0 });
+        const r = row.rows[0];
+        if (r.balance_cents != null) return res.json({ balance: (parseInt(r.balance_cents, 10) / 100), balance_cents: parseInt(r.balance_cents, 10) });
+        return res.json({ balance: parseFloat(r.balance_eur || 0), balance_cents: Math.round(parseFloat(r.balance_eur || 0) * 100) });
+    } catch (e) {
+        console.error('user-balance error', e);
+        return res.status(500).json({ error: 'server' });
     }
 });
 
@@ -1049,6 +1217,74 @@ app.post('/api/deposit-request', async (req, res) => {
     }
 });
 
+// --- API: Withdrawal Request (from webapp) ---
+// Users submit a withdrawal request; balance is checked now, but actually deducted on admin approval.
+app.post('/api/withdraw-request', async (req, res) => {
+    try {
+        const { userId, amount, amount_etb, method, fullName, accountNumber } = req.body || {};
+        const rawAmountEtb = (amount_etb != null ? amount_etb : amount);
+        if (!userId || !rawAmountEtb || !method || !fullName || !accountNumber) {
+            return res.status(400).json({ error: 'Missing fields' });
+        }
+        const normalizedMethod = String(method || '').toLowerCase();
+        if (!['telebirr', 'cbe_birr'].includes(normalizedMethod)) {
+            return res.status(400).json({ error: 'Invalid method' });
+        }
+        const amountNum = parseFloat(rawAmountEtb);
+        if (!Number.isFinite(amountNum) || amountNum <= 0) {
+            return res.status(400).json({ error: 'Invalid amount' });
+        }
+        // Convert ETB -> EUR cents for internal ledger
+        const amountEur = amountNum / EUR_TO_ETB;
+        const amountCents = Math.round(amountEur * 100);
+
+        // Check current balance in cents
+        const balRow = await pool.query('SELECT balance_cents, balance_eur FROM user_wallets WHERE user_id = $1', [userId]);
+        let balanceCents = 0;
+        if (balRow.rows.length) {
+            const r = balRow.rows[0];
+            if (r.balance_cents != null) {
+                balanceCents = parseInt(r.balance_cents, 10);
+            } else if (r.balance_eur != null) {
+                balanceCents = Math.round(parseFloat(r.balance_eur || 0) * 100);
+            }
+        }
+        if (balanceCents < amountCents) {
+            return res.status(400).json({ error: 'insufficient_balance' });
+        }
+
+        const ins = await pool.query(
+            `INSERT INTO withdrawal_requests (user_id, amount_cents, method, full_name, account_number)
+             VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+            [userId, amountCents, normalizedMethod, fullName, accountNumber]
+        );
+        const wr = ins.rows[0];
+
+        // Notify admin via Telegram
+        try {
+            const msg =
+                `🔔 New Withdrawal Request\n\n` +
+                `• User ID: ${wr.user_id}\n` +
+                `• Amount: ${(wr.amount_cents / 100).toFixed(2)} EUR (~${(wr.amount_cents / 100 * EUR_TO_ETB).toFixed(2)} ETB)\n` +
+                `• Method: ${wr.method.toUpperCase()}\n` +
+                `• Name: ${wr.full_name}\n` +
+                `• Account: ${wr.account_number}\n` +
+                `• Created: ${new Date(wr.created_at).toLocaleString()}`;
+            const adminId = process.env.ADMIN_ID;
+            if (adminId) {
+                await bot.api.sendMessage(adminId, msg);
+            }
+        } catch (e) {
+            console.warn('Failed to notify admin for withdrawal request:', e);
+        }
+
+        return res.json({ success: true, withdrawId: wr.id });
+    } catch (e) {
+        console.error('Error in /api/withdraw-request:', e);
+        return res.status(500).json({ error: 'Server error' });
+    }
+});
+
 // --- API: Admin approves deposit with explicit ETB input and bank reference ---
 app.post('/api/admin/approve-deposit', express.json(), async (req, res) => {
     try {
@@ -1085,7 +1321,7 @@ app.post('/api/admin/approve-deposit', express.json(), async (req, res) => {
         await pool.query(`
             INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, amount_cents, admin_id, processed_at)
             VALUES ($1,$2,$3,$4,$5,$6,NOW())
-        `, [txRef, dep.user_id, amountEtb, amountEur, amountCents, adminId || null]);
+        `, [txRef, dep.user_id, amountEtb, amountEurInt, amountCents, adminId || null]);
 
         // Mark Redis key for this bank reference
         if (bank_reference) {
@@ -1107,7 +1343,7 @@ app.post('/api/admin/approve-deposit', express.json(), async (req, res) => {
                     await pool.query('INSERT INTO user_wallets (user_id, balance_cents) VALUES ($1,$2)', [dep.user_id, amountCents]);
                 } catch (ie) {
                     // fallback to legacy column
-                    await pool.query('INSERT INTO user_wallets (user_id, balance_eur) VALUES ($1,$2)', [dep.user_id, amountEur]);
+                    await pool.query('INSERT INTO user_wallets (user_id, balance_eur) VALUES ($1,$2)', [dep.user_id, amountEurInt]);
                 }
             } else {
                 const row = existing.rows[0];
@@ -1118,7 +1354,7 @@ app.post('/api/admin/approve-deposit', express.json(), async (req, res) => {
                 } else {
                     // Legacy path
                     const prevEur = parseFloat(row.balance_eur || 0);
-                    const newBalEur = prevEur + amountEur;
+                    const newBalEur = prevEur + amountEurInt;
                     await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [newBalEur, dep.user_id]);
                 }
             }
@@ -1131,11 +1367,90 @@ app.post('/api/admin/approve-deposit', express.json(), async (req, res) => {
         `, ['approved', adminId || null, amountEtb, txRef, depositId]);
 
         // Notify user asynchronously
-        try { await bot.api.sendMessage(dep.user_id, `✅ Your deposit of ${amountEtb} ETB (${amountEur} EUR) has been approved and credited to your wallet.`); } catch(e) { console.warn('Notify user failed', e); }
+        try { await bot.api.sendMessage(dep.user_id, `✅ Your deposit of ${amountEtb} ETB (${amountEurInt} EUR) has been approved and credited to your wallet.`); } catch(e) { console.warn('Notify user failed', e); }
 
-        return res.json({ success: true, credited_eur: amountEur });
+        return res.json({ success: true, credited_eur: amountEurInt });
     } catch (e) {
         console.error('admin approve deposit error', e);
+        return res.status(500).json({ error: 'server' });
+    }
+});
+
+// --- API: Admin approves withdrawal (deducts balance and marks request processed) ---
+app.post('/api/admin/approve-withdraw', express.json(), async (req, res) => {
+    try {
+        const secret = req.headers['x-admin-secret'] || req.query.secret || req.body.secret;
+        if (!process.env.ADMIN_SECRET) return res.status(500).json({ error: 'admin_secret_not_configured' });
+        if (secret !== process.env.ADMIN_SECRET) return res.status(403).json({ error: 'forbidden' });
+
+        const { withdrawId } = req.body || {};
+        if (!withdrawId) return res.status(400).json({ error: 'withdrawId required' });
+
+        const wrRes = await pool.query('SELECT * FROM withdrawal_requests WHERE id = $1', [withdrawId]);
+        const wr = wrRes.rows[0];
+        if (!wr) return res.status(404).json({ error: 'withdrawal_not_found' });
+        if (wr.status !== 'pending') return res.status(409).json({ error: `withdrawal already ${wr.status}` });
+
+        const amountCents = parseInt(wr.amount_cents, 10);
+
+        // Deduct from wallet
+        try {
+            const balRow = await pool.query('SELECT balance_cents, balance_eur FROM user_wallets WHERE user_id = $1', [wr.user_id]);
+            if (!balRow.rows.length) {
+                return res.status(400).json({ error: 'no_balance' });
+            }
+            const r = balRow.rows[0];
+            if (r.balance_cents != null) {
+                const prev = parseInt(r.balance_cents || 0, 10);
+                if (prev < amountCents) return res.status(400).json({ error: 'insufficient_balance' });
+                const newBal = prev - amountCents;
+                await pool.query('UPDATE user_wallets SET balance_cents = $1 WHERE user_id = $2', [newBal, wr.user_id]);
+            } else {
+                const prevEur = parseFloat(r.balance_eur || 0);
+                const amountEur = amountCents / 100;
+                if (prevEur < amountEur) return res.status(400).json({ error: 'insufficient_balance' });
+                const newBalEur = prevEur - amountEur;
+                await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [newBalEur, wr.user_id]);
+            }
+        } catch (e) {
+            console.error('Error deducting balance for withdrawal:', e);
+            return res.status(500).json({ error: 'wallet_error' });
+        }
+
+        // Mark withdrawal as approved
+        const adminId = req.body.adminId || null;
+        await pool.query(
+            `UPDATE withdrawal_requests SET status = 'approved', processed_at = NOW(), admin_id = $2 WHERE id = $1`,
+            [withdrawId, adminId]
+        );
+
+        // Optionally log in transaction_registry as negative amount
+        try {
+            const txRef = `withdraw-${withdrawId}-${wr.user_id}`;
+            const amountEur = amountCents / 100;
+            const amountEtb = amountEur * EUR_TO_ETB;
+            await pool.query(
+                `INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, admin_id, processed_at)
+                 VALUES ($1,$2,$3,$4,$5,NOW())`,
+                [txRef, wr.user_id, -amountEtb, -amountEur, adminId]
+            );
+        } catch (e) {
+            console.warn('Failed to log withdrawal in transaction_registry:', e);
+        }
+
+        // Notify user
+        try {
+            await bot.api.sendMessage(
+                wr.user_id,
+                `✅ Your withdrawal of ${(amountCents / 100).toFixed(2)} EUR has been processed. It will arrive on your ${wr.method.toUpperCase()} account (${wr.account_number}).`
+            );
+        } catch (e) {
+            console.warn('Failed to notify user about withdrawal:', e);
+        }
+
+        return res.json({ success: true });
+    } catch (e) {
+        console.error('admin approve-withdraw error', e);
         return res.status(500).json({ error: 'server' });
     }
 });
@@ -1625,7 +1940,7 @@ bot.callbackQuery(/confirm_payout_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
                 admin_id = $5
             WHERE tier_id = $1 AND round_no = $2 AND ticket_number = $3 AND user_id = $4
         `, [tId, rnd, num, uId, adminId]);
-        // Determine prize amount and credit user's EUR wallet
+        // Determine prize amount and credit user's EUR wallet (instant after admin confirms)
         try {
             // Fetch winner record to know place
             const wres = await pool.query(`SELECT place FROM winners_verification WHERE tier_id=$1 AND round_no=$2 AND ticket_number=$3 AND user_id=$4`, [tId, rnd, num, uId]);
@@ -1633,17 +1948,8 @@ bot.callbackQuery(/confirm_payout_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
             let creditEur = 0;
 
             if (parseInt(tId,10) === 1 && place === 3) {
-                // Bronze 3rd prize: increment pending_free_tickets in Redis instead of cash payout
-                try {
-                    const client = await getRedis();
-                    if (client) {
-                        const key = `pending_free_tickets:${uId}`;
-                        await client.incr(key);
-                        // Optionally set TTL for pending tickets (e.g., 365 days)
-                        await client.expire(key, 365 * 24 * 3600).catch(() => {});
-                    }
-                } catch (e) { console.warn('Failed to increment pending_free_tickets', e); }
-                creditEur = 0;
+                // Bronze 3rd prize: cash reward of 1 EUR (≈ 200 ETB) instead of free tickets
+                creditEur = 1;
             } else {
                 // fetch tier prizes (assume stored in ETB) and convert
                 const tres = await pool.query('SELECT first_prize, second_prize, third_prize FROM tiers WHERE id = $1', [tId]);
@@ -1652,26 +1958,43 @@ bot.callbackQuery(/confirm_payout_(\d+)_(\d+)_(\d+)_(\d+)/, async (ctx) => {
                 if (place === 1) prizeEtb = parseFloat(tierRow.first_prize || 0);
                 else if (place === 2) prizeEtb = parseFloat(tierRow.second_prize || 0);
                 else if (place === 3) prizeEtb = parseFloat(tierRow.third_prize || 0);
-                // convert ETB -> EUR
+                // convert ETB -> EUR using current EUR_TO_ETB
                 creditEur = ((prizeEtb && EUR_TO_ETB) ? (prizeEtb / EUR_TO_ETB) : 0);
                 creditEur = parseFloat(creditEur.toFixed(2));
             }
 
-            // Upsert wallet credit
+            // Upsert wallet credit (prefer cents when column exists)
             try {
-                const existing = await pool.query('SELECT balance_eur FROM user_wallets WHERE user_id = $1', [uId]);
-                if (existing.rows.length === 0) {
-                    await pool.query('INSERT INTO user_wallets (user_id, balance_eur) VALUES ($1,$2)', [uId, creditEur]);
+                const centsToCredit = Math.round(creditEur * 100);
+                const colRes = await pool.query("SELECT column_name FROM information_schema.columns WHERE table_name='user_wallets' AND column_name='balance_cents'");
+                const hasCents = colRes.rows.length > 0;
+                if (hasCents) {
+                    const existing = await pool.query('SELECT balance_cents FROM user_wallets WHERE user_id = $1', [uId]);
+                    if (existing.rows.length === 0) {
+                        await pool.query('INSERT INTO user_wallets (user_id, balance_cents) VALUES ($1,$2)', [uId, centsToCredit]);
+                    } else {
+                        const prev = parseInt(existing.rows[0].balance_cents || 0, 10);
+                        await pool.query('UPDATE user_wallets SET balance_cents = $1 WHERE user_id = $2', [prev + centsToCredit, uId]);
+                    }
                 } else {
-                    const newBal = parseFloat(existing.rows[0].balance_eur || 0) + creditEur;
-                    await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [newBal, uId]);
+                    const existing = await pool.query('SELECT balance_eur FROM user_wallets WHERE user_id = $1', [uId]);
+                    if (existing.rows.length === 0) {
+                        await pool.query('INSERT INTO user_wallets (user_id, balance_eur) VALUES ($1,$2)', [uId, creditEur]);
+                    } else {
+                        const newBal = parseFloat(existing.rows[0].balance_eur || 0) + creditEur;
+                        await pool.query('UPDATE user_wallets SET balance_eur = $1 WHERE user_id = $2', [newBal, uId]);
+                    }
                 }
             } catch (e) { console.error('Error crediting wallet during payout:', e); }
 
-            // record payout in transaction registry
+            // record payout in transaction registry (store ETB equivalent too for Bronze 3rd rule)
             try {
                 const txRef = `payout-${tId}-${rnd}-${num}-${uId}`;
-                await pool.query(`INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, admin_id, processed_at) VALUES ($1,$2,$3,$4,$5,NOW())`, [txRef, uId, null, creditEur, adminId]);
+                const prizeEtbEquiv = creditEur * EUR_TO_ETB;
+                await pool.query(
+                    `INSERT INTO transaction_registry (tx_reference, user_id, amount_etb, amount_eur, admin_id, processed_at) VALUES ($1,$2,$3,$4,$5,NOW())`,
+                    [txRef, uId, prizeEtbEquiv, creditEur, adminId]
+                );
             } catch(e) { console.warn('Could not insert payout registry record', e); }
 
             // Notify user with amount credited
@@ -1827,12 +2150,13 @@ async function runDrawLogic(tId, rnd) {
     try {
         const client = await getRedis();
         if (client) {
-            // Remove per-ticket reservation keys
+            // Remove per-ticket reservation keys and sold_blocks set (atomic round reset)
             const pattern = `ticket_sold:${tId}:${rnd}:*`;
             try {
                 const keys = await client.keys(pattern);
                 if (keys && keys.length) await client.del(keys);
             } catch (e) { console.warn('Redis pattern delete failed for ticket_sold', e); }
+            try { await client.del(`sold_blocks:${tId}:${rnd}`); } catch(e) { /* ignore */ }
 
             // Remove sold counter for this round
             try { await client.del(`tier_sold_count:${tId}:${rnd}`); } catch(e) { console.warn('Failed to delete tier_sold_count', e); }
@@ -1869,7 +2193,7 @@ async function runDrawLogic(tId, rnd) {
         }
     }
 
-    // Special prize handling: Bronze tier 3rd place => 1 voucher (consumed later as 2 free tickets)
+    // Special prize handling: Bronze tier 3rd place => 2 free tickets (1 voucher = 2 blocks in next round)
     try {
         const bronzeThird = winners.find(w => w.place === 3 && w.tierId === 1);
         if (bronzeThird && bronzeThird.userId) {
@@ -1877,8 +2201,8 @@ async function runDrawLogic(tId, rnd) {
             if (client) {
                 const key = `pending_free_tickets:${bronzeThird.userId}`;
                 const prev = parseInt(await client.get(key) || '0', 10);
-                await client.set(key, String(prev + 1), { EX: 60 * 60 * 24 * 60 }); // keep for 60 days
-                console.log(`Awarded 1 free-ticket-voucher to user ${bronzeThird.userId}`);
+                await client.set(key, String(prev + 1), { EX: 60 * 60 * 24 * 60 }); // 1 voucher = 2 blocks in start-round
+                console.log(`Awarded 2 free tickets (1 voucher) to user ${bronzeThird.userId}`);
             }
         }
     } catch (e) { console.warn('Failed to award bronze voucher', e); }
@@ -2313,7 +2637,8 @@ setInterval(() => { if (domain) axios.get(domain).catch(() => {}); }, 300000);
 
 // Decide deployment mode: serverless (Vercel) or conventional server
 const isVercel = !!process.env.VERCEL || process.env.DEPLOY_TARGET === 'vercel';
-const useWebhook = domain && (isProduction || process.env.USE_WEBHOOK === 'true' || isVercel);
+// On Vercel always use webhook mode (no domain required if WEBHOOK_URL is set)
+const useWebhook = isVercel || (domain && (isProduction || process.env.USE_WEBHOOK === 'true'));
 const webhookPath = isVercel ? '/api/webhook' : '/webhook';
 
 if (useWebhook) {
