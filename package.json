@@ -1,6 +1,6 @@
 {
   "name": "siket-lotto",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Siket Lottery Telegram Mini App - Production Ready",
   "main": "bot.js",
   "engines": { "node": ">=18.x" },
